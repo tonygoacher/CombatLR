@@ -1,0 +1,74 @@
+src/ESP32LaserTag.cpp:34:5: note: suggested alternative: 'ledcAttachPin'
+     ledcAttach(
+     ^~~~~~~~~~
+     ledcAttachPin
+src/ESP32LaserTag.cpp:65:34: warning: unsigned conversion from 'int' to 'uint8_t' {aka 'unsigned char'} changes value from '1000000' to '64' [-Woverflow]
+     _rxTimer = timerBegin(1000000);
+                                  ^
+src/ESP32LaserTag.cpp:65:34: error: too few arguments to function 'hw_timer_t* timerBegin(uint8_t, uint16_t, bool)'
+In file included from C:/Users/tonyg/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h:92,
+                 from C:/Users/tonyg/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h:36,
+                 from src/ESP32LaserTag.cpp:1:
+C:/Users/tonyg/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-timer.h:33:14: note: declared here
+ hw_timer_t * timerBegin(uint8_t timer, uint16_t divider, bool countUp);
+              ^~~~~~~~~~
+src/ESP32LaserTag.cpp:67:5: error: 'timerAttachInterruptArg' was not declared in this scope
+     timerAttachInterruptArg(
+     ^~~~~~~~~~~~~~~~~~~~~~~
+src/ESP32LaserTag.cpp:67:5: note: suggested alternative: 'timerAttachInterrupt'
+     timerAttachInterruptArg(
+     ^~~~~~~~~~~~~~~~~~~~~~~
+     timerAttachInterrupt
+src/ESP32LaserTag.cpp:72:5: error: 'timerAlarm' was not declared in this scope
+     timerAlarm(_rxTimer, RX_TIMEOUT_US, false, 0);
+Compiling .pio\build\adafruit_feather_esp32s3\FrameworkArduino\esp32-hal-psram.c.o
+     ^~~~~~~~~~
+src/ESP32LaserTag.cpp:72:5: note: suggested alternative: 'timerStart'
+     timerAlarm(_rxTimer, RX_TIMEOUT_US, false, 0);
+     ^~~~~~~~~~
+     timerStart
+src/ESP32LaserTag.cpp: In member function 'void ESP32LaserTag::ResetReceiver()':
+src/ESP32LaserTag.cpp:201:9: error: 'timerAlarm' was not declared in this scope
+         timerAlarm(_rxTimer, 0, false, 0);
+         ^~~~~~~~~~
+src/ESP32LaserTag.cpp:201:9: note: suggested alternative: 'timerStart'
+         timerAlarm(_rxTimer, 0, false, 0);
+         ^~~~~~~~~~
+         timerStart
+src/ESP32LaserTag.cpp: In member function 'void ESP32LaserTag::HandleRxEdge()':
+src/ESP32LaserTag.cpp:257:13: error: 'timerAlarm' was not declared in this scope
+             timerAlarm(
+             ^~~~~~~~~~
+src/ESP32LaserTag.cpp:257:13: note: suggested alternative: 'timerStart'
+             timerAlarm(
+             ^~~~~~~~~~
+             timerStart
+src/ESP32LaserTag.cpp:313:13: error: 'timerAlarm' was not declared in this scope
+             timerAlarm(
+             ^~~~~~~~~~
+src/ESP32LaserTag.cpp:313:13: note: suggested alternative: 'timerStart'
+             timerAlarm(
+             ^~~~~~~~~~
+             timerStart
+src/ESP32LaserTag.cpp:354:13: error: 'timerAlarm' was not declared in this scope
+             timerAlarm(
+             ^~~~~~~~~~
+src/ESP32LaserTag.cpp:354:13: note: suggested alternative: 'timerStart'
+             timerAlarm(
+             ^~~~~~~~~~
+             timerStart
+src/ESP32LaserTag.cpp:453:13: error: 'timerAlarm' was not declared in this scope
+             timerAlarm(
+             ^~~~~~~~~~
+src/ESP32LaserTag.cpp:453:13: note: suggested alternative: 'timerStart'
+             timerAlarm(
+             ^~~~~~~~~~
+             timerStart
+src/ESP32LaserTag.cpp:490:13: error: 'timerAlarm' was not declared in this scope
+             timerAlarm(
+             ^~~~~~~~~~
+src/ESP32LaserTag.cpp:490:13: note: suggested alternative: 'timerStart'
+             timerAlarm(
+             ^~~~~~~~~~
+             timerStart
+*** [.pio\build\adafruit_feather_esp32s3\src\ESP32LaserTag.cpp.o] Error 1
