@@ -1,0 +1,16 @@
+CombatLR config data.
+
+
+
+Team ID:	0-254	: 255 = no team. Accept any hit
+Gun ID			: A unique ID for this unit
+Friendly Fire	0,1 	: If one, accept shots from your team
+Start Weapon type	: 0-nn. Internally hard coded table defines shot power, rate of fire, burst count, burst rate, effective range, mag size
+Zone list		: A list of zone centres, radius and activation times.
+Pickup list		: A list of pickup items, types, location, activation times
+Start health		: Starting health points.
+Max game time		: Game ends regardlesss after this time. Surviving players are not 'killed', gun is disabled and game over displayed.
+Home position		: True GPS coordinates of the site home.
+
+
+

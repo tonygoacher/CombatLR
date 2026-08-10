@@ -1,0 +1,37 @@
+{
+    "player": {
+        "teamId": 1,
+        "gunId": 42,
+        "friendlyFire": false,
+        "startWeapon": "assault_rifle",
+        "startHealth": 100
+    },
+
+    "maxGameTime": 1800000,
+
+    "homePosition": {
+        "latitude": 53.540123,
+        "longitude": -2.118456
+    },
+
+    "zones": [
+        {
+            "centre": {
+                "latitude": 53.540500,
+                "longitude": -2.117900
+            },
+            "radius": 100,
+            "activationTime": 0
+        },
+        {
+            "centre": {
+                "latitude": 53.539900,
+                "longitude": -2.118800
+            },
+            "radius": 60,
+            "activationTime": 600000
+        }
+    ],
+
+    "pickups": []
+}

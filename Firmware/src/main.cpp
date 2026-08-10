@@ -1,15 +1,33 @@
 #include <Arduino.h>
 #include "ESP32LaserTag.h"
 #include "Ports.h"
+#include "SPIFFS.h"
+#include "FS.h"
+#include "JSONConfig.h"
 
 
 ESP32LaserTag laser(TXPORT, RXPORT);
+JSONConfig* jsonConfig = nullptr;
 
 void setup()
 {
     Serial.begin(115200);
+    delay(2000);
     laser.Init();
     Serial.println("Started.....");
+
+    if (!SPIFFS.begin(true))
+    {
+        Serial.println("Failed to mount SPIFFS");
+        while(1)
+        {};
+    }
+
+    jsonConfig = new JSONConfig(SPIFFS);
+    if(jsonConfig->Load())
+    {
+        Serial.print("Max Game Time:"); Serial.println(jsonConfig->GetConfig()->maxGameTime);
+    }        
 
 }
 
@@ -19,7 +37,7 @@ void loop()
     LaserTagData d;
     d.damage=1;
     d.playerId=1;
-    d.team = 0;
+    d.team = 1;
 
 
     laser.SendLasertagData(d);
@@ -36,7 +54,7 @@ void loop()
         }
     }
     
-    delay(200);
+    delay(1000);
     Serial.print(".");
 
 }
