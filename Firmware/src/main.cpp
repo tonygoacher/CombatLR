@@ -4,8 +4,7 @@
 #include "SPIFFS.h"
 #include "FS.h"
 #include "JSONConfig.h"
-
-
+/*
 ESP32LaserTag laser(TXPORT, RXPORT);
 JSONConfig* jsonConfig = nullptr;
 
@@ -56,5 +55,57 @@ void loop()
     
     delay(1000);
     Serial.print(".");
+
+}
+
+*/
+#include <SPIFFS.h>
+
+#include "BMPImage.h"
+#include "ST7789VDisplay.h"
+
+
+BMPImage mapdata;
+
+
+void setup()
+{
+    Serial.begin(115200);
+
+
+    if (!SPIFFS.begin(true))
+    {
+        Serial.println("SPIFFS failed");
+        return;
+    }
+
+
+    if (!mapdata.Load(
+            SPIFFS,
+            "/map.bmp"))
+    {
+        Serial.println("Map load failed");
+        return;
+    }
+
+
+    ST7789VDisplay display(
+        mapdata.GetData(),
+        mapdata.GetWidth(),
+        mapdata.GetHeight());
+
+
+    if (!display.Init())
+    {
+        Serial.println("Display init failed");
+        return;
+    }
+
+
+    display.Update();
+}
+
+void loop()
+{
 
 }
