@@ -531,7 +531,8 @@ void ST7789VDisplay::RenderMap()
         return;
     }
 
-    // Only do this when _mapImage changes.
+    _screenSprite.fillSprite(TFT_BLACK);
+
     _mapSprite.pushImage(
         0,
         0,
@@ -539,18 +540,81 @@ void ST7789VDisplay::RenderMap()
         _mapHeight,
         _mapImage);
 
-    _screenSprite.fillSprite(TFT_BLACK);
-
     _mapSprite.pushRotated(
         &_screenSprite,
-        _rotation,
+        static_cast<int16_t>(_rotation),
         TFT_BLACK);
-
-    // Normally the caller should do this after adding widgets.
-    _screenSprite.pushSprite(0, 0);
 }
 
 
+void ST7789VDisplay::TestSprites()
+{
+    RenderMap();
+
+    // --------------------------------------------------------
+    // Fixed red status box
+    // --------------------------------------------------------
+
+    _screenSprite.fillRoundRect(
+        5, 5,
+        110, 35,
+        5,
+        TFT_RED);
+
+    _screenSprite.setTextColor(TFT_WHITE, TFT_RED);
+    _screenSprite.setTextSize(2);
+    _screenSprite.setCursor(15, 14);
+    _screenSprite.print("TEST");
+
+
+    // --------------------------------------------------------
+    // Fixed blue box
+    // --------------------------------------------------------
+
+    _screenSprite.fillRect(
+        _screenSprite.width() - 55,
+        5,
+        50,
+        35,
+        TFT_BLUE);
+
+
+    // --------------------------------------------------------
+    // Centre marker
+    // --------------------------------------------------------
+
+    int cx = _screenSprite.width() / 2;
+    int cy = _screenSprite.height() / 2;
+
+    _screenSprite.drawLine(
+        cx - 10, cy,
+        cx + 10, cy,
+        TFT_WHITE);
+
+    _screenSprite.drawLine(
+        cx, cy - 10,
+        cx, cy + 10,
+        TFT_WHITE);
+
+
+    // --------------------------------------------------------
+    // Border
+    // --------------------------------------------------------
+
+    _screenSprite.drawRect(
+        0,
+        0,
+        _screenSprite.width(),
+        _screenSprite.height(),
+        TFT_WHITE);
+
+
+    // --------------------------------------------------------
+    // ONE physical TFT update
+    // --------------------------------------------------------
+
+    _screenSprite.pushSprite(0, 0);
+}
 /*
  * =============================================================
  * RenderWidgets
@@ -642,6 +706,7 @@ void ST7789VDisplay::RenderWidgets()
 }
 
 
+
 /*
  * =============================================================
  * Update
@@ -661,8 +726,8 @@ void ST7789VDisplay::Update()
      *
      * 2. Rotate the map into the screen sprite.
      */
-    RenderMap();
 
+    TestSprites();
 
     /*
      * 3. Transform map widget positions.

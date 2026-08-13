@@ -170,4 +170,6 @@ private:
 
     WidgetEntry* FindWidget(
         uint16_t widgetId);
+
+    void TestSprites();
 };

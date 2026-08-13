@@ -114,9 +114,7 @@ int rot = 0;
 
 void loop()
 {
-    display->SetRotation(rot);
-    if(rot >= 360)
-        rot = 0;
+    display->SetRotation(rot++);
 
 
     display->Update();        
