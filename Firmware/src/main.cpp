@@ -63,10 +63,12 @@ void loop()
 
 #include "BMPImage.h"
 #include "ST7789VDisplay.h"
+#include "TestWidget.h"
 
 
 BMPImage mapdata;
 ST7789VDisplay* display = nullptr;
+
 
 
 void setup()
@@ -106,6 +108,19 @@ void setup()
         return;
     }
 
+display->AddWidget(
+    new TestWidget(
+        WidgetCoordinateSpace::Map,
+        50,
+        50,
+        TFT_RED));
+
+display->AddWidget(
+    new TestWidget(
+        WidgetCoordinateSpace::Map,
+        0,
+        0,
+        TFT_GREEN));
 
     display->Update();
 }

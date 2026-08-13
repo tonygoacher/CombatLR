@@ -4,6 +4,37 @@
 #include <string.h>
 
 
+// =============================================================
+// Logical rendering canvas
+// =============================================================
+//
+// The physical TFT is 320x240, but arbitrary-angle rotation can
+// require a larger composition canvas. 480x480 is large enough
+// to contain the diagonal of a 320x240 display (400 pixels).
+//
+// The physical display is a 320x240 viewport centred on this
+// canvas. The final sprite is therefore pushed at (-80,-120).
+// =============================================================
+
+static constexpr int16_t SCREEN_WIDTH  = 320;
+static constexpr int16_t SCREEN_HEIGHT = 240;
+
+static constexpr int16_t CANVAS_WIDTH  = 480;
+static constexpr int16_t CANVAS_HEIGHT = 480;
+
+static constexpr int16_t VIEWPORT_X =
+    (CANVAS_WIDTH - SCREEN_WIDTH) / 2;
+
+static constexpr int16_t VIEWPORT_Y =
+    (CANVAS_HEIGHT - SCREEN_HEIGHT) / 2;
+
+static constexpr int16_t CANVAS_CX =
+    CANVAS_WIDTH / 2;
+
+static constexpr int16_t CANVAS_CY =
+    CANVAS_HEIGHT / 2;
+
+
 ST7789VDisplay::ST7789VDisplay(
     const uint16_t* mapImage,
     uint16_t mapWidth,
@@ -116,8 +147,8 @@ bool ST7789VDisplay::Init()
 
 
     _screenSprite.setPivot(
-        _tft.width() / 2,
-        _tft.height() / 2);
+        CANVAS_CX,
+        CANVAS_CY);
 
 
     _tft.fillScreen(
@@ -161,8 +192,8 @@ bool ST7789VDisplay::AllocateSprites()
 
 
     if (_screenSprite.createSprite(
-            _tft.width(),
-            _tft.height()) == nullptr)
+            CANVAS_WIDTH,
+            CANVAS_HEIGHT) == nullptr)
     {
         _mapSprite.deleteSprite();
 
@@ -417,8 +448,11 @@ ST7789VDisplay::TransformWidgetPosition(
     if (widget.GetCoordinateSpace() ==
         WidgetCoordinateSpace::Screen)
     {
-        result.x = position.x;
-        result.y = position.y;
+        // Screen-space widget coordinates are specified in
+        // physical-display coordinates. Translate them into the
+        // larger logical canvas.
+        result.x = VIEWPORT_X + position.x;
+        result.y = VIEWPORT_Y + position.y;
         result.scale = 1.0f;
 
         return result;
@@ -479,12 +513,12 @@ ST7789VDisplay::TransformWidgetPosition(
      * coordinates.
      */
     result.x =
-        (_tft.width() * 0.5f) +
+        CANVAS_CX +
         rotatedX;
 
 
     result.y =
-        (_tft.height() * 0.5f) +
+        CANVAS_CY +
         rotatedY;
 
 
@@ -556,14 +590,17 @@ void ST7789VDisplay::TestSprites()
     // --------------------------------------------------------
 
     _screenSprite.fillRoundRect(
-        5, 5,
+        VIEWPORT_X + 5,
+        VIEWPORT_Y + 5,
         110, 35,
         5,
         TFT_RED);
 
     _screenSprite.setTextColor(TFT_WHITE, TFT_RED);
     _screenSprite.setTextSize(2);
-    _screenSprite.setCursor(15, 14);
+    _screenSprite.setCursor(
+        VIEWPORT_X + 15,
+        VIEWPORT_Y + 14);
     _screenSprite.print("TEST");
 
 
@@ -572,8 +609,8 @@ void ST7789VDisplay::TestSprites()
     // --------------------------------------------------------
 
     _screenSprite.fillRect(
-        _screenSprite.width() - 55,
-        5,
+        VIEWPORT_X + SCREEN_WIDTH - 55,
+        VIEWPORT_Y + 5,
         50,
         35,
         TFT_BLUE);
@@ -583,8 +620,8 @@ void ST7789VDisplay::TestSprites()
     // Centre marker
     // --------------------------------------------------------
 
-    int cx = _screenSprite.width() / 2;
-    int cy = _screenSprite.height() / 2;
+    int cx = CANVAS_CX;
+    int cy = CANVAS_CY;
 
     _screenSprite.drawLine(
         cx - 10, cy,
@@ -602,10 +639,10 @@ void ST7789VDisplay::TestSprites()
     // --------------------------------------------------------
 
     _screenSprite.drawRect(
-        0,
-        0,
-        _screenSprite.width(),
-        _screenSprite.height(),
+        VIEWPORT_X,
+        VIEWPORT_Y,
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT,
         TFT_WHITE);
 
 
@@ -613,7 +650,7 @@ void ST7789VDisplay::TestSprites()
     // ONE physical TFT update
     // --------------------------------------------------------
 
-    _screenSprite.pushSprite(0, 0);
+    _screenSprite.pushSprite(-VIEWPORT_X, -VIEWPORT_Y);
 }
 /*
  * =============================================================
@@ -720,31 +757,14 @@ void ST7789VDisplay::Update()
         return;
     }
 
+    // 1. Render rotated map into _screenSprite
+    RenderMap();
 
-    /*
-     * 1. Render the map.
-     *
-     * 2. Rotate the map into the screen sprite.
-     */
+    // 2. Render widgets on top
+    RenderWidgets();
 
-    TestSprites();
-
-    /*
-     * 3. Transform map widget positions.
-     *
-     * 4. Render all widgets upright.
-     */
- //   RenderWidgets();
-
-
-    /*
-     * 5. Present the completed frame.
-     */
- //   _screenSprite.pushSprite(
- ///       0,
-  //      0);
-
-
+    // 3. Present the completed frame
+    _screenSprite.pushSprite(-VIEWPORT_X, -VIEWPORT_Y);
 
 }
 
@@ -768,6 +788,6 @@ void ST7789VDisplay::Clear()
 
 
     _screenSprite.pushSprite(
-        0,
-        0);
+        -VIEWPORT_X,
+        -VIEWPORT_Y);
 }
