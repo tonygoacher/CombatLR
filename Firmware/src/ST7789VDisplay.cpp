@@ -525,14 +525,13 @@ void ST7789VDisplay::RenderMap()
 
 void ST7789VDisplay::RenderMap()
 {
-
     if (_mapImage == nullptr)
     {
         _screenSprite.fillSprite(TFT_BLACK);
         return;
     }
 
-    // Copy the map once
+    // Only do this when _mapImage changes.
     _mapSprite.pushImage(
         0,
         0,
@@ -540,27 +539,15 @@ void ST7789VDisplay::RenderMap()
         _mapHeight,
         _mapImage);
 
-    int i = 0;
+    _screenSprite.fillSprite(TFT_BLACK);
 
-    while (true)
-    {
-        i +=1;
+    _mapSprite.pushRotated(
+        &_screenSprite,
+        _rotation,
+        TFT_BLACK);
 
-        if (i >= 360)
-            i -= 360;
-
-        _screenSprite.fillSprite(TFT_BLACK);
-
-        Serial.println(i);
-
-        _mapSprite.pushRotated(
-            &_screenSprite,
-            -i,
-            TFT_BLACK);
-
-        _screenSprite.pushSprite(0, 0);
-
-    }
+    // Normally the caller should do this after adding widgets.
+    _screenSprite.pushSprite(0, 0);
 }
 
 

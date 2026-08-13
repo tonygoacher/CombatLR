@@ -66,6 +66,7 @@ void loop()
 
 
 BMPImage mapdata;
+ST7789VDisplay* display = nullptr;
 
 
 void setup()
@@ -93,23 +94,30 @@ void setup()
     }
 
 
-    ST7789VDisplay display(
+    display = new ST7789VDisplay(
         mapdata.GetData(),
         mapdata.GetWidth(),
         mapdata.GetHeight());
 
 
-    if (!display.Init())
+    if (!display->Init())
     {
         Serial.println("Display init failed");
         return;
     }
 
 
-    display.Update();
+    display->Update();
 }
+
+int rot = 0;
 
 void loop()
 {
+    display->SetRotation(rot);
+    if(rot >= 360)
+        rot = 0;
 
+
+    display->Update();        
 }
