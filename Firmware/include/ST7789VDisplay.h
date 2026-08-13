@@ -59,6 +59,10 @@ public:
 
     void Clear() override;
 
+    void SetPlayerHeading(float headingDegrees);
+
+
+
 
 private:
 
@@ -140,6 +144,9 @@ private:
      */
 
     bool _initialised;
+
+    float _playerHeading;
+    bool _playerHeadingValid;
 
 
     /*
