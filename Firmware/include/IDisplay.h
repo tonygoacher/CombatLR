@@ -56,4 +56,5 @@ public:
 
 
     virtual void Clear() = 0;
+
 };
