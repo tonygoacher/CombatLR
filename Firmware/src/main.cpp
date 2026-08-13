@@ -4,6 +4,8 @@
 #include "SPIFFS.h"
 #include "FS.h"
 #include "JSONConfig.h"
+#include "NavigationMapTest.h"
+#include "NavigationDisplayTest.h"
 /*
 ESP32LaserTag laser(TXPORT, RXPORT);
 JSONConfig* jsonConfig = nullptr;
@@ -128,17 +130,21 @@ display->AddWidget(
         0,
         TFT_GREEN));
 
-    display->SetMapZoom(2.0);
-    display->Update();
+//    display->SetMapZoom(2.0);
+  //  display->Update();
+
+   NavigationDisplayTestBegin();
 }
 
 int rot = 0;
-float zoom = 1.5f;
-float zoomDir = 0.1f;
+float zoom = 2.0f;
+float zoomDir = 0.0f;
 
 void loop()
 {
-    display->SetRotation(rot++);
+
+     NavigationDisplayTestLoop();
+    display->SetRotation(rot);
 
     display->SetMapZoom(zoom);
 
