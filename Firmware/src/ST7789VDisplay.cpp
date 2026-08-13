@@ -34,6 +34,8 @@ static constexpr int16_t CANVAS_CX =
 static constexpr int16_t CANVAS_CY =
     CANVAS_HEIGHT / 2;
 
+    
+
 
 ST7789VDisplay::ST7789VDisplay(
     const uint16_t* mapImage,
@@ -138,12 +140,14 @@ bool ST7789VDisplay::Init()
      
 
     /*
-     * Set rotation pivots so the map rotates around the
-     * centre of the display.
+     * The map sprite is a 320x240 viewport containing a scaled
+     * view of the high-resolution source map.
+     *
+     * It is then rotated into the larger 480x480 screen canvas.
      */
     _mapSprite.setPivot(
-        _mapWidth / 2,
-        _mapHeight / 2);
+        CANVAS_CX,
+        CANVAS_CY);
 
 
     _screenSprite.setPivot(
@@ -183,9 +187,17 @@ bool ST7789VDisplay::AllocateSprites()
      * TFT_eSPI will allocate sprites from PSRAM because
      * PSRAM_ENABLE was enabled above.
      */
+    /*
+     * _mapSprite is the complete 480x480 logical canvas.
+     *
+     * The original high-resolution map remains in _mapImage.
+     * RenderMap() samples the source into this larger canvas before
+     * rotating it, preventing the physical 320x240 viewport from
+     * exposing the corners of a clipped 320x240 source rectangle.
+     */
     if (_mapSprite.createSprite(
-            _mapWidth,
-            _mapHeight) == nullptr)
+            CANVAS_WIDTH,
+            CANVAS_HEIGHT) == nullptr)
     {
         return false;
     }
@@ -476,10 +488,28 @@ ST7789VDisplay::TransformWidgetPosition(
 
 
     /*
-     * Apply zoom.
+     * Convert source-map pixels into display pixels.
+     *
+     * At zoom 1.0 the complete source map is fitted into the
+     * 320x240 viewport.  Therefore map-widget coordinates must
+     * use the same fit scale as the map image itself.
      */
-    x *= _mapZoom;
-    y *= _mapZoom;
+    const float scaleX =
+        static_cast<float>(SCREEN_WIDTH) /
+        static_cast<float>(_mapWidth);
+
+    const float scaleY =
+        static_cast<float>(SCREEN_HEIGHT) /
+        static_cast<float>(_mapHeight);
+
+    const float fitScale =
+        (scaleX < scaleY) ? scaleX : scaleY;
+
+    const float effectiveScale =
+        fitScale * _mapZoom;
+
+    x *= effectiveScale;
+    y *= effectiveScale;
 
 
     /*
@@ -522,7 +552,7 @@ ST7789VDisplay::TransformWidgetPosition(
         rotatedY;
 
 
-    result.scale = _mapZoom;
+    result.scale = effectiveScale;
 
 
     return result;
@@ -535,7 +565,7 @@ ST7789VDisplay::TransformWidgetPosition(
  * =============================================================
  */
 
-/*
+
 
 void ST7789VDisplay::RenderMap()
 {
@@ -545,41 +575,110 @@ void ST7789VDisplay::RenderMap()
         return;
     }
 
-    _mapSprite.pushImage(
-        0,
-        0,
-        _mapWidth,
-        _mapHeight,
-        _mapImage);
+    /*
+     * Render the map into the complete 480x480 logical canvas.
+     *
+     * This is important because the physical display is only 320x240,
+     * but the map is subsequently rotated. A 320x240 source rectangle
+     * would expose its corners as black when rotated.
+     *
+     * At zoom 1.0 the complete map is fitted to the 320x240 viewport.
+     * At higher zoom levels the map becomes progressively larger than
+     * the physical viewport, providing the extra coverage needed for
+     * arbitrary-angle rotation.
+     */
 
+    _mapSprite.fillSprite(TFT_BLACK);
 
-    _mapSprite.pushSprite(0, 0);
-}
-    */
+    const float scaleX =
+        static_cast<float>(SCREEN_WIDTH) /
+        static_cast<float>(_mapWidth);
 
-void ST7789VDisplay::RenderMap()
-{
-    if (_mapImage == nullptr)
+    const float scaleY =
+        static_cast<float>(SCREEN_HEIGHT) /
+        static_cast<float>(_mapHeight);
+
+    // Preserve aspect ratio when fitting the complete map.
+    const float fitScale =
+        (scaleX < scaleY) ? scaleX : scaleY;
+
+    const float effectiveScale =
+        fitScale * _mapZoom;
+
+    const float sourceCentreX =
+        (static_cast<float>(_mapWidth) - 1.0f) * 0.5f;
+
+    const float sourceCentreY =
+        (static_cast<float>(_mapHeight) - 1.0f) * 0.5f;
+
+    const float canvasCentreX =
+        (static_cast<float>(CANVAS_WIDTH) - 1.0f) * 0.5f;
+
+    const float canvasCentreY =
+        (static_cast<float>(CANVAS_HEIGHT) - 1.0f) * 0.5f;
+
+    /*
+     * Render the zoomed source map into the complete 480x480 logical
+     * canvas using nearest-neighbour sampling.
+     *
+     * Pixels outside the source map remain black. At sufficient zoom
+     * the source map covers the entire area which can rotate into the
+     * physical 320x240 viewport.
+     */
+    for (int16_t y = 0; y < CANVAS_HEIGHT; ++y)
     {
-        _screenSprite.fillSprite(TFT_BLACK);
-        return;
+        const float sourceY =
+            sourceCentreY +
+            (static_cast<float>(y) - canvasCentreY) /
+                effectiveScale;
+
+        const int32_t sy =
+            static_cast<int32_t>(floorf(sourceY + 0.5f));
+
+        if (sy < 0 ||
+            sy >= static_cast<int32_t>(_mapHeight))
+        {
+            continue;
+        }
+
+        for (int16_t x = 0; x < CANVAS_WIDTH; ++x)
+        {
+            const float sourceX =
+                sourceCentreX +
+                (static_cast<float>(x) - canvasCentreX) /
+                    effectiveScale;
+
+            const int32_t sx =
+                static_cast<int32_t>(floorf(sourceX + 0.5f));
+
+            if (sx < 0 ||
+                sx >= static_cast<int32_t>(_mapWidth))
+            {
+                continue;
+            }
+
+            _mapSprite.drawPixel(
+                x,
+                y,
+                _mapImage[
+                    static_cast<size_t>(sy) *
+                        _mapWidth +
+                    static_cast<size_t>(sx)]);
+        }
     }
 
+    /*
+     * Rotate the complete 480x480 map canvas into the 480x480 screen
+     * canvas. The physical 320x240 display is then taken as a centred
+     * viewport of the result.
+     */
     _screenSprite.fillSprite(TFT_BLACK);
-
-    _mapSprite.pushImage(
-        0,
-        0,
-        _mapWidth,
-        _mapHeight,
-        _mapImage);
 
     _mapSprite.pushRotated(
         &_screenSprite,
         static_cast<int16_t>(_rotation),
         TFT_BLACK);
 }
-
 
 void ST7789VDisplay::TestSprites()
 {

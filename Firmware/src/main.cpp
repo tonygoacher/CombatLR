@@ -69,6 +69,11 @@ void loop()
 BMPImage mapdata;
 ST7789VDisplay* display = nullptr;
 
+void fatal()
+{
+    while(1)
+    {};
+}
 
 
 void setup()
@@ -79,7 +84,7 @@ void setup()
     if (!SPIFFS.begin(true))
     {
         Serial.println("SPIFFS failed");
-        return;
+        fatal();
     }
 
     Serial.printf(
@@ -92,7 +97,8 @@ void setup()
             "/map.bmp"))
     {
         Serial.println("Map load failed");
-        return;
+        
+        fatal();
     }
 
 
@@ -105,7 +111,7 @@ void setup()
     if (!display->Init())
     {
         Serial.println("Display init failed");
-        return;
+        fatal();
     }
 
 display->AddWidget(
@@ -122,15 +128,32 @@ display->AddWidget(
         0,
         TFT_GREEN));
 
+    display->SetMapZoom(2.0);
     display->Update();
 }
 
 int rot = 0;
+float zoom = 1.5f;
+float zoomDir = 0.1f;
 
 void loop()
 {
     display->SetRotation(rot++);
 
+    display->SetMapZoom(zoom);
 
-    display->Update();        
+    display->Update();   
+    
+    zoom += zoomDir;
+    if(zoom >4.0f)
+    {
+        zoomDir = -zoomDir;
+    }
+    else
+    {
+        if(zoom < 1.5f)
+        {
+            zoomDir =- zoomDir;
+        }
+    }
 }
