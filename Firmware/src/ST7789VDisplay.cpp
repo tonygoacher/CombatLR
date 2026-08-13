@@ -1,4 +1,5 @@
 #include "ST7789VDisplay.h"
+#include "MapCoordinate.h"
 
 #include <math.h>
 #include <string.h>
@@ -33,6 +34,96 @@ static constexpr int16_t CANVAS_CX =
 
 static constexpr int16_t CANVAS_CY =
     CANVAS_HEIGHT / 2;
+
+
+namespace
+{
+    MapCoordinate gNavigationMap;
+    GameCoordinate gNavigationPlayer{};
+    float gNavigationHeading = 0.0f;
+    bool gNavigationMapConfigured = false;
+    bool gNavigationPlayerVisible = false;
+
+    void RenderNavigationPlayer(
+        TFT_eSprite& canvas,
+        int16_t screenX,
+        int16_t screenY)
+    {
+        if (!gNavigationPlayerVisible)
+            return;
+
+        constexpr int16_t radius = 8;
+        constexpr int16_t arrowLength = 15;
+
+        canvas.fillCircle(
+            screenX,
+            screenY,
+            radius,
+            TFT_RED);
+
+        canvas.drawCircle(
+            screenX,
+            screenY,
+            radius + 1,
+            TFT_WHITE);
+
+        /*
+         * Heading-up map: the player's forward direction is always the
+         * top of the display, so the marker itself remains upright.
+         */
+        const int16_t arrowX = screenX;
+        const int16_t arrowY =
+            screenY - arrowLength;
+
+        canvas.drawLine(
+            screenX,
+            screenY,
+            arrowX,
+            arrowY,
+            TFT_WHITE);
+
+        canvas.fillCircle(
+            arrowX,
+            arrowY,
+            2,
+            TFT_WHITE);
+    }
+}
+
+void ConfigureNavigationMap(
+    float mapHomeX,
+    float mapHomeY,
+    float pixelsPerMetre)
+{
+    gNavigationMap.Configure(
+        mapHomeX,
+        mapHomeY,
+        pixelsPerMetre);
+
+    gNavigationMapConfigured =
+        gNavigationMap.IsConfigured();
+}
+
+void SetNavigationPlayerPosition(
+    const GameCoordinate& position,
+    float headingDegrees)
+{
+    gNavigationPlayer = position;
+
+    while (headingDegrees >= 360.0f)
+        headingDegrees -= 360.0f;
+
+    while (headingDegrees < 0.0f)
+        headingDegrees += 360.0f;
+
+    gNavigationHeading = headingDegrees;
+    gNavigationPlayerVisible = true;
+}
+
+void SetNavigationPlayerVisible(bool visible)
+{
+    gNavigationPlayerVisible = visible;
+}
 
     
 
@@ -567,6 +658,7 @@ ST7789VDisplay::TransformWidgetPosition(
 
 
 
+
 void ST7789VDisplay::RenderMap()
 {
     if (_mapImage == nullptr)
@@ -576,16 +668,14 @@ void ST7789VDisplay::RenderMap()
     }
 
     /*
-     * Render the map into the complete 480x480 logical canvas.
+     * Camera behaviour:
      *
-     * This is important because the physical display is only 320x240,
-     * but the map is subsequently rotated. A 320x240 source rectangle
-     * would expose its corners as black when rotated.
+     *   - Normally the player is at the centre of the display.
+     *   - When the player gets close enough to a map edge that the camera
+     *     can no longer follow, the camera is clamped to the map edge.
+     *   - The player then moves towards that edge of the display.
      *
-     * At zoom 1.0 the complete map is fitted to the 320x240 viewport.
-     * At higher zoom levels the map becomes progressively larger than
-     * the physical viewport, providing the extra coverage needed for
-     * arbitrary-angle rotation.
+     * The camera is rotated heading-up around its own centre.
      */
 
     _mapSprite.fillSprite(TFT_BLACK);
@@ -598,18 +688,84 @@ void ST7789VDisplay::RenderMap()
         static_cast<float>(SCREEN_HEIGHT) /
         static_cast<float>(_mapHeight);
 
-    // Preserve aspect ratio when fitting the complete map.
     const float fitScale =
         (scaleX < scaleY) ? scaleX : scaleY;
 
     const float effectiveScale =
         fitScale * _mapZoom;
 
-    const float sourceCentreX =
-        (static_cast<float>(_mapWidth) - 1.0f) * 0.5f;
+    if (effectiveScale <= 0.0f)
+        return;
 
-    const float sourceCentreY =
-        (static_cast<float>(_mapHeight) - 1.0f) * 0.5f;
+    const float visibleSourceWidth =
+        static_cast<float>(CANVAS_WIDTH) /
+        effectiveScale;
+
+    const float visibleSourceHeight =
+        static_cast<float>(CANVAS_HEIGHT) /
+        effectiveScale;
+
+    float playerMapX =
+        static_cast<float>(_mapWidth) * 0.5f;
+
+    float playerMapY =
+        static_cast<float>(_mapHeight) * 0.5f;
+
+    if (gNavigationMapConfigured &&
+        gNavigationPlayerVisible)
+    {
+        gNavigationMap.ToMapPixel(
+            gNavigationPlayer,
+            playerMapX,
+            playerMapY);
+    }
+
+    float cameraMapX = playerMapX;
+    float cameraMapY = playerMapY;
+
+    /*
+     * Clamp the camera centre so that the unrotated logical camera canvas
+     * stays inside the source map.
+     */
+    if (visibleSourceWidth <= static_cast<float>(_mapWidth))
+    {
+        const float halfWidth =
+            visibleSourceWidth * 0.5f;
+
+        const float minCameraX = halfWidth;
+        const float maxCameraX =
+            static_cast<float>(_mapWidth) - halfWidth;
+
+        cameraMapX = constrain(
+            cameraMapX,
+            minCameraX,
+            maxCameraX);
+    }
+    else
+    {
+        cameraMapX =
+            static_cast<float>(_mapWidth) * 0.5f;
+    }
+
+    if (visibleSourceHeight <= static_cast<float>(_mapHeight))
+    {
+        const float halfHeight =
+            visibleSourceHeight * 0.5f;
+
+        const float minCameraY = halfHeight;
+        const float maxCameraY =
+            static_cast<float>(_mapHeight) - halfHeight;
+
+        cameraMapY = constrain(
+            cameraMapY,
+            minCameraY,
+            maxCameraY);
+    }
+    else
+    {
+        cameraMapY =
+            static_cast<float>(_mapHeight) * 0.5f;
+    }
 
     const float canvasCentreX =
         (static_cast<float>(CANVAS_WIDTH) - 1.0f) * 0.5f;
@@ -618,17 +774,12 @@ void ST7789VDisplay::RenderMap()
         (static_cast<float>(CANVAS_HEIGHT) - 1.0f) * 0.5f;
 
     /*
-     * Render the zoomed source map into the complete 480x480 logical
-     * canvas using nearest-neighbour sampling.
-     *
-     * Pixels outside the source map remain black. At sufficient zoom
-     * the source map covers the entire area which can rotate into the
-     * physical 320x240 viewport.
+     * Render the camera canvas.
      */
     for (int16_t y = 0; y < CANVAS_HEIGHT; ++y)
     {
         const float sourceY =
-            sourceCentreY +
+            cameraMapY +
             (static_cast<float>(y) - canvasCentreY) /
                 effectiveScale;
 
@@ -644,7 +795,7 @@ void ST7789VDisplay::RenderMap()
         for (int16_t x = 0; x < CANVAS_WIDTH; ++x)
         {
             const float sourceX =
-                sourceCentreX +
+                cameraMapX +
                 (static_cast<float>(x) - canvasCentreX) /
                     effectiveScale;
 
@@ -667,17 +818,76 @@ void ST7789VDisplay::RenderMap()
         }
     }
 
-    /*
-     * Rotate the complete 480x480 map canvas into the 480x480 screen
-     * canvas. The physical 320x240 display is then taken as a centred
-     * viewport of the result.
-     */
+    const float mapRotation =
+        gNavigationPlayerVisible
+            ? -gNavigationHeading
+            : 0.0f;
+
     _screenSprite.fillSprite(TFT_BLACK);
 
     _mapSprite.pushRotated(
         &_screenSprite,
-        static_cast<int16_t>(_rotation),
+        static_cast<int16_t>(mapRotation),
         TFT_BLACK);
+
+    /*
+     * Calculate where the player actually appears.
+     *
+     * If the camera is following the player, this is the centre.
+     * If the camera is clamped by a map edge, the player moves towards
+     * that edge instead.
+     *
+     * Rotate the player offset by the same map rotation so it remains
+     * correctly registered with the map.
+     */
+    if (gNavigationPlayerVisible)
+    {
+        float playerCanvasX =
+            canvasCentreX +
+            (playerMapX - cameraMapX) *
+                effectiveScale;
+
+        float playerCanvasY =
+            canvasCentreY +
+            (cameraMapY - playerMapY) *
+                effectiveScale;
+
+        const float angle =
+            mapRotation *
+            0.01745329251994329576923690768489f;
+
+        const float cosAngle = cosf(angle);
+        const float sinAngle = sinf(angle);
+
+        const float dx =
+            playerCanvasX - canvasCentreX;
+
+        const float dy =
+            playerCanvasY - canvasCentreY;
+
+        const float rotatedX =
+            dx * cosAngle -
+            dy * sinAngle;
+
+        const float rotatedY =
+            dx * sinAngle +
+            dy * cosAngle;
+
+        const int16_t playerScreenX =
+            static_cast<int16_t>(
+                lroundf(
+                    canvasCentreX + rotatedX));
+
+        const int16_t playerScreenY =
+            static_cast<int16_t>(
+                lroundf(
+                    canvasCentreY + rotatedY));
+
+        RenderNavigationPlayer(
+            _screenSprite,
+            playerScreenX,
+            playerScreenY);
+    }
 }
 
 void ST7789VDisplay::TestSprites()
