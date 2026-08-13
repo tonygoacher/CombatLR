@@ -91,14 +91,20 @@ bool ST7789VDisplay::Init()
      *
      * This is NOT the dynamic compass rotation.
      */
-    _tft.setRotation(0);
+    _tft.setRotation(1);
+
+    _tft.setSwapBytes(true);
+
+// DEBUG
 
 
+//_DEBUG
     if (!AllocateSprites())
     {
         return false;
     }
 
+     
 
     /*
      * Set rotation pivots so the map rotates around the
@@ -140,7 +146,8 @@ bool ST7789VDisplay::AllocateSprites()
 
     _screenSprite.setColorDepth(16);
 
-
+    _mapSprite.setSwapBytes(true);
+    _screenSprite.setSwapBytes(true);
     /*
      * TFT_eSPI will allocate sprites from PSRAM because
      * PSRAM_ENABLE was enabled above.
@@ -494,20 +501,16 @@ ST7789VDisplay::TransformWidgetPosition(
  * =============================================================
  */
 
+/*
+
 void ST7789VDisplay::RenderMap()
 {
     if (_mapImage == nullptr)
     {
-        _screenSprite.fillSprite(
-            TFT_BLACK);
-
+        _screenSprite.fillSprite(TFT_BLACK);
         return;
     }
 
-
-    /*
-     * Copy source RGB565 image into map sprite.
-     */
     _mapSprite.pushImage(
         0,
         0,
@@ -516,24 +519,48 @@ void ST7789VDisplay::RenderMap()
         _mapImage);
 
 
-    /*
-     * Clear destination.
-     */
-    _screenSprite.fillSprite(
-        TFT_BLACK);
+    _mapSprite.pushSprite(0, 0);
+}
+    */
 
+void ST7789VDisplay::RenderMap()
+{
 
-    /*
-     * Rotate the MAP into the final screen sprite.
-     *
-     * The map itself rotates.
-     *
-     * Widgets do not.
-     */
-    _mapSprite.pushRotated(
-        &_screenSprite,
-        static_cast<int16_t>(_rotation),
-        TFT_BLACK);
+    if (_mapImage == nullptr)
+    {
+        _screenSprite.fillSprite(TFT_BLACK);
+        return;
+    }
+
+    // Copy the map once
+    _mapSprite.pushImage(
+        0,
+        0,
+        _mapWidth,
+        _mapHeight,
+        _mapImage);
+
+    int i = 0;
+
+    while (true)
+    {
+        i +=1;
+
+        if (i >= 360)
+            i -= 360;
+
+        _screenSprite.fillSprite(TFT_BLACK);
+
+        Serial.println(i);
+
+        _mapSprite.pushRotated(
+            &_screenSprite,
+            -i,
+            TFT_BLACK);
+
+        _screenSprite.pushSprite(0, 0);
+
+    }
 }
 
 
@@ -655,15 +682,18 @@ void ST7789VDisplay::Update()
      *
      * 4. Render all widgets upright.
      */
-    RenderWidgets();
+ //   RenderWidgets();
 
 
     /*
      * 5. Present the completed frame.
      */
-    _screenSprite.pushSprite(
-        0,
-        0);
+ //   _screenSprite.pushSprite(
+ ///       0,
+  //      0);
+
+
+
 }
 
 

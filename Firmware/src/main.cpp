@@ -79,6 +79,10 @@ void setup()
         return;
     }
 
+    Serial.printf(
+    "Free PSRAM: %u bytes\n",
+    ESP.getFreePsram());
+
 
     if (!mapdata.Load(
             SPIFFS,
