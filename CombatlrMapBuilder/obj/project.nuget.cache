@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "iqzzq4pQFs8=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\tonyg\\Documents\\projects\\CombatLR\\CombatlrMapBuilder\\CombatlrMapBuilder.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\tonyg\\.nuget\\packages\\microsoft.win32.systemevents\\8.0.0\\microsoft.win32.systemevents.8.0.0.nupkg.sha512",
+    "C:\\Users\\tonyg\\.nuget\\packages\\system.drawing.common\\8.0.0\\system.drawing.common.8.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
