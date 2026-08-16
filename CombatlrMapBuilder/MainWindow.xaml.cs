@@ -631,7 +631,6 @@ public partial class MainWindow : Window
     double latB,
     double lonB)
     {
-        // Local equirectangular projection around A.
         var meanLat = ((latA + latB) / 2.0) * Math.PI / 180.0;
         const double earthRadius = 6371008.8;
 
@@ -647,48 +646,31 @@ public partial class MainWindow : Window
         var pixelDistance = Math.Sqrt(dx * dx + dy * dy);
         var geoDistance = Math.Sqrt(east * east + north * north);
 
-        if (pixelDistance < 0.000001 || geoDistance < 0.000001)
+        if (pixelDistance < 0.000001 ||
+            geoDistance < 0.000001)
+        {
             return;
+        }
 
-        // Unit vector along A -> B in image coordinates.
         var ix = dx / pixelDistance;
         var iy = dy / pixelDistance;
 
-        // Unit vector along A -> B in geographic east/north coordinates.
         var gx = east / geoDistance;
         var gy = north / geoDistance;
 
         var scale = geoDistance / pixelDistance;
 
-        // Complete 2-D similarity transform.
-        //
-        // The first column maps image +X.
-        // The second column maps image +Y.
-        //
-        // This preserves the A -> B calibration while also
-        // correctly transforming movement perpendicular to A -> B.
+        _eastPerPixelX = scale * (ix * gx);
+        _eastPerPixelY = scale * (iy * gx);
 
-        _eastPerPixelX =
-            scale * (ix * gx + iy * gy);
-
-        _eastPerPixelY =
-            scale * (iy * gx - ix * gy);
-
-        _northPerPixelX =
-            scale * (ix * gy - iy * gx);
-
-        _northPerPixelY =
-            scale * (iy * gy + ix * gx);
-
-        // Bearing of the image +X axis.
-        var imageAxisEast = _eastPerPixelX;
-        var imageAxisNorth = _northPerPixelX;
+        _northPerPixelX = scale * (ix * gy);
+        _northPerPixelY = scale * (iy * gy);
 
         _transformRotationDegrees =
             NormalizeDegrees(
                 Math.Atan2(
-                    imageAxisEast,
-                    imageAxisNorth) *
+                    _eastPerPixelX,
+                    _northPerPixelX) *
                 180.0 / Math.PI);
 
         _transformValid = true;
