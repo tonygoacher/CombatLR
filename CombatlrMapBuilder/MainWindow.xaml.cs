@@ -1021,7 +1021,7 @@ public partial class MainWindow : Window
         if (!_resizingPlayfield || MapImage.Source is null)
             return;
 
-        const double aspectRatio = OutputWidth / OutputHeight; // 4:3
+        const double aspectRatio = (double)OutputWidth / (double)OutputHeight; // 4:3
         const double minimumWidth = 320;
 
         if (ReferenceEquals(sender, TopLeftHandle))
@@ -1089,7 +1089,7 @@ public partial class MainWindow : Window
             return;
 
         const double minimumWidth = 320;
-        const double aspectRatio = OutputWidth / OutputHeight; // 4:3
+        const double aspectRatio = (double)OutputWidth / (double)OutputHeight; // 4:3
 
         width = Math.Max(minimumWidth, width);
         height = width / aspectRatio;
