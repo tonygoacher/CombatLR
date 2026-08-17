@@ -6,7 +6,9 @@
     xmlns:sf="clr-namespace:Syncfusion.Maui.Toolkit.SegmentedControl;assembly=Syncfusion.Maui.Toolkit"
     xmlns:pages="clr-namespace:CombatLR.mobile.Pages"
     Shell.FlyoutBehavior="Flyout"
+    Shell.NavBarIsVisible="False"
     Title="CombatLR.mobile">
+
 
     <ShellContent
         Title="Dashboard"
