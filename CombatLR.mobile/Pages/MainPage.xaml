@@ -7,28 +7,31 @@
 
     <Grid>
         <Grid
-    x:Name="MapContainer"
-    HorizontalOptions="Fill"
-    VerticalOptions="Fill">
+            x:Name="MapContainer"
+            HorizontalOptions="Fill"
+            VerticalOptions="Fill">
 
             <Grid.GestureRecognizers>
-                <TapGestureRecognizer
-            Tapped="Map_Tapped" />
+
+               <TapGestureRecognizer
+                    Tapped="Map_Tapped" />
+
+
             </Grid.GestureRecognizers>
 
             <Image
-        x:Name="MapImage"
-        Aspect="AspectFit"
-        HorizontalOptions="Fill"
-        VerticalOptions="Fill"
-        InputTransparent="True" />
+                x:Name="MapImage"
+                Aspect="AspectFit"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill"
+                InputTransparent="True" />  
 
             <BoxView
-        x:Name="MapTouchView"
-        BackgroundColor="Transparent"
-        HorizontalOptions="Fill"
-        VerticalOptions="Fill"
-        InputTransparent="True" />
+                x:Name="MapTouchView"
+                BackgroundColor="Transparent"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill"
+                InputTransparent="True" />
 
         </Grid>
 

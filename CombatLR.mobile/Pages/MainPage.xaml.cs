@@ -3,20 +3,47 @@ using CombatLR.mobile.Models;
 using CombatLR.mobile.PageModels;
 using CombatLR.mobile.Services;
 
+
 namespace CombatLR.mobile.Pages
 {
     public partial class MainPage : ContentPage
     {
         private MapDefinition? _mapDefinition;
         private MapCoordinateService? _coordinateService;
+        private double _mapZoom = 1.0;
+        private double _mapPanX = 0.0;
+        private double _mapPanY = 0.0;
+        private bool _isPinching;
+
+        private const double MinMapZoom = 1.0;
+        private const double MaxMapZoom = 8.0;
+
+#if ANDROID
+        private Android.Views.View? _nativeMapView;
+        private MapTouchListener? _mapTouchListener;
+#endif
+
+        private double _panStartX;
+        private double _panStartY;
+        private double _panStartMapX;
+        private double _panStartMapY;
+
+        private double _pinchStartZoom;
+        private double _pinchStartPanX;
+        private double _pinchStartPanY;
+        private double _pinchLastScale = 1.0;
         private GamePlan _gamePlan = new();
         private readonly GamePlanService _gamePlanService = new();
+
 
 
         public MainPage(MainPageModel model)
         {
             InitializeComponent();
             BindingContext = model;
+#if ANDROID
+            Loaded += MainPage_Loaded;
+#endif
 
             _ = LoadMapAsync();
         }
@@ -31,6 +58,25 @@ namespace CombatLR.mobile.Pages
             await Clipboard.Default.SetTextAsync(
                 MapInfoLabel.Text);
         }
+
+#if ANDROID
+        private void MainPage_Loaded(
+            object? sender,
+            EventArgs e)
+        {
+            if (MapContainer.Handler?.PlatformView
+                is not Android.Views.View nativeView)
+                return;
+
+            _nativeMapView = nativeView;
+
+            _mapTouchListener =
+                new MapTouchListener(this);
+
+            nativeView.SetOnTouchListener(
+                _mapTouchListener);
+        }
+#endif
 
         private async Task LoadMapAsync()
         {
@@ -50,6 +96,8 @@ namespace CombatLR.mobile.Pages
 
                 MapInfoLabel.Text =
                     "MAP LOADED\nLoading map.json...";
+
+                ResetMapView();
 
                 // Load map.json.
                 await using var jsonStream =
@@ -173,8 +221,8 @@ namespace CombatLR.mobile.Pages
         }
 
         private void Map_Tapped(
-     object? sender,
-     TappedEventArgs e)
+      object? sender,
+      TappedEventArgs e)
         {
             if (_mapDefinition is null ||
                 _coordinateService is null)
@@ -206,31 +254,51 @@ namespace CombatLR.mobile.Pages
                 areaHeight <= 0)
                 return;
 
-            // The Image uses AspectFit, so calculate
-            // the actual displayed bitmap rectangle.
-            var scale = Math.Min(
+            // Base AspectFit rectangle at zoom = 1.
+            var baseScale = Math.Min(
                 areaWidth / imageWidth,
                 areaHeight / imageHeight);
 
-            var displayedWidth =
-                imageWidth * scale;
+            var baseWidth =
+                imageWidth * baseScale;
 
-            var displayedHeight =
-                imageHeight * scale;
+            var baseHeight =
+                imageHeight * baseScale;
 
-            var imageLeft =
-                (areaWidth - displayedWidth) / 2.0;
+            var baseLeft =
+                (areaWidth - baseWidth) / 2.0;
 
-            var imageTop =
-                (areaHeight - displayedHeight) / 2.0;
+            var baseTop =
+                (areaHeight - baseHeight) / 2.0;
+
+            // Undo pan and zoom.
+            var unpannedX =
+                point.X - _mapPanX;
+
+            var unpannedY =
+                point.Y - _mapPanY;
+
+            // MapImage scales around its centre.
+            var centreX =
+                areaWidth / 2.0;
+
+            var centreY =
+                areaHeight / 2.0;
+
+            var imageDisplayX =
+                centreX +
+                (unpannedX - centreX) / _mapZoom;
+
+            var imageDisplayY =
+                centreY +
+                (unpannedY - centreY) / _mapZoom;
 
             var imageX =
-                (point.X - imageLeft) / scale;
+                (imageDisplayX - baseLeft) / baseScale;
 
             var imageY =
-                (point.Y - imageTop) / scale;
+                (imageDisplayY - baseTop) / baseScale;
 
-            // Ignore taps outside the actual bitmap.
             if (imageX < 0 ||
                 imageY < 0 ||
                 imageX > imageWidth ||
@@ -251,5 +319,249 @@ namespace CombatLR.mobile.Pages
                 $"{gps.Longitude:F7}";
         }
 
+        private void UpdateMapTransform()
+        {
+            MapImage.Scale = _mapZoom;
+
+            MapImage.TranslationX = _mapPanX;
+            MapImage.TranslationY = _mapPanY;
+        }
+
+
+        private void ResetMapView()
+        {
+            _mapZoom = 1.0;
+            _mapPanX = 0.0;
+            _mapPanY = 0.0;
+
+            UpdateMapTransform();
+        }
+
+
+
+
+#if ANDROID
+
+        private sealed class MapTouchListener :
+            Java.Lang.Object,
+            Android.Views.View.IOnTouchListener
+        {
+            private readonly MainPage _page;
+
+            private bool _pinching;
+
+            private double _startDistance;
+            private double _startZoom;
+
+            private double _startPanX;
+            private double _startPanY;
+
+            private double _startFocusX;
+            private double _startFocusY;
+
+            private double _lastX;
+            private double _lastY;
+
+            public MapTouchListener(MainPage page)
+            {
+                _page = page;
+            }
+
+            public bool OnTouch(
+                Android.Views.View? v,
+                Android.Views.MotionEvent? e)
+            {
+                if (v is null || e is null)
+                    return false;
+
+                var density =
+                    v.Resources?.DisplayMetrics?.Density ?? 1.0f;
+
+                switch (e.ActionMasked)
+                {
+                    case Android.Views.MotionEventActions.Down:
+
+                        _pinching = false;
+
+                        _lastX =
+                            e.GetX(0) / density;
+
+                        _lastY =
+                            e.GetY(0) / density;
+
+                        break;
+
+
+                    case Android.Views.MotionEventActions.PointerDown:
+
+                        if (e.PointerCount >= 2)
+                        {
+                            _pinching = true;
+
+                            _startDistance =
+                                GetDistance(e, density);
+
+                            _startZoom =
+                                _page._mapZoom;
+
+                            _startPanX =
+                                _page._mapPanX;
+
+                            _startPanY =
+                                _page._mapPanY;
+
+                            _startFocusX =
+                                GetFocusX(e, density);
+
+                            _startFocusY =
+                                GetFocusY(e, density);
+                        }
+
+                        break;
+
+
+                    case Android.Views.MotionEventActions.Move:
+
+                        if (_pinching &&
+                            e.PointerCount >= 2)
+                        {
+                            var distance =
+                                GetDistance(e, density);
+
+                            if (_startDistance > 0)
+                            {
+                                var rawRatio = distance / _startDistance;
+
+                                var zoomRatio = 1.0 + (rawRatio - 1.0) * 0.35;
+
+                                var newZoom =
+                                    Math.Clamp(
+                                        _startZoom * zoomRatio,
+                                        MinMapZoom,
+                                        MaxMapZoom);
+
+                                // Keep the point under the fingers
+                                // stationary while zooming.
+                                var centreX =
+                                    _page.MapContainer.Width / 2.0;
+
+                                var centreY =
+                                    _page.MapContainer.Height / 2.0;
+
+                                var focusX =
+                                    GetFocusX(e, density);
+
+                                var focusY =
+                                    GetFocusY(e, density);
+
+                                var ratio =
+                                    newZoom / _startZoom;
+
+                                _page._mapPanX =
+                                    (1.0 - ratio) *
+                                    (focusX - centreX) +
+                                    ratio *
+                                    _startPanX;
+
+                                _page._mapPanY =
+                                    (1.0 - ratio) *
+                                    (focusY - centreY) +
+                                    ratio *
+                                    _startPanY;
+
+                                _page._mapZoom =
+                                    newZoom;
+
+                                _page.UpdateMapTransform();
+                            }
+                        }
+                        else if (!_pinching &&
+                                 e.PointerCount == 1)
+                        {
+                            var x =
+                                e.GetX(0) / density;
+
+                            var y =
+                                e.GetY(0) / density;
+
+                            _page._mapPanX +=
+                                x - _lastX;
+
+                            _page._mapPanY +=
+                                y - _lastY;
+
+                            _lastX = x;
+                            _lastY = y;
+
+                            _page.UpdateMapTransform();
+                        }
+
+                        break;
+
+
+                    case Android.Views.MotionEventActions.PointerUp:
+
+                        if (e.PointerCount <= 2)
+                            _pinching = false;
+
+                        break;
+
+
+                    case Android.Views.MotionEventActions.Up:
+                    case Android.Views.MotionEventActions.Cancel:
+
+                        _pinching = false;
+
+                        break;
+                }
+
+                // IMPORTANT:
+                // Returning false allows the normal MAUI tap
+                // recognizer to continue receiving taps.
+                return true;
+            }
+
+            private static double GetDistance(
+                Android.Views.MotionEvent e,
+                double density)
+            {
+                var x1 = e.GetX(0) / density;
+                var y1 = e.GetY(0) / density;
+
+                var x2 = e.GetX(1) / density;
+                var y2 = e.GetY(1) / density;
+
+                var dx = x2 - x1;
+                var dy = y2 - y1;
+
+                return Math.Sqrt(
+                    dx * dx +
+                    dy * dy);
+            }
+
+            private static double GetFocusX(
+                Android.Views.MotionEvent e,
+                double density)
+            {
+                return (
+                    e.GetX(0) +
+                    e.GetX(1)) /
+                    2.0 /
+                    density;
+            }
+
+            private static double GetFocusY(
+                Android.Views.MotionEvent e,
+                double density)
+            {
+                return (
+                    e.GetY(0) +
+                    e.GetY(1)) /
+                    2.0 /
+                    density;
+            }
+        }
+
+#endif
     }
 }
