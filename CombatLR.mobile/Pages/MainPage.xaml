@@ -94,20 +94,29 @@
     ZIndex="20">
 
             <Button
-        Text="New"
-        Clicked="NewGamePlan_Clicked" />
+                x:Name="NewButton"
+                Text="New"
+                Clicked="NewGamePlan_Clicked" />        
 
             <Button
-        Text="Save"
-        Clicked="SaveGamePlan_Clicked" />
+                x:Name="SaveButton"
+                Text="Save"
+                Clicked="SaveGamePlan_Clicked" />
 
             <Button
-        Text="Load"
-        Clicked="LoadGamePlan_Clicked" />
+                x:Name="LoadButton"
+                Text="Load"
+                Clicked="LoadGamePlan_Clicked" />       
 
             <Button
-        Text="Set Home"
-        Clicked="SetHome_Clicked" />    
+                x:Name="SetHomeButton"
+                Text="Set Home"
+                Clicked="SetHome_Clicked" />
+
+            <Button
+                x:Name="CoordinateModeButton"
+                Text="Position: TAP"
+                Clicked="CoordinateMode_Clicked" />
 
         </HorizontalStackLayout>
 

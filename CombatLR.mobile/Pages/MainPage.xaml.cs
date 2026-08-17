@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
 using CombatLR.mobile.Models;
 using CombatLR.mobile.PageModels;
 using CombatLR.mobile.Services;
@@ -10,6 +11,21 @@ namespace CombatLR.mobile.Pages
     {
         private MapDefinition? _mapDefinition;
         private MapCoordinateService? _coordinateService;
+        private readonly LocationService _locationService;
+
+        private CoordinateInputMode _coordinateInputMode =
+        CoordinateInputMode.Tap;
+
+        private bool _waitingForCoordinate;
+
+        private enum CoordinateInputMode
+        {
+            Tap,
+            Gps
+        }
+
+        private bool _acquiringCoordinate = false;
+
         private double _mapZoom = 1.0;
         private double _mapPanX = 0.0;
         private double _mapPanY = 0.0;
@@ -46,6 +62,7 @@ namespace CombatLR.mobile.Pages
         {
             InitializeComponent();
             BindingContext = model;
+            _locationService = new LocationService();
 #if ANDROID
             Loaded += MainPage_Loaded;
 #endif
@@ -150,7 +167,7 @@ namespace CombatLR.mobile.Pages
         EventArgs e)
         {
             _gamePlan = _gamePlanService.CreateNew();
-
+            HomeMarker.IsVisible = false;
             MapInfoLabel.Text =
                 "NEW GAME PLAN\n" +
                 "No Home\n" +
@@ -380,6 +397,15 @@ namespace CombatLR.mobile.Pages
                 _coordinateService.ImageToGps(
                     imageX,
                     imageY);
+
+            if (_waitingForCoordinate)
+            {
+                _waitingForCoordinate = false;
+
+                SetHomePosition(gps);
+
+                return;
+            }
 
             if (_settingHome)
             {
@@ -662,14 +688,49 @@ namespace CombatLR.mobile.Pages
 
 #endif
 
-        private void SetHome_Clicked(
-        object? sender,
-        EventArgs e)
+        private void SetHomePosition(
+    MapCoordinateService.GeoPoint position)
         {
-            _settingHome = true;
+            if (_coordinateService is null)
+                return;
+
+            _gamePlan.Home = new HomePosition
+            {
+                Latitude = position.Latitude,
+                Longitude = position.Longitude
+            };
+
+            var imagePoint =
+                _coordinateService.GpsToImage(
+                    position.Latitude,
+                    position.Longitude);
+
+            _homeImageX = imagePoint.X;
+            _homeImageY = imagePoint.Y;
+
+            HomeMarker.IsVisible = true;
+
+            PositionHomeMarker(
+                imagePoint.X,
+                imagePoint.Y);
 
             MapInfoLabel.Text =
-                "SET HOME\nTap the map";
+                $"HOME SET\n" +
+                $"{position.Latitude:F7}\n" +
+                $"{position.Longitude:F7}";
+        }
+
+        private async void SetHome_Clicked(
+            object? sender,
+            EventArgs e)
+        {
+            var coordinate =
+                await AcquireCoordinateAsync();
+
+            if (coordinate is not null)
+            {
+                SetHomePosition(coordinate.Value);
+            }
         }
 
         private void HomeMarker_SizeChanged(
@@ -688,5 +749,144 @@ namespace CombatLR.mobile.Pages
                 _homeImageX.Value,
                 _homeImageY.Value);
         }
+
+        private void UpdateCoordinateInputUi()
+        {
+            CoordinateModeButton.Text =
+                _coordinateInputMode == CoordinateInputMode.Gps
+                    ? "Position: GPS"
+                    : "Position: TAP";
         }
+
+        private void SetPlacementControlsEnabled(
+            bool enabled)
+        {
+            CoordinateModeButton.IsEnabled = enabled;
+            SetHomeButton.IsEnabled = enabled;
+            LoadButton.IsEnabled = enabled;
+            SaveButton.IsEnabled = enabled;
+            NewButton.IsEnabled = enabled;
+        }
+
+        private async Task<MapCoordinateService.GeoPoint?>
+            AcquireCoordinateAsync()
+        {
+            if (_acquiringCoordinate)
+                return null;
+
+            // TAP mode.
+            if (_coordinateInputMode ==
+                CoordinateInputMode.Tap)
+            {
+                _waitingForCoordinate = true;
+
+                MapInfoLabel.Text =
+                    "TAP MODE\nTap the map";
+
+                return null;
+            }
+
+            // GPS mode.
+            _acquiringCoordinate = true;
+
+            try
+            {
+                MapInfoLabel.Text =
+                    "GPS MODE\nGetting GPS position...";
+
+                SetPlacementControlsEnabled(false);
+
+                var result =
+                    await _locationService
+                        .GetCurrentPositionAsync();
+
+                if (result.Status !=
+                    LocationService.LocationStatus.Available)
+                {
+                    SetGpsUnavailable(
+                        "GPS unavailable — TAP mode");
+
+                    return null;
+                }
+
+                _waitingForCoordinate = false;
+
+                MapInfoLabel.Text =
+                    $"GPS POSITION\n" +
+                    $"{result.Position!.Value.Latitude:F7}\n" +
+                    $"{result.Position!.Value.Longitude:F7}";
+
+                return result.Position;
+            }
+            finally
+            {
+                _acquiringCoordinate = false;
+
+                SetPlacementControlsEnabled(true);
+            }
+        }
+
+
+
+        private void SetCoordinateInputMode(
+    CoordinateInputMode mode)
+        {
+            _coordinateInputMode = mode;
+
+            _waitingForCoordinate = false;
+
+            UpdateCoordinateInputUi();
+        }
+
+        private async void CoordinateMode_Clicked(
+    object? sender,
+    EventArgs e)
+        {
+            if (_coordinateInputMode ==
+                CoordinateInputMode.Tap)
+            {
+                MapInfoLabel.Text =
+                     $"Finding GPS Lock\n";
+
+                SetPlacementControlsEnabled(false);
+                var result =
+                    await _locationService
+                        .GetCurrentPositionAsync();
+                SetPlacementControlsEnabled(true);
+                if (result.Status !=
+                    LocationService.LocationStatus.Available)
+                {
+                    SetGpsUnavailable(
+                        "GPS unavailable — TAP mode");
+
+                    return;
+                }
+
+                MapInfoLabel.Text =
+                    $"Got GPS Lock\n";
+                SetCoordinateInputMode(
+                    CoordinateInputMode.Gps);
+            }
+            else
+            {
+                SetCoordinateInputMode(
+                    CoordinateInputMode.Tap);
+            }
+        }
+
+        private void SetGpsUnavailable(
+    string message)
+        {
+            _coordinateInputMode =
+                CoordinateInputMode.Tap;
+
+            _waitingForCoordinate = false;
+
+            UpdateCoordinateInputUi();
+
+            MapInfoLabel.Text =
+                message;
+        }
+
     }
+}
