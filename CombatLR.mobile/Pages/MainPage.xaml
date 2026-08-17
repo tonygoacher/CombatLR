@@ -11,13 +11,6 @@
             HorizontalOptions="Fill"
             VerticalOptions="Fill">
 
-            <Grid.GestureRecognizers>
-
-               <TapGestureRecognizer
-                    Tapped="Map_Tapped" />
-
-
-            </Grid.GestureRecognizers>
 
             <Image
                 x:Name="MapImage"

@@ -220,23 +220,11 @@ namespace CombatLR.mobile.Pages
             }
         }
 
-        private void Map_Tapped(
-      object? sender,
-      TappedEventArgs e)
+        private void HandleMapTap(Point point)
         {
             if (_mapDefinition is null ||
                 _coordinateService is null)
                 return;
-
-            if (sender is not VisualElement view)
-                return;
-
-            var points = e.GetPosition(view);
-
-            if (points is null)
-                return;
-
-            var point = points.Value;
 
             var imageWidth =
                 _mapDefinition.Image.Width;
@@ -245,10 +233,10 @@ namespace CombatLR.mobile.Pages
                 _mapDefinition.Image.Height;
 
             var areaWidth =
-                view.Width;
+                MapContainer.Width;
 
             var areaHeight =
-                view.Height;
+                MapContainer.Height;
 
             if (areaWidth <= 0 ||
                 areaHeight <= 0)
@@ -271,14 +259,14 @@ namespace CombatLR.mobile.Pages
             var baseTop =
                 (areaHeight - baseHeight) / 2.0;
 
-            // Undo pan and zoom.
+            // Undo the pan.
             var unpannedX =
                 point.X - _mapPanX;
 
             var unpannedY =
                 point.Y - _mapPanY;
 
-            // MapImage scales around its centre.
+            // MapImage.Scale is centred on the element centre.
             var centreX =
                 areaWidth / 2.0;
 
@@ -299,11 +287,13 @@ namespace CombatLR.mobile.Pages
             var imageY =
                 (imageDisplayY - baseTop) / baseScale;
 
+            // Ignore taps outside the actual bitmap.
             if (imageX < 0 ||
                 imageY < 0 ||
                 imageX > imageWidth ||
                 imageY > imageHeight)
             {
+                MapInfoLabel.Text = "Outside map";
                 return;
             }
 
@@ -318,7 +308,6 @@ namespace CombatLR.mobile.Pages
                 $"{gps.Latitude:F7}\n" +
                 $"{gps.Longitude:F7}";
         }
-
         private void UpdateMapTransform()
         {
             MapImage.Scale = _mapZoom;
@@ -349,6 +338,14 @@ namespace CombatLR.mobile.Pages
             private readonly MainPage _page;
 
             private bool _pinching;
+            private bool _wasPinching;
+            private bool _singleTouchMoved;
+
+            private double _touchStartX;
+            private double _touchStartY;
+
+            private double _lastX;
+            private double _lastY;
 
             private double _startDistance;
             private double _startZoom;
@@ -356,11 +353,7 @@ namespace CombatLR.mobile.Pages
             private double _startPanX;
             private double _startPanY;
 
-            private double _startFocusX;
-            private double _startFocusY;
-
-            private double _lastX;
-            private double _lastY;
+            private const double TapMovementThreshold = 10.0;
 
             public MapTouchListener(MainPage page)
             {
@@ -372,7 +365,7 @@ namespace CombatLR.mobile.Pages
                 Android.Views.MotionEvent? e)
             {
                 if (v is null || e is null)
-                    return false;
+                    return true;
 
                 var density =
                     v.Resources?.DisplayMetrics?.Density ?? 1.0f;
@@ -380,103 +373,121 @@ namespace CombatLR.mobile.Pages
                 switch (e.ActionMasked)
                 {
                     case Android.Views.MotionEventActions.Down:
-
-                        _pinching = false;
-
-                        _lastX =
-                            e.GetX(0) / density;
-
-                        _lastY =
-                            e.GetY(0) / density;
-
-                        break;
-
-
-                    case Android.Views.MotionEventActions.PointerDown:
-
-                        if (e.PointerCount >= 2)
                         {
-                            _pinching = true;
+                            _pinching = false;
+                            _wasPinching = false;
+                            _singleTouchMoved = false;
 
-                            _startDistance =
-                                GetDistance(e, density);
+                            _touchStartX =
+                                e.GetX(0) / density;
 
-                            _startZoom =
-                                _page._mapZoom;
+                            _touchStartY =
+                                e.GetY(0) / density;
 
-                            _startPanX =
-                                _page._mapPanX;
+                            _lastX = _touchStartX;
+                            _lastY = _touchStartY;
 
-                            _startPanY =
-                                _page._mapPanY;
-
-                            _startFocusX =
-                                GetFocusX(e, density);
-
-                            _startFocusY =
-                                GetFocusY(e, density);
+                            break;
                         }
 
-                        break;
+                    case Android.Views.MotionEventActions.PointerDown:
+                        {
+                            if (e.PointerCount >= 2)
+                            {
+                                _pinching = true;
+                                _wasPinching = true;
 
+                                _startDistance =
+                                    GetDistance(e, density);
+
+                                _startZoom =
+                                    _page._mapZoom;
+
+                                _startPanX =
+                                    _page._mapPanX;
+
+                                _startPanY =
+                                    _page._mapPanY;
+                            }
+
+                            break;
+                        }
 
                     case Android.Views.MotionEventActions.Move:
-
-                        if (_pinching &&
-                            e.PointerCount >= 2)
                         {
-                            var distance =
-                                GetDistance(e, density);
-
-                            if (_startDistance > 0)
+                            if (_pinching &&
+                                e.PointerCount >= 2)
                             {
-                                var rawRatio = distance / _startDistance;
+                                var distance =
+                                    GetDistance(e, density);
 
-                                var zoomRatio = 1.0 + (rawRatio - 1.0) * 0.35;
+                                if (_startDistance > 0)
+                                {
+                                    var rawZoomRatio =
+                                        distance / _startDistance;
 
-                                var newZoom =
-                                    Math.Clamp(
-                                        _startZoom * zoomRatio,
-                                        MinMapZoom,
-                                        MaxMapZoom);
+                                    // Dampen the zoom so it feels natural.
+                                    var zoomRatio =
+                                        1.0 +
+                                        (rawZoomRatio - 1.0) * 0.35;
 
-                                // Keep the point under the fingers
-                                // stationary while zooming.
-                                var centreX =
-                                    _page.MapContainer.Width / 2.0;
+                                    var newZoom =
+                                        Math.Clamp(
+                                            _startZoom * zoomRatio,
+                                            MinMapZoom,
+                                            MaxMapZoom);
 
-                                var centreY =
-                                    _page.MapContainer.Height / 2.0;
+                                    _page._mapZoom =
+                                        newZoom;
 
-                                var focusX =
-                                    GetFocusX(e, density);
+                                    _page.UpdateMapTransform();
+                                }
+                            }
+                            else if (!_pinching &&
+                                     e.PointerCount == 1)
+                            {
+                                var x =
+                                    e.GetX(0) / density;
 
-                                var focusY =
-                                    GetFocusY(e, density);
+                                var y =
+                                    e.GetY(0) / density;
 
-                                var ratio =
-                                    newZoom / _startZoom;
+                                var totalDx =
+                                    x - _touchStartX;
 
-                                _page._mapPanX =
-                                    (1.0 - ratio) *
-                                    (focusX - centreX) +
-                                    ratio *
-                                    _startPanX;
+                                var totalDy =
+                                    y - _touchStartY;
 
-                                _page._mapPanY =
-                                    (1.0 - ratio) *
-                                    (focusY - centreY) +
-                                    ratio *
-                                    _startPanY;
+                                if (Math.Sqrt(
+                                        totalDx * totalDx +
+                                        totalDy * totalDy)
+                                    > TapMovementThreshold)
+                                {
+                                    _singleTouchMoved = true;
+                                }
 
-                                _page._mapZoom =
-                                    newZoom;
+                                _page._mapPanX +=
+                                    x - _lastX;
+
+                                _page._mapPanY +=
+                                    y - _lastY;
+
+                                _lastX = x;
+                                _lastY = y;
 
                                 _page.UpdateMapTransform();
                             }
+
+                            break;
                         }
-                        else if (!_pinching &&
-                                 e.PointerCount == 1)
+
+                    case Android.Views.MotionEventActions.PointerUp:
+                        {
+                            _pinching = false;
+                            break;
+                        }
+
+                    case Android.Views.MotionEventActions.Up:
                         {
                             var x =
                                 e.GetX(0) / density;
@@ -484,40 +495,33 @@ namespace CombatLR.mobile.Pages
                             var y =
                                 e.GetY(0) / density;
 
-                            _page._mapPanX +=
-                                x - _lastX;
+                            // A tap is a single-finger touch that
+                            // hasn't moved significantly.
+                            if (!_wasPinching &&
+                                !_singleTouchMoved)
+                            {
+                                _page.HandleMapTap(
+                                    new Point(x, y));
+                            }
 
-                            _page._mapPanY +=
-                                y - _lastY;
+                            _pinching = false;
+                            _wasPinching = false;
+                            _singleTouchMoved = false;
 
-                            _lastX = x;
-                            _lastY = y;
-
-                            _page.UpdateMapTransform();
+                            break;
                         }
 
-                        break;
-
-
-                    case Android.Views.MotionEventActions.PointerUp:
-
-                        if (e.PointerCount <= 2)
-                            _pinching = false;
-
-                        break;
-
-
-                    case Android.Views.MotionEventActions.Up:
                     case Android.Views.MotionEventActions.Cancel:
+                        {
+                            _pinching = false;
+                            _wasPinching = false;
+                            _singleTouchMoved = false;
 
-                        _pinching = false;
-
-                        break;
+                            break;
+                        }
                 }
 
-                // IMPORTANT:
-                // Returning false allows the normal MAUI tap
-                // recognizer to continue receiving taps.
+                // We own the complete touch sequence.
                 return true;
             }
 
@@ -537,28 +541,6 @@ namespace CombatLR.mobile.Pages
                 return Math.Sqrt(
                     dx * dx +
                     dy * dy);
-            }
-
-            private static double GetFocusX(
-                Android.Views.MotionEvent e,
-                double density)
-            {
-                return (
-                    e.GetX(0) +
-                    e.GetX(1)) /
-                    2.0 /
-                    density;
-            }
-
-            private static double GetFocusY(
-                Android.Views.MotionEvent e,
-                double density)
-            {
-                return (
-                    e.GetY(0) +
-                    e.GetY(1)) /
-                    2.0 /
-                    density;
             }
         }
 
