@@ -33,6 +33,8 @@ namespace CombatLR.mobile.Pages
         private double _pinchStartPanY;
         private double _pinchLastScale = 1.0;
         private GamePlan _gamePlan = new();
+
+        private bool _settingHome;
         private readonly GamePlanService _gamePlanService = new();
 
 
@@ -220,6 +222,54 @@ namespace CombatLR.mobile.Pages
             }
         }
 
+        private void PositionHomeMarker(
+    double imageX,
+    double imageY)
+        {
+            if (_mapDefinition is null)
+                return;
+
+            var imageWidth =
+                _mapDefinition.Image.Width;
+
+            var imageHeight =
+                _mapDefinition.Image.Height;
+
+            var areaWidth =
+                MapContainer.Width;
+
+            var areaHeight =
+                MapContainer.Height;
+
+            if (areaWidth <= 0 ||
+                areaHeight <= 0)
+                return;
+
+            var scale = Math.Min(
+                areaWidth / imageWidth,
+                areaHeight / imageHeight);
+
+            var displayedWidth =
+                imageWidth * scale;
+
+            var displayedHeight =
+                imageHeight * scale;
+
+            var imageLeft =
+                (areaWidth - displayedWidth) / 2.0;
+
+            var imageTop =
+                (areaHeight - displayedHeight) / 2.0;
+
+            HomeMarker.TranslationX =
+                imageLeft + imageX * scale -
+                HomeMarker.Width / 2.0;
+
+            HomeMarker.TranslationY =
+                imageTop + imageY * scale -
+                HomeMarker.Height / 2.0;
+        }
+
         private void HandleMapTap(Point point)
         {
             if (_mapDefinition is null ||
@@ -302,6 +352,30 @@ namespace CombatLR.mobile.Pages
                     imageX,
                     imageY);
 
+            if (_settingHome)
+            {
+                _gamePlan.Home = new HomePosition
+                {
+                    Latitude = gps.Latitude,
+                    Longitude = gps.Longitude
+                };
+
+                _settingHome = false;
+
+                HomeMarker.IsVisible = true;
+
+                PositionHomeMarker(
+                    imageX,
+                    imageY);
+
+                MapInfoLabel.Text =
+                    $"HOME SET\n" +
+                    $"{gps.Latitude:F7}\n" +
+                    $"{gps.Longitude:F7}";
+
+                return;
+            }
+
             MapInfoLabel.Text =
                 $"MAP: {imageX:0.0}, {imageY:0.0}\n" +
                 $"GPS:\n" +
@@ -311,9 +385,12 @@ namespace CombatLR.mobile.Pages
         private void UpdateMapTransform()
         {
             MapImage.Scale = _mapZoom;
-
             MapImage.TranslationX = _mapPanX;
             MapImage.TranslationY = _mapPanY;
+
+            MapVisualLayer.Scale = _mapZoom;
+            MapVisualLayer.TranslationX = _mapPanX;
+            MapVisualLayer.TranslationY = _mapPanY;
         }
 
 
@@ -545,5 +622,15 @@ namespace CombatLR.mobile.Pages
         }
 
 #endif
+
+    private void SetHome_Clicked(
+    object? sender,
+    EventArgs e)
+        {
+            _settingHome = true;
+
+            MapInfoLabel.Text =
+                "SET HOME\nTap the map";
+        }
     }
 }

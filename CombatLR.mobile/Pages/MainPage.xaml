@@ -17,7 +17,24 @@
                 Aspect="AspectFit"
                 HorizontalOptions="Fill"
                 VerticalOptions="Fill"
-                InputTransparent="True" />  
+                InputTransparent="True" />
+
+            <Grid
+                x:Name="MapVisualLayer"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill"
+                InputTransparent="True">
+
+                <Label
+                x:Name="HomeMarker"
+                Text="⌂"
+                FontSize="32"
+                TextColor="Red"
+                HorizontalOptions="Start"
+                VerticalOptions="Start"
+                IsVisible="False" />    
+
+            </Grid>
 
             <BoxView
                 x:Name="MapTouchView"
@@ -71,6 +88,10 @@
             <Button
         Text="Load"
         Clicked="LoadGamePlan_Clicked" />
+
+            <Button
+        Text="Set Home"
+        Clicked="SetHome_Clicked" />    
 
         </HorizontalStackLayout>
 
