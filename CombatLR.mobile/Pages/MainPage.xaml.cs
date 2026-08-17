@@ -9,6 +9,9 @@ namespace CombatLR.mobile.Pages
     {
         private MapDefinition? _mapDefinition;
         private MapCoordinateService? _coordinateService;
+        private GamePlan _gamePlan = new();
+        private readonly GamePlanService _gamePlanService = new();
+
 
         public MainPage(MainPageModel model)
         {
@@ -83,6 +86,88 @@ namespace CombatLR.mobile.Pages
                 await DisplayAlert(
                     "Map Error",
                     ex.ToString(),
+                    "OK");
+            }
+        }
+
+        private async void NewGamePlan_Clicked(
+        object? sender,
+        EventArgs e)
+        {
+            _gamePlan = _gamePlanService.CreateNew();
+
+            MapInfoLabel.Text =
+                "NEW GAME PLAN\n" +
+                "No Home\n" +
+                "0 Zones";
+        }
+
+        private async void SaveGamePlan_Clicked(
+        object? sender,
+        EventArgs e)
+        {
+            try
+            {
+                var fileName = "gameplan.json";
+
+                var filePath =
+                    Path.Combine(
+                        FileSystem.Current.AppDataDirectory,
+                        fileName);
+
+                await _gamePlanService.SaveAsync(
+                    _gamePlan,
+                    filePath);
+
+                MapInfoLabel.Text =
+                    $"GAME PLAN SAVED\n{fileName}";
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert(
+                    "Save Game Plan",
+                    ex.Message,
+                    "OK");
+            }
+        }
+
+        private async void LoadGamePlan_Clicked(
+    object? sender,
+    EventArgs e)
+        {
+            try
+            {
+                var fileName = "gameplan.json";
+
+                var filePath =
+                    Path.Combine(
+                        FileSystem.Current.AppDataDirectory,
+                        fileName);
+
+                if (!File.Exists(filePath))
+                {
+                    await DisplayAlert(
+                        "Load Game Plan",
+                        "No game plan has been saved yet.",
+                        "OK");
+
+                    return;
+                }
+
+                _gamePlan =
+                    await _gamePlanService.LoadAsync(
+                        filePath);
+
+                MapInfoLabel.Text =
+                    $"GAME PLAN LOADED\n" +
+                    $"Home: {(_gamePlan.Home is null ? "None" : "Set")}\n" +
+                    $"Zones: {_gamePlan.Zones.Count}";
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert(
+                    "Load Game Plan",
+                    $"The game plan could not be loaded.\n\n{ex.Message}",
                     "OK");
             }
         }
