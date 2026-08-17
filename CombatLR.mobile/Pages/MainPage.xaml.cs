@@ -53,7 +53,6 @@ namespace CombatLR.mobile.Pages
         private double _pinchLastScale = 1.0;
         private GamePlan _gamePlan = new();
 
-        private bool _settingHome;
         private readonly GamePlanService _gamePlanService = new();
 
 
@@ -407,32 +406,7 @@ namespace CombatLR.mobile.Pages
                 return;
             }
 
-            if (_settingHome)
-            {
-                _gamePlan.Home = new HomePosition
-                {
-                    Latitude = gps.Latitude,
-                    Longitude = gps.Longitude
-                };
-
-                _homeImageX = imageX;
-                _homeImageY = imageY;
-
-                _settingHome = false;
-
-                HomeMarker.IsVisible = true;
-
-                PositionHomeMarker(
-                    imageX,
-                    imageY);
-
-                MapInfoLabel.Text =
-                    $"HOME SET\n" +
-                    $"{gps.Latitude:F7}\n" +
-                    $"{gps.Longitude:F7}";
-
-                return;
-            }
+       
 
             MapInfoLabel.Text =
                 $"MAP: {imageX:0.0}, {imageY:0.0}\n" +
