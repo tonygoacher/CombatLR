@@ -79,6 +79,8 @@ namespace CombatLR.mobile.Pages
             _locationService = new LocationService();
             _gameObjectCoordinateService =  new GameObjectCoordinateService();
 
+            UpdateGameObjectControls();
+
 #if ANDROID
             Loaded += MainPage_Loaded;
 #endif
@@ -842,10 +844,20 @@ namespace CombatLR.mobile.Pages
             bool enabled)
         {
             CoordinateModeButton.IsEnabled = enabled;
-            SetHomeButton.IsEnabled = enabled;
-            LoadButton.IsEnabled = enabled;
-            SaveButton.IsEnabled = enabled;
-            NewButton.IsEnabled = enabled;
+
+            if (enabled)
+            {
+                UpdateGameObjectControls();
+            }
+            else
+            {
+                AddObjectButton.IsEnabled = false;
+                MoveObjectButton.IsEnabled = false;
+                EditObjectButton.IsEnabled = false;
+                PreviousZoneButton.IsEnabled = false;
+                NextZoneButton.IsEnabled = false;
+                ShowAllObjectsButton.IsEnabled = false;
+            }
         }
 
         private async Task<MapCoordinateService.GeoPoint?>
@@ -990,29 +1002,32 @@ namespace CombatLR.mobile.Pages
             var homeAvailable =
                 _gamePlan.Home is not null;
 
-            var zonesAvailable =
+            var objectsAvailable =
                 homeAvailable &&
                 _gamePlan.Zones.Count > 0;
 
-            AddZoneButton.IsEnabled =
+            AddObjectButton.IsEnabled =
                 homeAvailable;
 
             PreviousZoneButton.IsEnabled =
-                zonesAvailable;
+                objectsAvailable;
 
             NextZoneButton.IsEnabled =
-                zonesAvailable;
+                objectsAvailable;
 
-            MoveZoneButton.IsEnabled =
-                zonesAvailable;
+            MoveObjectButton.IsEnabled =
+                objectsAvailable;
 
-            ShowAllZonesButton.IsEnabled =
-                zonesAvailable;
+            EditObjectButton.IsEnabled =
+                objectsAvailable;
 
-            ShowAllZonesButton.Text =
-                _showAllZones
-                    ? "All Zones ✓"
-                    : "Current Zone";
+            ShowAllObjectsButton.IsEnabled =
+                objectsAvailable;
+
+            CurrentObjectLabel.Text =
+                objectsAvailable
+                    ? $"{_currentZoneIndex + 1} / {_gamePlan.Zones.Count}"
+                    : "0 / 0";
         }
 
         private void PreviousZone_Clicked(
@@ -1437,5 +1452,60 @@ namespace CombatLR.mobile.Pages
             RenderZones();
             UpdateZoneInfo();
         }
+
+        private void AddObject_Clicked(
+    object? sender,
+    EventArgs e)
+        {
+            if (GameObjectTypePicker.SelectedIndex != 0)
+                return;
+
+            AddZone_Clicked(sender, e);
+        }
+
+        private void MoveObject_Clicked(
+    object? sender,
+    EventArgs e)
+        {
+            if (GameObjectTypePicker.SelectedIndex != 0)
+                return;
+
+            MoveZone_Clicked(sender, e);
+        }
+        private async void EditObject_Clicked(
+    object? sender,
+    EventArgs e)
+        {
+            if (GameObjectTypePicker.SelectedIndex != 0)
+                return;
+
+            if (_currentZoneIndex < 0 ||
+                _currentZoneIndex >= _gamePlan.Zones.Count)
+            {
+                return;
+            }
+
+            var zone =
+                _gamePlan.Zones[_currentZoneIndex];
+
+            await Navigation.PushModalAsync(
+                new ZoneEditPage(
+                    zone,
+                    _currentZoneIndex + 1));
+
+            RenderZones();
+            UpdateZoneInfo();
+        }
+        private void ShowAllObjects_Clicked(
+    object? sender,
+    EventArgs e)
+        {
+            if (GameObjectTypePicker.SelectedIndex != 0)
+                return;
+
+            ShowAllZones_Clicked(sender, e);
+        }
+
+
     }
 }

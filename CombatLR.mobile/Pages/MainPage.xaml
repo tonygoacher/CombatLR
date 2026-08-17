@@ -6,11 +6,12 @@
     BackgroundColor="Black">
 
     <Grid>
+
+        <!-- Map -->
         <Grid
             x:Name="MapContainer"
             HorizontalOptions="Fill"
             VerticalOptions="Fill">
-
 
             <Image
                 x:Name="MapImage"
@@ -25,31 +26,33 @@
                 VerticalOptions="Fill"
                 InputTransparent="True">
 
+                <!-- Home marker -->
                 <Grid
-    x:Name="HomeMarker"
-    WidthRequest="36"
-    HeightRequest="36"
-    HorizontalOptions="Start"
-    VerticalOptions="Start"
-    IsVisible="False"
-    InputTransparent="True">
+                    x:Name="HomeMarker"
+                    WidthRequest="36"
+                    HeightRequest="36"
+                    HorizontalOptions="Start"
+                    VerticalOptions="Start"
+                    IsVisible="False"
+                    InputTransparent="True">
 
                     <Label
-        Text="⌂"
-        FontSize="32"
-        TextColor="Red"
-        HorizontalOptions="Center"
-        VerticalOptions="Center" />
+                        Text="⌂"
+                        FontSize="32"
+                        TextColor="Red"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center" />
 
                     <Label
-        Text="+"
-        FontSize="16"
-        FontAttributes="Bold"
-        TextColor="White"
-        HorizontalOptions="Center"
-        VerticalOptions="Center" />
+                        Text="+"
+                        FontSize="16"
+                        FontAttributes="Bold"
+                        TextColor="White"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center" />
 
                 </Grid>
+
             </Grid>
 
             <BoxView
@@ -61,6 +64,7 @@
 
         </Grid>
 
+        <!-- Map information -->
         <Border
             HorizontalOptions="Start"
             VerticalOptions="Start"
@@ -72,79 +76,163 @@
             ZIndex="10">
 
             <Label
-             x:Name="MapInfoLabel"
-             Text="Starting..."
-             TextColor="White"
-             FontSize="14">
+                x:Name="MapInfoLabel"
+                Text="Starting..."
+                TextColor="White"
+                FontSize="14">
 
                 <Label.GestureRecognizers>
                     <TapGestureRecognizer
-            Tapped="MapInfoLabel_Tapped" />
+                        Tapped="MapInfoLabel_Tapped" />
                 </Label.GestureRecognizers>
 
             </Label>
 
         </Border>
 
-        <HorizontalStackLayout
-    HorizontalOptions="Center"
-    VerticalOptions="End"
-    Margin="0,0,0,20"
-    Spacing="10"
-    ZIndex="20">
+        <!-- Bottom controls -->
+        <Border
+            HorizontalOptions="Center"
+            VerticalOptions="End"
+            Margin="0,0,0,20"
+            Padding="8"
+            BackgroundColor="#DD000000"
+            Stroke="White"
+            StrokeThickness="1"
+            ZIndex="20">
 
-            <Button
-                x:Name="NewButton"
-                Text="New"
-                Clicked="NewGamePlan_Clicked" />        
+            <Grid
+                RowDefinitions="Auto,Auto"
+                ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                ColumnSpacing="6"
+                RowSpacing="6">
 
-            <Button
-                x:Name="SaveButton"
-                Text="Save"
-                Clicked="SaveGamePlan_Clicked" />
+                <!--
+                    Row 0:
+                    Game-plan controls + object selector/navigation
+                -->
 
-            <Button
-                x:Name="LoadButton"
-                Text="Load"
-                Clicked="LoadGamePlan_Clicked" />       
+                <Button
+                    x:Name="NewButton"
+                    Grid.Row="0"
+                    Grid.Column="0"
+                    Text="New"
+                    Clicked="NewGamePlan_Clicked" />
 
-            <Button
-                x:Name="SetHomeButton"
-                Text="Set Home"
-                Clicked="SetHome_Clicked" />
+                <Button
+                    x:Name="SaveButton"
+                    Grid.Row="0"
+                    Grid.Column="1"
+                    Text="Save"
+                    Clicked="SaveGamePlan_Clicked" />
 
-            <Button
-                x:Name="CoordinateModeButton"
-                Text="Position: TAP"
-                Clicked="CoordinateMode_Clicked" />
+                <Button
+                    x:Name="LoadButton"
+                    Grid.Row="0"
+                    Grid.Column="2"
+                    Text="Load"
+                    Clicked="LoadGamePlan_Clicked" />
 
+                <Button
+                    x:Name="SetHomeButton"
+                    Grid.Row="0"
+                    Grid.Column="3"
+                    Text="Set Home"
+                    Clicked="SetHome_Clicked" />
 
-            <Button
-    x:Name="AddZoneButton"
-    Text="Add Zone"
-    Clicked="AddZone_Clicked" />
+                <Button
+                    x:Name="CoordinateModeButton"
+                    Grid.Row="0"
+                    Grid.Column="4"
+                    Text="Position: TAP"
+                    Clicked="CoordinateMode_Clicked" />
+                <Label
+                    Grid.Row="0"
+                    Grid.Column="5"
+                    Text="Object:"
+                    TextColor="White"
+                    VerticalTextAlignment="Center"
+                    HorizontalOptions="End" />
 
-            <Button
-    x:Name="PreviousZoneButton"
-    Text="◀ Zone"
-    Clicked="PreviousZone_Clicked" />
+                                <Picker
+                    x:Name="GameObjectTypePicker"
+                    Grid.Row="0"
+                    Grid.Column="6"
+                    Title="Select object"
+                    SelectedItem="Zone"
+                    IsEnabled="True"
+                    WidthRequest="100">
 
-            <Button
-    x:Name="NextZoneButton"
-    Text="Zone ▶"
-    Clicked="NextZone_Clicked" />
+                    <Picker.Items>
+                        <x:String>Zone</x:String>
+                    </Picker.Items>
 
-            <Button
-    x:Name="MoveZoneButton"
-    Text="Move Zone"
-    Clicked="MoveZone_Clicked" />
+                </Picker>
 
-            <Button
-    x:Name="ShowAllZonesButton"
-    Text="All Zones"
-    Clicked="ShowAllZones_Clicked" />
+                <Button
+                    x:Name="PreviousZoneButton"
+                    Grid.Row="0"
+                    Grid.Column="7"
+                    Text="◀"
+                    Clicked="PreviousZone_Clicked" />
 
-        </HorizontalStackLayout>
+                <Label
+                    x:Name="CurrentObjectLabel"
+                    Grid.Row="0"
+                    Grid.Column="8"
+                    Text="0 / 0"
+                    TextColor="White"
+                    WidthRequest="55"
+                    HorizontalTextAlignment="Center"
+                    VerticalTextAlignment="Center" />
+
+                <!--
+                    Row 1:
+                    Object operations
+                -->
+
+                <Button
+                    x:Name="AddObjectButton"
+                    Grid.Row="1"
+                    Grid.Column="0"
+                    Grid.ColumnSpan="2"
+                    Text="Add"
+                    Clicked="AddObject_Clicked" />
+
+                <Button
+                    x:Name="MoveObjectButton"
+                    Grid.Row="1"
+                    Grid.Column="2"
+                    Grid.ColumnSpan="2"
+                    Text="Move"
+                    Clicked="MoveObject_Clicked" />
+
+                <Button
+                    x:Name="EditObjectButton"
+                    Grid.Row="1"
+                    Grid.Column="4"
+                    Grid.ColumnSpan="2"
+                    Text="Edit"
+                    Clicked="EditObject_Clicked" />
+
+                <Button
+                    x:Name="NextZoneButton"
+                    Grid.Row="1"
+                    Grid.Column="6"
+                    Text="▶"
+                    Clicked="NextZone_Clicked" />
+
+                <Button
+                    x:Name="ShowAllObjectsButton"
+                    Grid.Row="1"
+                    Grid.Column="7"
+                    Grid.ColumnSpan="2"
+                    Text="Show All"
+                    Clicked="ShowAllObjects_Clicked" />
+
+            </Grid>
+
+        </Border>
 
     </Grid>
 
