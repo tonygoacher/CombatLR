@@ -18,6 +18,9 @@ namespace CombatLR.mobile.Pages
         private const double MinMapZoom = 1.0;
         private const double MaxMapZoom = 8.0;
 
+        private double? _homeImageX;
+        private double? _homeImageY;
+
 #if ANDROID
         private Android.Views.View? _nativeMapView;
         private MapTouchListener? _mapTouchListener;
@@ -46,8 +49,10 @@ namespace CombatLR.mobile.Pages
 #if ANDROID
             Loaded += MainPage_Loaded;
 #endif
-
+            HomeMarker.SizeChanged += HomeMarker_SizeChanged;
             _ = LoadMapAsync();
+
+
         }
 
         private async void MapInfoLabel_Tapped(
@@ -208,6 +213,8 @@ namespace CombatLR.mobile.Pages
                     await _gamePlanService.LoadAsync(
                         filePath);
 
+                UpdateHomeMarker();
+
                 MapInfoLabel.Text =
                     $"GAME PLAN LOADED\n" +
                     $"Home: {(_gamePlan.Home is null ? "None" : "Set")}\n" +
@@ -222,9 +229,29 @@ namespace CombatLR.mobile.Pages
             }
         }
 
+        private void UpdateMapTransform()
+        {
+            MapImage.Scale = _mapZoom;
+            MapImage.TranslationX = _mapPanX;
+            MapImage.TranslationY = _mapPanY;
+
+            MapVisualLayer.Scale = _mapZoom;
+            MapVisualLayer.TranslationX = _mapPanX;
+            MapVisualLayer.TranslationY = _mapPanY;
+        }
+
+        private void ResetMapView()
+        {
+            _mapZoom = 1.0;
+            _mapPanX = 0.0;
+            _mapPanY = 0.0;
+
+            UpdateMapTransform();
+        }
+
         private void PositionHomeMarker(
-    double imageX,
-    double imageY)
+     double imageX,
+     double imageY)
         {
             if (_mapDefinition is null)
                 return;
@@ -262,11 +289,13 @@ namespace CombatLR.mobile.Pages
                 (areaHeight - displayedHeight) / 2.0;
 
             HomeMarker.TranslationX =
-                imageLeft + imageX * scale -
+                imageLeft +
+                imageX * scale -
                 HomeMarker.Width / 2.0;
 
             HomeMarker.TranslationY =
-                imageTop + imageY * scale -
+                imageTop +
+                imageY * scale -
                 HomeMarker.Height / 2.0;
         }
 
@@ -360,6 +389,9 @@ namespace CombatLR.mobile.Pages
                     Longitude = gps.Longitude
                 };
 
+                _homeImageX = imageX;
+                _homeImageY = imageY;
+
                 _settingHome = false;
 
                 HomeMarker.IsVisible = true;
@@ -382,27 +414,34 @@ namespace CombatLR.mobile.Pages
                 $"{gps.Latitude:F7}\n" +
                 $"{gps.Longitude:F7}";
         }
-        private void UpdateMapTransform()
+
+        private void UpdateHomeMarker()
         {
-            MapImage.Scale = _mapZoom;
-            MapImage.TranslationX = _mapPanX;
-            MapImage.TranslationY = _mapPanY;
+            if (_gamePlan?.Home is null ||
+                _coordinateService is null)
+            {
+                HomeMarker.IsVisible = false;
+                _homeImageX = null;
+                _homeImageY = null;
+                return;
+            }
 
-            MapVisualLayer.Scale = _mapZoom;
-            MapVisualLayer.TranslationX = _mapPanX;
-            MapVisualLayer.TranslationY = _mapPanY;
+            var home = _gamePlan.Home;
+
+            var imagePoint =
+                _coordinateService.GpsToImage(
+                    home.Latitude,
+                    home.Longitude);
+
+            _homeImageX = imagePoint.X;
+            _homeImageY = imagePoint.Y;
+
+            HomeMarker.IsVisible = true;
+
+            PositionHomeMarker(
+                imagePoint.X,
+                imagePoint.Y);
         }
-
-
-        private void ResetMapView()
-        {
-            _mapZoom = 1.0;
-            _mapPanX = 0.0;
-            _mapPanY = 0.0;
-
-            UpdateMapTransform();
-        }
-
 
 
 
@@ -623,14 +662,31 @@ namespace CombatLR.mobile.Pages
 
 #endif
 
-    private void SetHome_Clicked(
-    object? sender,
-    EventArgs e)
+        private void SetHome_Clicked(
+        object? sender,
+        EventArgs e)
         {
             _settingHome = true;
 
             MapInfoLabel.Text =
                 "SET HOME\nTap the map";
         }
+
+        private void HomeMarker_SizeChanged(
+        object? sender,
+        EventArgs e)
+        {
+            if (!_homeImageX.HasValue ||
+                !_homeImageY.HasValue)
+                return;
+
+            if (HomeMarker.Width <= 0 ||
+                HomeMarker.Height <= 0)
+                return;
+
+            PositionHomeMarker(
+                _homeImageX.Value,
+                _homeImageY.Value);
+        }
+        }
     }
-}

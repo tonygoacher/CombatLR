@@ -25,15 +25,31 @@
                 VerticalOptions="Fill"
                 InputTransparent="True">
 
-                <Label
-                x:Name="HomeMarker"
-                Text="⌂"
-                FontSize="32"
-                TextColor="Red"
-                HorizontalOptions="Start"
-                VerticalOptions="Start"
-                IsVisible="False" />    
+                <Grid
+    x:Name="HomeMarker"
+    WidthRequest="36"
+    HeightRequest="36"
+    HorizontalOptions="Start"
+    VerticalOptions="Start"
+    IsVisible="False"
+    InputTransparent="True">
 
+                    <Label
+        Text="⌂"
+        FontSize="32"
+        TextColor="Red"
+        HorizontalOptions="Center"
+        VerticalOptions="Center" />
+
+                    <Label
+        Text="+"
+        FontSize="16"
+        FontAttributes="Bold"
+        TextColor="White"
+        HorizontalOptions="Center"
+        VerticalOptions="Center" />
+
+                </Grid>
             </Grid>
 
             <BoxView

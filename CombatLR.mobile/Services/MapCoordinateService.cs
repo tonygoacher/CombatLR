@@ -194,6 +194,109 @@ public sealed class MapCoordinateService
             longitude);
     }
 
+    public Point GpsToImage(
+    double latitude,
+    double longitude)
+    {
+        if (!_transformValid)
+            throw new InvalidOperationException(
+                "Map coordinate transform is not valid.");
+
+        var gpsA =
+            _map.Reference.GpsA;
+
+        if (gpsA is null)
+            throw new InvalidOperationException(
+                "GPS reference point A is missing.");
+
+        var meanLat =
+            gpsA.Latitude * Math.PI / 180.0;
+
+        var dLon =
+            (longitude - gpsA.Longitude)
+            * Math.PI / 180.0;
+
+        var dLat =
+            (latitude - gpsA.Latitude)
+            * Math.PI / 180.0;
+
+        var east =
+            dLon *
+            Math.Cos(meanLat) *
+            EarthRadiusMetres;
+
+        var north =
+            dLat *
+            EarthRadiusMetres;
+
+        // Invert the calibrated 2-D transform:
+        //
+        // east  = Epx * dx + Epy * dy
+        // north = Npx * dx + Npy * dy
+
+        var determinant =
+            _eastPerPixelX * _northPerPixelY -
+            _eastPerPixelY * _northPerPixelX;
+
+        if (Math.Abs(determinant) < 0.000000001)
+            throw new InvalidOperationException(
+                "Map coordinate transform cannot be inverted.");
+
+        var sourceDx =
+            (east * _northPerPixelY -
+             _eastPerPixelY * north) /
+            determinant;
+
+        var sourceDy =
+            (_eastPerPixelX * north -
+             east * _northPerPixelX) /
+            determinant;
+
+        var pointA =
+            _map.Reference.PointA;
+
+        var sourceX =
+            pointA.X + sourceDx;
+
+        var sourceY =
+            pointA.Y + sourceDy;
+
+        // Convert source-image coordinates back into
+        // exported 1280 × 960 bitmap coordinates.
+
+        var sourceCrop =
+            _map.SourceCrop;
+
+        var exportedWidth =
+            _map.Image.Width;
+
+        var exportedHeight =
+            _map.Image.Height;
+
+        if (sourceCrop.Width <= 0 ||
+            sourceCrop.Height <= 0 ||
+            exportedWidth <= 0 ||
+            exportedHeight <= 0)
+        {
+            throw new InvalidOperationException(
+                "Map image/crop dimensions are invalid.");
+        }
+
+        var exportedX =
+            (sourceX - sourceCrop.X) *
+            exportedWidth /
+            sourceCrop.Width;
+
+        var exportedY =
+            (sourceY - sourceCrop.Y) *
+            exportedHeight /
+            sourceCrop.Height;
+
+        return new Point(
+            exportedX,
+            exportedY);
+    }
+
     public readonly record struct GeoPoint(
         double Latitude,
         double Longitude);
