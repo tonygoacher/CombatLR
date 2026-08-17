@@ -1,8 +1,9 @@
-﻿using System.Security.Cryptography.X509Certificates;
-using System.Text.Json;
-using CombatLR.mobile.Models;
+﻿using CombatLR.mobile.Models;
 using CombatLR.mobile.PageModels;
 using CombatLR.mobile.Services;
+using Microsoft.Maui.Controls.Shapes;
+using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
 
 
 namespace CombatLR.mobile.Pages
@@ -16,7 +17,16 @@ namespace CombatLR.mobile.Pages
         private CoordinateInputMode _coordinateInputMode =
         CoordinateInputMode.Tap;
 
-        private bool _waitingForCoordinate;
+        private enum CoordinateOperation
+        {
+            None,
+            SetHome,
+            AddZone,
+            MoveZone
+        }
+
+        private CoordinateOperation _coordinateOperation =
+                    CoordinateOperation.None;
 
         private enum CoordinateInputMode
         {
@@ -29,13 +39,18 @@ namespace CombatLR.mobile.Pages
         private double _mapZoom = 1.0;
         private double _mapPanX = 0.0;
         private double _mapPanY = 0.0;
-        private bool _isPinching;
-
+  
         private const double MinMapZoom = 1.0;
         private const double MaxMapZoom = 8.0;
 
         private double? _homeImageX;
         private double? _homeImageY;
+
+        private int _currentZoneIndex = -1;
+
+        private bool _showAllZones = true;
+
+        private readonly List<Grid> _zoneMarkers = new();
 
 #if ANDROID
         private Android.Views.View? _nativeMapView;
@@ -55,13 +70,15 @@ namespace CombatLR.mobile.Pages
 
         private readonly GamePlanService _gamePlanService = new();
 
-
+        private readonly GameObjectCoordinateService  _gameObjectCoordinateService;
 
         public MainPage(MainPageModel model)
         {
             InitializeComponent();
             BindingContext = model;
             _locationService = new LocationService();
+            _gameObjectCoordinateService =  new GameObjectCoordinateService();
+
 #if ANDROID
             Loaded += MainPage_Loaded;
 #endif
@@ -166,7 +183,12 @@ namespace CombatLR.mobile.Pages
         EventArgs e)
         {
             _gamePlan = _gamePlanService.CreateNew();
+            ClearZoneMarkers();
+
+            _currentZoneIndex = -1;
             HomeMarker.IsVisible = false;
+            UpdateGameObjectControls();
+      
             MapInfoLabel.Text =
                 "NEW GAME PLAN\n" +
                 "No Home\n" +
@@ -182,7 +204,7 @@ namespace CombatLR.mobile.Pages
                 var fileName = "gameplan.json";
 
                 var filePath =
-                    Path.Combine(
+                   System.IO.Path.Combine(
                         FileSystem.Current.AppDataDirectory,
                         fileName);
 
@@ -211,7 +233,7 @@ namespace CombatLR.mobile.Pages
                 var fileName = "gameplan.json";
 
                 var filePath =
-                    Path.Combine(
+                    System.IO.Path.Combine(
                         FileSystem.Current.AppDataDirectory,
                         fileName);
 
@@ -229,7 +251,15 @@ namespace CombatLR.mobile.Pages
                     await _gamePlanService.LoadAsync(
                         filePath);
 
+                UpdateGameObjectControls();
                 UpdateHomeMarker();
+                _currentZoneIndex =
+                    _gamePlan.Zones.Count > 0
+                    ? 0
+                    : -1;
+
+                RenderZones();
+                UpdateGameObjectControls();
 
                 MapInfoLabel.Text =
                     $"GAME PLAN LOADED\n" +
@@ -397,16 +427,34 @@ namespace CombatLR.mobile.Pages
                     imageX,
                     imageY);
 
-            if (_waitingForCoordinate)
+            switch (_coordinateOperation)
             {
-                _waitingForCoordinate = false;
+                case CoordinateOperation.SetHome:
 
-                SetHomePosition(gps);
+                    _coordinateOperation =
+                        CoordinateOperation.None;
 
-                return;
+                    SetHomePosition(gps);
+                    return;
+
+                case CoordinateOperation.AddZone:
+
+                    _coordinateOperation =
+                        CoordinateOperation.None;
+
+                    AddZoneAtPosition(gps);
+                    return;
+
+                case CoordinateOperation.MoveZone:
+
+                    _coordinateOperation =
+                        CoordinateOperation.None;
+
+                    MoveZoneToPosition(gps);
+                    return;
             }
 
-       
+
 
             MapInfoLabel.Text =
                 $"MAP: {imageX:0.0}, {imageY:0.0}\n" +
@@ -663,30 +711,87 @@ namespace CombatLR.mobile.Pages
 #endif
 
         private void SetHomePosition(
-    MapCoordinateService.GeoPoint position)
+       MapCoordinateService.GeoPoint position)
         {
             if (_coordinateService is null)
                 return;
 
-            _gamePlan.Home = new HomePosition
+            var oldHome =
+                _gamePlan.Home;
+
+            // If Home already exists, first convert every
+            // existing game object to an absolute GPS position.
+            var zoneGpsPositions =
+                new List<MapCoordinateService.GeoPoint>();
+
+            if (oldHome is not null)
             {
-                Latitude = position.Latitude,
-                Longitude = position.Longitude
-            };
+                foreach (var zone in _gamePlan.Zones)
+                {
+                    var gps =
+                        _gameObjectCoordinateService.LocalToGps(
+                            oldHome,
+                            zone.EastMetres,
+                            zone.NorthMetres);
+
+                    zoneGpsPositions.Add(gps);
+                }
+            }
+
+            // Set the new Home.
+            var newHome =
+                new HomePosition
+                {
+                    Latitude = position.Latitude,
+                    Longitude = position.Longitude
+                };
+
+            _gamePlan.Home = newHome;
+
+            // Recalculate every existing zone relative
+            // to the new Home.
+            if (oldHome is not null)
+            {
+                for (var i = 0;
+                     i < _gamePlan.Zones.Count;
+                     i++)
+                {
+                    var gps =
+                        zoneGpsPositions[i];
+
+                    var local =
+                        _gameObjectCoordinateService.GpsToLocal(
+                            newHome,
+                            gps.Latitude,
+                            gps.Longitude);
+
+                    _gamePlan.Zones[i].EastMetres =
+                        local.EastMetres;
+
+                    _gamePlan.Zones[i].NorthMetres =
+                        local.NorthMetres;
+                }
+            }
 
             var imagePoint =
                 _coordinateService.GpsToImage(
                     position.Latitude,
                     position.Longitude);
 
-            _homeImageX = imagePoint.X;
-            _homeImageY = imagePoint.Y;
+            _homeImageX =
+                imagePoint.X;
+
+            _homeImageY =
+                imagePoint.Y;
 
             HomeMarker.IsVisible = true;
 
             PositionHomeMarker(
                 imagePoint.X,
                 imagePoint.Y);
+
+            UpdateGameObjectControls();
+            RenderZones();
 
             MapInfoLabel.Text =
                 $"HOME SET\n" +
@@ -699,7 +804,8 @@ namespace CombatLR.mobile.Pages
             EventArgs e)
         {
             var coordinate =
-                await AcquireCoordinateAsync();
+             await AcquireCoordinateAsync(
+                 CoordinateOperation.SetHome);
 
             if (coordinate is not null)
             {
@@ -743,19 +849,33 @@ namespace CombatLR.mobile.Pages
         }
 
         private async Task<MapCoordinateService.GeoPoint?>
-            AcquireCoordinateAsync()
+     AcquireCoordinateAsync(
+         CoordinateOperation operation)
         {
             if (_acquiringCoordinate)
                 return null;
+
+            _coordinateOperation = operation;
 
             // TAP mode.
             if (_coordinateInputMode ==
                 CoordinateInputMode.Tap)
             {
-                _waitingForCoordinate = true;
-
                 MapInfoLabel.Text =
-                    "TAP MODE\nTap the map";
+                    operation switch
+                    {
+                        CoordinateOperation.SetHome =>
+                            "SET HOME\nTap the map",
+
+                        CoordinateOperation.AddZone =>
+                            "ADD ZONE\nTap the map",
+
+                        CoordinateOperation.MoveZone =>
+                            "MOVE ZONE\nTap the map",
+
+                        _ =>
+                            "Tap the map"
+                    };
 
                 return null;
             }
@@ -783,7 +903,8 @@ namespace CombatLR.mobile.Pages
                     return null;
                 }
 
-                _waitingForCoordinate = false;
+                _coordinateOperation =
+                    CoordinateOperation.None;
 
                 MapInfoLabel.Text =
                     $"GPS POSITION\n" +
@@ -803,11 +924,12 @@ namespace CombatLR.mobile.Pages
 
 
         private void SetCoordinateInputMode(
-    CoordinateInputMode mode)
+            CoordinateInputMode mode)
         {
             _coordinateInputMode = mode;
 
-            _waitingForCoordinate = false;
+            _coordinateOperation =
+                CoordinateOperation.None;
 
             UpdateCoordinateInputUi();
         }
@@ -849,12 +971,13 @@ namespace CombatLR.mobile.Pages
         }
 
         private void SetGpsUnavailable(
-    string message)
+            string message)
         {
             _coordinateInputMode =
                 CoordinateInputMode.Tap;
 
-            _waitingForCoordinate = false;
+            _coordinateOperation =
+                CoordinateOperation.None;
 
             UpdateCoordinateInputUi();
 
@@ -862,5 +985,457 @@ namespace CombatLR.mobile.Pages
                 message;
         }
 
+        private void UpdateGameObjectControls()
+        {
+            var homeAvailable =
+                _gamePlan.Home is not null;
+
+            var zonesAvailable =
+                homeAvailable &&
+                _gamePlan.Zones.Count > 0;
+
+            AddZoneButton.IsEnabled =
+                homeAvailable;
+
+            PreviousZoneButton.IsEnabled =
+                zonesAvailable;
+
+            NextZoneButton.IsEnabled =
+                zonesAvailable;
+
+            MoveZoneButton.IsEnabled =
+                zonesAvailable;
+
+            ShowAllZonesButton.IsEnabled =
+                zonesAvailable;
+
+            ShowAllZonesButton.Text =
+                _showAllZones
+                    ? "All Zones ✓"
+                    : "Current Zone";
+        }
+
+        private void PreviousZone_Clicked(
+    object? sender,
+    EventArgs e)
+        {
+            if (_gamePlan.Zones.Count == 0)
+                return;
+
+            if (_currentZoneIndex > 0)
+                _currentZoneIndex--;
+
+            RenderZones();
+
+            UpdateZoneInfo();
+        }
+
+        private void NextZone_Clicked(
+    object? sender,
+    EventArgs e)
+        {
+            if (_gamePlan.Zones.Count == 0)
+                return;
+
+            if (_currentZoneIndex <
+                _gamePlan.Zones.Count - 1)
+            {
+                _currentZoneIndex++;
+            }
+
+            RenderZones();
+
+            UpdateZoneInfo();
+        }
+
+        private async void MoveZone_Clicked(
+    object? sender,
+    EventArgs e)
+        {
+            if (_currentZoneIndex < 0 ||
+                _currentZoneIndex >= _gamePlan.Zones.Count ||
+                _gamePlan.Home is null)
+            {
+                return;
+            }
+
+            var coordinate =
+                await AcquireCoordinateAsync(
+                    CoordinateOperation.MoveZone);
+
+            if (coordinate is null)
+                return;
+
+            var zone =
+                _gamePlan.Zones[_currentZoneIndex];
+
+            var local =
+                _gameObjectCoordinateService.GpsToLocal(
+                    _gamePlan.Home,
+                    coordinate.Value.Latitude,
+                    coordinate.Value.Longitude);
+
+            zone.EastMetres =
+                local.EastMetres;
+
+            zone.NorthMetres =
+                local.NorthMetres;
+
+            RenderZones();
+
+            UpdateZoneInfo();
+        }
+
+        private void ShowAllZones_Clicked(
+    object? sender,
+    EventArgs e)
+        {
+            _showAllZones =
+                !_showAllZones;
+
+            UpdateGameObjectControls();
+
+            RenderZones();
+        }
+
+        private void RenderZones()
+        {
+            if (_mapDefinition is null ||
+                _coordinateService is null ||
+                _gamePlan.Home is null)
+            {
+                ClearZoneMarkers();
+                return;
+            }
+
+            ClearZoneMarkers();
+
+            for (var i = 0;
+                 i < _gamePlan.Zones.Count;
+                 i++)
+            {
+                if (!_showAllZones &&
+                    i != _currentZoneIndex)
+                {
+                    continue;
+                }
+
+                var zone =
+                    _gamePlan.Zones[i];
+
+                var gps =
+                    _gameObjectCoordinateService.LocalToGps(
+                        _gamePlan.Home,
+                        zone.EastMetres,
+                        zone.NorthMetres);
+
+                var imagePoint =
+                    _coordinateService.GpsToImage(
+                        gps.Latitude,
+                        gps.Longitude);
+
+                var marker =
+                    CreateZoneMarker(
+                        i,
+                        zone.RadiusMetres);
+
+                PositionZoneMarker(
+                    marker,
+                    imagePoint.X,
+                    imagePoint.Y,
+                    zone.RadiusMetres);
+
+                MapVisualLayer.Children.Add(marker);
+
+                _zoneMarkers.Add(marker);
+            }
+        }
+
+        private Grid CreateZoneMarker(
+    int zoneIndex,
+    double radiusMetres)
+        {
+            var marker =
+                new Grid
+                {
+                    WidthRequest = 20,
+                    HeightRequest = 20,
+                    HorizontalOptions = LayoutOptions.Start,
+                    VerticalOptions = LayoutOptions.Start,
+                    InputTransparent = true
+                };
+
+            var circle =
+                new Border
+                {
+                    Stroke =
+                        zoneIndex == _currentZoneIndex
+                            ? Colors.Red
+                            : Colors.Yellow,
+
+                    StrokeThickness =
+                        zoneIndex == _currentZoneIndex
+                            ? 3
+                            : 2,
+
+                    BackgroundColor =
+                        Colors.Transparent,
+
+                    StrokeShape =
+                        new RoundRectangle
+                        {
+                            CornerRadius = 999
+                        },
+
+                    InputTransparent = true
+                };
+
+            var number =
+                new Label
+                {
+                    Text = (zoneIndex + 1).ToString(),
+                    FontSize = 14,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Colors.White,
+                    HorizontalTextAlignment =
+                        TextAlignment.Center,
+                    VerticalTextAlignment =
+                        TextAlignment.Center,
+                    HorizontalOptions =
+                        LayoutOptions.Center,
+                    VerticalOptions =
+                        LayoutOptions.Center,
+                    InputTransparent = true
+                };
+
+            var centre =
+                new Label
+                {
+                    Text = "+",
+                    FontSize = 16,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Colors.White,
+                    HorizontalTextAlignment =
+                        TextAlignment.Center,
+                    VerticalTextAlignment =
+                        TextAlignment.Center,
+                    HorizontalOptions =
+                        LayoutOptions.Center,
+                    VerticalOptions =
+                        LayoutOptions.Center,
+                    InputTransparent = true
+                };
+
+            marker.Children.Add(circle);
+            marker.Children.Add(number);
+            marker.Children.Add(centre);
+
+            return marker;
+        }
+
+        private void PositionZoneMarker(
+    Grid marker,
+    double imageX,
+    double imageY,
+    double radiusMetres)
+        {
+            if (_mapDefinition is null)
+                return;
+
+            var imageWidth =
+                _mapDefinition.Image.Width;
+
+            var imageHeight =
+                _mapDefinition.Image.Height;
+
+            var areaWidth =
+                MapContainer.Width;
+
+            var areaHeight =
+                MapContainer.Height;
+
+            if (areaWidth <= 0 ||
+                areaHeight <= 0)
+                return;
+
+            var scale =
+                Math.Min(
+                    areaWidth / imageWidth,
+                    areaHeight / imageHeight);
+
+            var displayedWidth =
+                imageWidth * scale;
+
+            var displayedHeight =
+                imageHeight * scale;
+
+            var imageLeft =
+                (areaWidth - displayedWidth) / 2.0;
+
+            var imageTop =
+                (areaHeight - displayedHeight) / 2.0;
+
+            var radiusPixels =
+                radiusMetres /
+                _mapDefinition.MetresPerPixel;
+
+            var diameter =
+                radiusPixels * 2.0 * scale;
+
+            // Don't let a tiny zone become invisible.
+            diameter =
+                Math.Max(diameter, 20.0);
+
+            marker.WidthRequest =
+                diameter;
+
+            marker.HeightRequest =
+                diameter;
+
+            marker.TranslationX =
+                imageLeft +
+                imageX * scale -
+                diameter / 2.0;
+
+            marker.TranslationY =
+                imageTop +
+                imageY * scale -
+                diameter / 2.0;
+        }
+
+        private void ClearZoneMarkers()
+        {
+            foreach (var marker in _zoneMarkers)
+            {
+                MapVisualLayer.Children.Remove(marker);
+            }
+
+            _zoneMarkers.Clear();
+        }
+
+        private void UpdateZoneInfo()
+        {
+            if (_currentZoneIndex < 0 ||
+                _currentZoneIndex >= _gamePlan.Zones.Count)
+            {
+                return;
+            }
+
+            var zone =
+                _gamePlan.Zones[_currentZoneIndex];
+
+            MapInfoLabel.Text =
+                $"ZONE {_currentZoneIndex + 1}\n" +
+                $"E: {zone.EastMetres:F1} m\n" +
+                $"N: {zone.NorthMetres:F1} m\n" +
+                $"Radius: {zone.RadiusMetres:F1} m\n" +
+                $"Start: {zone.StartTime}\n" +
+                $"Transition: {zone.TransitionTime}";
+        }
+
+        private async void AddZone_Clicked(
+    object? sender,
+    EventArgs e)
+        {
+            if (_gamePlan.Home is null)
+                return;
+
+            var coordinate =
+                await AcquireCoordinateAsync(
+                    CoordinateOperation.AddZone);
+
+            if (coordinate is null)
+                return;
+
+            var local =
+                _gameObjectCoordinateService.GpsToLocal(
+                    _gamePlan.Home,
+                    coordinate.Value.Latitude,
+                    coordinate.Value.Longitude);
+
+            var zone =
+                new GameZone
+                {
+                    EastMetres = local.EastMetres,
+                    NorthMetres = local.NorthMetres,
+                    RadiusMetres = 50.0,
+                    StartTime = TimeSpan.Zero,
+                    TransitionTime = TimeSpan.Zero
+                };
+
+            _gamePlan.Zones.Add(zone);
+
+            _currentZoneIndex =
+                _gamePlan.Zones.Count - 1;
+
+            UpdateGameObjectControls();
+
+            RenderZones();
+
+            MapInfoLabel.Text =
+                $"ZONE {_currentZoneIndex + 1} ADDED\n" +
+                $"E: {zone.EastMetres:F1} m\n" +
+                $"N: {zone.NorthMetres:F1} m\n" +
+                $"Radius: {zone.RadiusMetres:F1} m";
+        }
+
+        private void AddZoneAtPosition(
+    MapCoordinateService.GeoPoint position)
+        {
+            if (_gamePlan.Home is null)
+                return;
+
+            var local =
+                _gameObjectCoordinateService.GpsToLocal(
+                    _gamePlan.Home,
+                    position.Latitude,
+                    position.Longitude);
+
+            var zone =
+                new GameZone
+                {
+                    EastMetres = local.EastMetres,
+                    NorthMetres = local.NorthMetres,
+                    RadiusMetres = 50.0,
+                    StartTime = TimeSpan.Zero,
+                    TransitionTime = TimeSpan.Zero
+                };
+
+            _gamePlan.Zones.Add(zone);
+
+            _currentZoneIndex =
+                _gamePlan.Zones.Count - 1;
+
+            UpdateGameObjectControls();
+            RenderZones();
+            UpdateZoneInfo();
+        }
+
+        private void MoveZoneToPosition(
+    MapCoordinateService.GeoPoint position)
+        {
+            if (_gamePlan.Home is null ||
+                _currentZoneIndex < 0 ||
+                _currentZoneIndex >= _gamePlan.Zones.Count)
+                return;
+
+            var local =
+                _gameObjectCoordinateService.GpsToLocal(
+                    _gamePlan.Home,
+                    position.Latitude,
+                    position.Longitude);
+
+            var zone =
+                _gamePlan.Zones[_currentZoneIndex];
+
+            zone.EastMetres =
+                local.EastMetres;
+
+            zone.NorthMetres =
+                local.NorthMetres;
+
+            RenderZones();
+            UpdateZoneInfo();
+        }
     }
 }

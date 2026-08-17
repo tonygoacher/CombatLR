@@ -2,18 +2,17 @@
 
 public class GameZone
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-
     // Position relative to Home, in metres.
-    // East = positive eastwards.
-    // North = positive northwards.
-    public double East { get; set; }
-
-    public double North { get; set; }
+    public double EastMetres { get; set; }
+    public double NorthMetres { get; set; }
 
     // Zone radius in metres.
-    public double Radius { get; set; } = 50.0;
+    public double RadiusMetres { get; set; }
 
-    // Seconds from game start.
-    public int StartTime { get; set; }
+    // Time from the start of the game when this zone becomes active.
+    public TimeSpan StartTime { get; set; }
+
+    // How long the previous zone remains active after
+    // this zone starts.
+    public TimeSpan TransitionTime { get; set; }
 }

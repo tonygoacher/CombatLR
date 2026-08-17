@@ -118,6 +118,32 @@
                 Text="Position: TAP"
                 Clicked="CoordinateMode_Clicked" />
 
+
+            <Button
+    x:Name="AddZoneButton"
+    Text="Add Zone"
+    Clicked="AddZone_Clicked" />
+
+            <Button
+    x:Name="PreviousZoneButton"
+    Text="◀ Zone"
+    Clicked="PreviousZone_Clicked" />
+
+            <Button
+    x:Name="NextZoneButton"
+    Text="Zone ▶"
+    Clicked="NextZone_Clicked" />
+
+            <Button
+    x:Name="MoveZoneButton"
+    Text="Move Zone"
+    Clicked="MoveZone_Clicked" />
+
+            <Button
+    x:Name="ShowAllZonesButton"
+    Text="All Zones"
+    Clicked="ShowAllZones_Clicked" />
+
         </HorizontalStackLayout>
 
     </Grid>
