@@ -660,11 +660,22 @@ public partial class MainWindow : Window
 
         var scale = geoDistance / pixelDistance;
 
-        _eastPerPixelX = scale * (ix * gx);
-        _eastPerPixelY = scale * (iy * gx);
+        // Image coordinates are X=right, Y=down.
+        // Geographic coordinates are East/North.
+        // These coordinate systems have opposite handedness, so
+        // the transform includes the required reflection.
 
-        _northPerPixelX = scale * (ix * gy);
-        _northPerPixelY = scale * (iy * gy);
+        _eastPerPixelX =
+            scale * (ix * gx - iy * gy);
+
+        _eastPerPixelY =
+            scale * (iy * gx + ix * gy);
+
+        _northPerPixelX =
+            scale * (ix * gy + iy * gx);
+
+        _northPerPixelY =
+            scale * (iy * gy - ix * gx);
 
         _transformRotationDegrees =
             NormalizeDegrees(
