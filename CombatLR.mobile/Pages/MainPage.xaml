@@ -43,10 +43,10 @@
             ZIndex="10">
 
             <Label
-    x:Name="MapInfoLabel"
-    Text="Starting..."
-    TextColor="White"
-    FontSize="14">
+             x:Name="MapInfoLabel"
+             Text="Starting..."
+             TextColor="White"
+             FontSize="14">
 
                 <Label.GestureRecognizers>
                     <TapGestureRecognizer
@@ -56,6 +56,27 @@
             </Label>
 
         </Border>
+
+        <HorizontalStackLayout
+    HorizontalOptions="Center"
+    VerticalOptions="End"
+    Margin="0,0,0,20"
+    Spacing="10"
+    ZIndex="20">
+
+            <Button
+        Text="New"
+        Clicked="NewGamePlan_Clicked" />
+
+            <Button
+        Text="Save"
+        Clicked="SaveGamePlan_Clicked" />
+
+            <Button
+        Text="Load"
+        Clicked="LoadGamePlan_Clicked" />
+
+        </HorizontalStackLayout>
 
     </Grid>
 
