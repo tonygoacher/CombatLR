@@ -1185,7 +1185,7 @@ namespace CombatLR.mobile.Pages
                 {
                     Stroke =
                         zoneIndex == _currentZoneIndex
-                            ? Colors.Red
+                            ? Colors.Green
                             : Colors.Yellow,
 
                     StrokeThickness =
@@ -1504,6 +1504,13 @@ namespace CombatLR.mobile.Pages
                 return;
 
             ShowAllZones_Clicked(sender, e);
+        }
+
+        private void Hamburger_Clicked(
+    object? sender,
+    EventArgs e)
+        {
+            Shell.Current.FlyoutIsPresented = true;
         }
 
 
