@@ -363,10 +363,19 @@ namespace CombatLR.mobile.Pages
             var zone =
                 _gamePlan.Zones[_currentZoneIndex];
 
-            await Navigation.PushModalAsync(
-                new ZoneEditPage(
-                    zone,
-                    _currentZoneIndex + 1));
+            var editPage =
+            new ZoneEditPage(
+          zone,
+          _currentZoneIndex + 1);
+
+            await Navigation.PushModalAsync(editPage);
+
+            await editPage.Completion;
+
+
+            MapInfoLabel.Text =
+                $"EDIT RETURNED\n" +
+                $"Radius: {zone.RadiusMetres:F1} m";
 
             RenderZones();
             UpdateZoneInfo();
@@ -1333,6 +1342,16 @@ namespace CombatLR.mobile.Pages
             marker.HeightRequest =
                 diameter;
 
+            if (marker.Children.Count > 0 &&
+            marker.Children[0] is Border circle)
+            {
+                circle.WidthRequest =
+                    diameter;
+
+                circle.HeightRequest =
+                    diameter;
+            }
+
             marker.TranslationX =
                 imageLeft +
                 imageX * scale -
@@ -1400,8 +1419,8 @@ namespace CombatLR.mobile.Pages
                     EastMetres = local.EastMetres,
                     NorthMetres = local.NorthMetres,
                     RadiusMetres = 50.0,
-                    StartTime = TimeSpan.Zero,
-                    TransitionTime = TimeSpan.Zero
+                    StartTime = 0,
+                    TransitionTime = 0
                 };
 
             _gamePlan.Zones.Add(zone);
@@ -1438,8 +1457,8 @@ namespace CombatLR.mobile.Pages
                     EastMetres = local.EastMetres,
                     NorthMetres = local.NorthMetres,
                     RadiusMetres = 50.0,
-                    StartTime = TimeSpan.Zero,
-                    TransitionTime = TimeSpan.Zero
+                    StartTime = 0,
+                    TransitionTime = 0
                 };
 
             _gamePlan.Zones.Add(zone);
