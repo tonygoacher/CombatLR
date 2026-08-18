@@ -472,13 +472,6 @@ namespace CombatLR.mobile.Pages
                     AddZoneAtPosition(gps);
                     return;
 
-                case CoordinateOperation.MoveZone:
-
-                    _coordinateOperation =
-                        CoordinateOperation.None;
-
-                    MoveZoneToPosition(gps);
-                    return;
             }
 
             // No pending placement operation.
