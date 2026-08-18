@@ -324,12 +324,12 @@
                 Clicked="AddObject_Clicked" />
 
                     <Button
-                x:Name="MoveObjectButton"
+                x:Name="DeleteObjectButton"
+                Text="Delete"
                 Grid.Row="0"
                 Grid.Column="1"
-                Text="Move"
                 Style="{StaticResource ObjectPanelButton}"
-                Clicked="MoveObject_Clicked" />
+                Clicked="DeleteObject_Clicked" />       
 
                     <Button
                 x:Name="EditObjectButton"
