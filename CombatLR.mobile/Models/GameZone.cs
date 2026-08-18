@@ -10,9 +10,9 @@ public class GameZone
     public double RadiusMetres { get; set; }
 
     // Time from the start of the game when this zone becomes active.
-    public TimeSpan StartTime { get; set; }
+    public int StartTime { get; set; }
 
     // How long the previous zone remains active after
     // this zone starts.
-    public TimeSpan TransitionTime { get; set; }
+    public int TransitionTime { get; set; }
 }

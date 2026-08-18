@@ -50,6 +50,7 @@
                             x:Name="RadiusEntry"
                             WidthRequest="90"
                             Keyboard="Numeric"
+                            TextColor="White"
                             HorizontalTextAlignment="End" />
 
                         <Label
@@ -71,7 +72,9 @@
                         Grid.Row="1"
                         Grid.Column="1"
                         WidthRequest="90"
-                        Placeholder="mm:ss"
+                        Placeholder="0"
+                        Keyboard="Numeric"
+                        TextColor="White"
                         HorizontalTextAlignment="End" />
 
                     <Label
@@ -86,7 +89,9 @@
                         Grid.Row="2"
                         Grid.Column="1"
                         WidthRequest="90"
-                        Placeholder="mm:ss"
+                        Placeholder="0"
+                        Keyboard="Numeric"
+                        TextColor="White"
                         HorizontalTextAlignment="End" />
 
                 </Grid>

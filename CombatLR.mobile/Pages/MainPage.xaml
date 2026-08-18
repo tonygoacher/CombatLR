@@ -278,6 +278,7 @@
                 SelectedItem="Zone"
                 HeightRequest="32"
                 FontSize="12"
+                TextColor="White"
                 Margin="0">
 
                 <Picker.Items>

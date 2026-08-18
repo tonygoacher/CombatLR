@@ -5,6 +5,9 @@ namespace CombatLR.mobile.Pages;
 public partial class ZoneEditPage : ContentPage
 {
     private readonly GameZone _zone;
+    private readonly TaskCompletionSource<bool>
+    _completionSource = new();
+
 
     public ZoneEditPage(
         GameZone zone,
@@ -19,12 +22,11 @@ public partial class ZoneEditPage : ContentPage
 
         RadiusEntry.Text =
             zone.RadiusMetres.ToString("0.0");
-
-        StartTimeEntry.Text =
-            FormatTime(zone.StartTime);
+        StartTimeEntry.Text = zone.StartTime.ToString();
 
         TransitionTimeEntry.Text =
-            FormatTime(zone.TransitionTime);
+          zone.TransitionTime.ToString(); ;
+
 
         // Zone 1 has no previous zone,
         // so transition time has no meaning.
@@ -34,57 +36,23 @@ public partial class ZoneEditPage : ContentPage
         }
     }
 
-    private static string FormatTime(
-        TimeSpan time)
-    {
-        return
-            $"{(int)time.TotalMinutes:00}:{time.Seconds:00}";
-    }
 
-    private static bool TryParseTime(
-        string? text,
-        out TimeSpan result)
-    {
-        result = TimeSpan.Zero;
+private static bool TryParseSeconds(
+    string? text,
+    out int result)
+{
+    result = 0;
 
-        if (string.IsNullOrWhiteSpace(text))
-            return false;
+    if (!int.TryParse(text, out var seconds))
+        return false;
 
-        var parts =
-            text.Split(':');
+    if (seconds < 0)
+        return false;
 
-        if (parts.Length != 2)
-            return false;
+        result = seconds;
 
-        if (!int.TryParse(
-                parts[0],
-                out var minutes))
-        {
-            return false;
-        }
-
-        if (!int.TryParse(
-                parts[1],
-                out var seconds))
-        {
-            return false;
-        }
-
-        if (minutes < 0 ||
-            seconds < 0 ||
-            seconds >= 60)
-        {
-            return false;
-        }
-
-        result =
-            new TimeSpan(
-                0,
-                minutes,
-                seconds);
-
-        return true;
-    }
+    return true;
+}
 
     private async void Ok_Clicked(
         object? sender,
@@ -103,13 +71,13 @@ public partial class ZoneEditPage : ContentPage
             return;
         }
 
-        if (!TryParseTime(
+        if (!TryParseSeconds(
                 StartTimeEntry.Text,
                 out var startTime))
         {
             await DisplayAlert(
                 "Invalid Start Time",
-                "Enter time as mm:ss.",
+                "Enter time in seconds",
                 "OK");
 
             return;
@@ -123,13 +91,13 @@ public partial class ZoneEditPage : ContentPage
 
         if (TransitionTimeEntry.IsEnabled)
         {
-            if (!TryParseTime(
+            if (!TryParseSeconds(
                     TransitionTimeEntry.Text,
                     out var transitionTime))
             {
                 await DisplayAlert(
                     "Invalid Transition Time",
-                    "Enter time as mm:ss.",
+                    "Enter time in seconds",
                     "OK");
 
                 return;
@@ -139,6 +107,7 @@ public partial class ZoneEditPage : ContentPage
                 transitionTime;
         }
 
+        _completionSource.TrySetResult(true);
         await Navigation.PopModalAsync();
     }
 
@@ -146,6 +115,10 @@ public partial class ZoneEditPage : ContentPage
         object? sender,
         EventArgs e)
     {
+        _completionSource.TrySetResult(false);
         await Navigation.PopModalAsync();
     }
+
+    public Task<bool> Completion =>
+    _completionSource.Task;
 }
