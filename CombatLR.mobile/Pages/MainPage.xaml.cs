@@ -57,10 +57,10 @@ namespace CombatLR.mobile.Pages
         private MapTouchListener? _mapTouchListener;
 #endif
 
-        private double _panStartX;
-        private double _panStartY;
-        private double _panStartMapX;
-        private double _panStartMapY;
+
+ 
+ 
+
 
         private double _pinchStartZoom;
         private double _pinchStartPanX;
@@ -347,6 +347,31 @@ namespace CombatLR.mobile.Pages
                 HomeMarker.Height / 2.0;
         }
 
+        private async void EditObject_Clicked(
+   object? sender,
+   EventArgs e)
+        {
+            if (GameObjectTypePicker.SelectedIndex != 0)
+                return;
+
+            if (_currentZoneIndex < 0 ||
+                _currentZoneIndex >= _gamePlan.Zones.Count)
+            {
+                return;
+            }
+
+            var zone =
+                _gamePlan.Zones[_currentZoneIndex];
+
+            await Navigation.PushModalAsync(
+                new ZoneEditPage(
+                    zone,
+                    _currentZoneIndex + 1));
+
+            RenderZones();
+            UpdateZoneInfo();
+        }
+
         private void HandleMapTap(Point point)
         {
             if (_mapDefinition is null ||
@@ -456,6 +481,14 @@ namespace CombatLR.mobile.Pages
                     return;
             }
 
+            // No pending placement operation.
+            // If a zone is selected, a map tap moves it.
+            if (_currentZoneIndex >= 0 &&
+                _currentZoneIndex < _gamePlan.Zones.Count &&
+                _gamePlan.Home is not null)
+            {
+                MoveZoneToPosition(gps);
+            }
 
 
             MapInfoLabel.Text =
@@ -852,7 +885,7 @@ namespace CombatLR.mobile.Pages
             else
             {
                 AddObjectButton.IsEnabled = false;
-                MoveObjectButton.IsEnabled = false;
+                DeleteObjectButton.IsEnabled = false;
                 EditObjectButton.IsEnabled = false;
                 PreviousZoneButton.IsEnabled = false;
                 NextZoneButton.IsEnabled = false;
@@ -1015,7 +1048,7 @@ namespace CombatLR.mobile.Pages
             NextZoneButton.IsEnabled =
                 objectsAvailable;
 
-            MoveObjectButton.IsEnabled =
+            DeleteObjectButton.IsEnabled =
                 objectsAvailable;
 
             EditObjectButton.IsEnabled =
@@ -1463,39 +1496,7 @@ namespace CombatLR.mobile.Pages
             AddZone_Clicked(sender, e);
         }
 
-        private void MoveObject_Clicked(
-    object? sender,
-    EventArgs e)
-        {
-            if (GameObjectTypePicker.SelectedIndex != 0)
-                return;
-
-            MoveZone_Clicked(sender, e);
-        }
-        private async void EditObject_Clicked(
-    object? sender,
-    EventArgs e)
-        {
-            if (GameObjectTypePicker.SelectedIndex != 0)
-                return;
-
-            if (_currentZoneIndex < 0 ||
-                _currentZoneIndex >= _gamePlan.Zones.Count)
-            {
-                return;
-            }
-
-            var zone =
-                _gamePlan.Zones[_currentZoneIndex];
-
-            await Navigation.PushModalAsync(
-                new ZoneEditPage(
-                    zone,
-                    _currentZoneIndex + 1));
-
-            RenderZones();
-            UpdateZoneInfo();
-        }
+      
         private void ShowAllObjects_Clicked(
     object? sender,
     EventArgs e)
@@ -1512,6 +1513,51 @@ namespace CombatLR.mobile.Pages
         {
             Shell.Current.FlyoutIsPresented = true;
         }
+        private async void DeleteObject_Clicked(
+        object? sender,
+        EventArgs e)
+        {
+            if (GameObjectTypePicker.SelectedIndex != 0)
+                return;
+
+            if (_currentZoneIndex < 0 ||
+                _currentZoneIndex >= _gamePlan.Zones.Count)
+            {
+                return;
+            }
+
+            var zoneNumber =
+                _currentZoneIndex + 1;
+
+            var confirmed =
+                await DisplayAlert(
+                    "Delete Zone",
+                    $"Delete Zone {zoneNumber}?",
+                    "Delete",
+                    "Cancel");
+
+            if (!confirmed)
+                return;
+
+            _gamePlan.Zones.RemoveAt(
+                _currentZoneIndex);
+
+            if (_gamePlan.Zones.Count == 0)
+            {
+                _currentZoneIndex = -1;
+            }
+            else if (_currentZoneIndex >=
+                     _gamePlan.Zones.Count)
+            {
+                _currentZoneIndex =
+                    _gamePlan.Zones.Count - 1;
+            }
+
+            UpdateGameObjectControls();
+            RenderZones();
+            UpdateZoneInfo();
+        }
+
 
 
     }
