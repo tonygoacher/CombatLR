@@ -283,7 +283,8 @@
 
                 <Picker.Items>
                     <x:String>Zone</x:String>
-                </Picker.Items>
+                    <x:String>Pickups</x:String>
+                 </Picker.Items>
 
             </Picker>
 
