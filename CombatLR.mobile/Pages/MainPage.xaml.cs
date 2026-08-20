@@ -1163,10 +1163,10 @@ namespace CombatLR.mobile.Pages
             AddObjectButton.IsEnabled = true;
             PreviousZoneButton.IsEnabled = pickupsAvailable;
             NextZoneButton.IsEnabled = pickupsAvailable;
-            DeleteObjectButton.IsEnabled = false;
+            DeleteObjectButton.IsEnabled = pickupsAvailable;
             EditObjectButton.IsEnabled = false;
             ShowAllObjectsButton.IsEnabled = false;
-
+            
             // "Show All" doesn't have a useful meaning for pickups yet.
             ShowAllObjectsButton.IsEnabled = false;
 
@@ -1180,17 +1180,53 @@ namespace CombatLR.mobile.Pages
       object? sender,
       EventArgs e)
         {
+
             if (_gamePlan.Zones.Count == 0)
                 return;
 
-            if (_currentZoneIndex > 0)
-                _currentZoneIndex--;
 
-            _currentPickupIndex = -1;
+            if (_gameObjectMode == GameObjectMode.Pickups)
+            {
+                if (_currentZoneIndex < 0 ||
+                    _currentZoneIndex >= _gamePlan.Zones.Count)
+                {
+                    return;
+                }
 
-            UpdateZoneInfo();
-            UpdateGameObjectControls();
-            RenderGameObjects();
+                var pickups =
+                    _gamePlan.Zones[_currentZoneIndex].Pickups;
+
+                if (pickups.Count == 0)
+                    return;
+
+                if (_currentPickupIndex < 0)
+                {
+                    _currentPickupIndex =
+                        pickups.Count - 1;
+                }
+                else if (_currentPickupIndex > 0)
+                {
+                    _currentPickupIndex--;
+                }
+
+                RenderPickups();
+                UpdatePickupInfo();
+                UpdateGameObjectControls();
+
+                return;
+            }
+            else 
+            {
+                if (_currentZoneIndex > 0)
+                    _currentZoneIndex--;
+
+                _currentPickupIndex = -1;
+
+                UpdateZoneInfo();
+                UpdateGameObjectControls();
+                RenderGameObjects();
+            }
+
         }
 
         private void NextZone_Clicked(
@@ -1200,17 +1236,51 @@ namespace CombatLR.mobile.Pages
             if (_gamePlan.Zones.Count == 0)
                 return;
 
-            if (_currentZoneIndex <
-                _gamePlan.Zones.Count - 1)
+            if (_gameObjectMode == GameObjectMode.Pickups)
             {
-                _currentZoneIndex++;
+                if (_currentZoneIndex < 0 ||
+                    _currentZoneIndex >= _gamePlan.Zones.Count)
+                {
+                    return;
+                }
+
+                var pickups =
+                    _gamePlan.Zones[_currentZoneIndex].Pickups;
+
+                if (pickups.Count == 0)
+                    return;
+
+                if (_currentPickupIndex < 0)
+                {
+                    _currentPickupIndex = 0;
+                }
+                else if (_currentPickupIndex <
+                         pickups.Count - 1)
+                {
+                    _currentPickupIndex++;
+                }
+
+                RenderPickups();
+                UpdatePickupInfo();
+                UpdateGameObjectControls();
+
+                return;
             }
+            else 
+            {
 
-            _currentPickupIndex = -1;
+                if (_currentZoneIndex <
+                    _gamePlan.Zones.Count - 1)
+                {
+                    _currentZoneIndex++;
+                }
 
-            UpdateZoneInfo();
-            UpdateGameObjectControls();
-            RenderGameObjects();
+                _currentPickupIndex = -1;
+
+                UpdateZoneInfo();
+                UpdateGameObjectControls();
+                RenderGameObjects();
+            }
         }
 
         private async void MoveZone_Clicked(
@@ -1746,49 +1816,103 @@ namespace CombatLR.mobile.Pages
         {
             Shell.Current.FlyoutIsPresented = true;
         }
-        private async void DeleteObject_Clicked(
-        object? sender,
-        EventArgs e)
-        {
-            if (GameObjectTypePicker.SelectedIndex != 0)
-                return;
 
+
+        private async void DeleteObject_Clicked(
+            object? sender,
+            EventArgs e)
+        {
+            if (GameObjectTypePicker.SelectedIndex == 0)
+            {
+                // Delete Zone
+                if (_currentZoneIndex < 0 ||
+                    _currentZoneIndex >= _gamePlan.Zones.Count)
+                {
+                    return;
+                }
+
+                var zoneNumber =
+                    _currentZoneIndex + 1;
+
+                var confirmed =
+                    await DisplayAlert(
+                        "Delete Zone",
+                        $"Delete Zone {zoneNumber}?",
+                        "Delete",
+                        "Cancel");
+
+                if (!confirmed)
+                    return;
+
+                _gamePlan.Zones.RemoveAt(
+                    _currentZoneIndex);
+
+                if (_gamePlan.Zones.Count == 0)
+                {
+                    _currentZoneIndex = -1;
+                }
+                else if (_currentZoneIndex >=
+                         _gamePlan.Zones.Count)
+                {
+                    _currentZoneIndex =
+                        _gamePlan.Zones.Count - 1;
+                }
+
+                _currentPickupIndex = -1;
+
+                UpdateGameObjectControls();
+                RenderGameObjects();
+                UpdateZoneInfo();
+
+                return;
+            }
+
+            // Delete Pickup
             if (_currentZoneIndex < 0 ||
                 _currentZoneIndex >= _gamePlan.Zones.Count)
             {
                 return;
             }
 
-            var zoneNumber =
-                _currentZoneIndex + 1;
+            var zone =
+                _gamePlan.Zones[_currentZoneIndex];
 
-            var confirmed =
+            if (_currentPickupIndex < 0 ||
+                _currentPickupIndex >= zone.Pickups.Count)
+            {
+                return;
+            }
+
+            var pickup =
+                zone.Pickups[_currentPickupIndex];
+
+            var confirmedPickup =
                 await DisplayAlert(
-                    "Delete Zone",
-                    $"Delete Zone {zoneNumber}?",
+                    "Delete Pickup",
+                    $"Delete Pickup {_currentPickupIndex + 1}?",
                     "Delete",
                     "Cancel");
 
-            if (!confirmed)
+            if (!confirmedPickup)
                 return;
 
-            _gamePlan.Zones.RemoveAt(
-                _currentZoneIndex);
+            zone.Pickups.RemoveAt(
+                _currentPickupIndex);
 
-            if (_gamePlan.Zones.Count == 0)
+            if (zone.Pickups.Count == 0)
             {
-                _currentZoneIndex = -1;
+                _currentPickupIndex = -1;
             }
-            else if (_currentZoneIndex >=
-                     _gamePlan.Zones.Count)
+            else if (_currentPickupIndex >=
+                     zone.Pickups.Count)
             {
-                _currentZoneIndex =
-                    _gamePlan.Zones.Count - 1;
+                _currentPickupIndex =
+                    zone.Pickups.Count - 1;
             }
 
             UpdateGameObjectControls();
-            RenderGameObjects();
-            UpdateZoneInfo();
+            RenderPickups();
+            UpdatePickupInfo();
         }
 
         private void GameObjectTypePicker_SelectedIndexChanged(
@@ -1800,7 +1924,20 @@ namespace CombatLR.mobile.Pages
                     ? GameObjectMode.Pickups
                     : GameObjectMode.Zone;
 
-            _currentPickupIndex = -1;
+            if(_gameObjectMode == GameObjectMode.Pickups)
+            {
+                _currentPickupIndex = -1;
+                if (_currentZoneIndex >= 0 &&
+                  _currentZoneIndex < _gamePlan.Zones.Count)
+                {
+                    if (_gamePlan.Zones[_currentZoneIndex].Pickups.Count != 0)
+                    {
+                        _currentPickupIndex = 0;
+                    }
+                }
+            }
+
+            
 
             UpdateGameObjectControls();
             RenderGameObjects();
@@ -2034,7 +2171,7 @@ namespace CombatLR.mobile.Pages
                 var highlight =
                     new Border
                     {
-                        Stroke = Colors.Yellow,
+                        Stroke = Colors.Green,
                         StrokeThickness = 3,
                         BackgroundColor = Colors.Transparent,
                         StrokeShape =
