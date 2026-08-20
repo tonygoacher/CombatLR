@@ -367,37 +367,61 @@ namespace CombatLR.mobile.Pages
         }
 
         private async void EditObject_Clicked(
-   object? sender,
-   EventArgs e)
+       object? sender,
+       EventArgs e)
         {
-            if (GameObjectTypePicker.SelectedIndex != 0)
-                return;
+            if (_gameObjectMode == GameObjectMode.Zone)
+            {
+                if (_currentZoneIndex < 0 ||
+                    _currentZoneIndex >= _gamePlan.Zones.Count)
+                {
+                    return;
+                }
 
+                var zone =
+                    _gamePlan.Zones[_currentZoneIndex];
+
+                await Navigation.PushModalAsync(
+                    new ZoneEditPage(
+                        zone,
+                        _currentZoneIndex + 1));
+
+                RenderGameObjects();
+                UpdateZoneInfo();
+
+                return;
+            }
+
+            // Pickup mode
             if (_currentZoneIndex < 0 ||
                 _currentZoneIndex >= _gamePlan.Zones.Count)
             {
                 return;
             }
 
-            var zone =
+            var currentZone =
                 _gamePlan.Zones[_currentZoneIndex];
 
+            if (_currentPickupIndex < 0 ||
+                _currentPickupIndex >= currentZone.Pickups.Count)
+            {
+                return;
+            }
+
+            var pickup =
+                currentZone.Pickups[_currentPickupIndex];
+
             var editPage =
-            new ZoneEditPage(
-          zone,
-          _currentZoneIndex + 1);
+                new PickupEditPage(pickup);
 
             await Navigation.PushModalAsync(editPage);
 
             await editPage.Completion;
 
+            RenderPickups();
+            UpdatePickupInfo();
+            UpdateGameObjectControls();
 
-            MapInfoLabel.Text =
-                $"EDIT RETURNED\n" +
-                $"Radius: {zone.RadiusMetres:F1} m";
-
-            RenderGameObjects();
-            UpdateZoneInfo();
         }
 
         private void HandleMapTap(Point point)
@@ -1164,7 +1188,7 @@ namespace CombatLR.mobile.Pages
             PreviousZoneButton.IsEnabled = pickupsAvailable;
             NextZoneButton.IsEnabled = pickupsAvailable;
             DeleteObjectButton.IsEnabled = pickupsAvailable;
-            EditObjectButton.IsEnabled = false;
+            EditObjectButton.IsEnabled = pickupsAvailable;
             ShowAllObjectsButton.IsEnabled = false;
             
             // "Show All" doesn't have a useful meaning for pickups yet.
@@ -2082,6 +2106,7 @@ namespace CombatLR.mobile.Pages
             if (_mapDefinition is null)
                 return;
 
+            
             var imageWidth =
                 _mapDefinition.Image.Width;
 
