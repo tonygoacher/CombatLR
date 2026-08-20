@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="CombatLR.mobile.Pages.PickupEditPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    BackgroundColor="Black"
+    Title="Edit Pickup">
+
+    <VerticalStackLayout
+        Padding="12"
+        Spacing="8">
+
+        <Label
+            x:Name="TitleLabel"
+            FontSize="20"
+            FontAttributes="Bold"
+            TextColor="White" />
+
+        <Grid
+            RowDefinitions="Auto,Auto,Auto"
+            ColumnDefinitions="*,*"
+            RowSpacing="6"
+            ColumnSpacing="12">
+
+            <Label
+                Grid.Row="0"
+                Grid.Column="0"
+                Text="Type"
+                TextColor="White"
+                VerticalTextAlignment="Center" />
+
+            <Picker
+                x:Name="TypePicker"
+                Grid.Row="0"
+                Grid.Column="1"
+                HeightRequest="40"
+                TextColor="White">
+                <Picker.Items>
+                    <x:String>Health</x:String>
+                    <x:String>Reload</x:String>
+                    <x:String>Weapon Bonus</x:String>
+                </Picker.Items>
+            </Picker>
+
+            <Label
+                Grid.Row="1"
+                Grid.Column="0"
+                Text="Spawn time (seconds)"
+                TextColor="White"
+                VerticalTextAlignment="Center" />
+
+            <Entry
+                x:Name="SpawnTimeEntry"
+                Grid.Row="1"
+                Grid.Column="1"
+                HeightRequest="40"
+                Keyboard="Numeric"
+                TextColor="White"
+                PlaceholderColor="Gray"
+                HorizontalOptions="Fill" />
+
+            <Label
+                Grid.Row="2"
+                Grid.Column="0"
+                Text="Lifespan (seconds)"
+                TextColor="White"
+                VerticalTextAlignment="Center" />
+
+            <Entry
+                x:Name="LifespanEntry"
+                Grid.Row="2"
+                Grid.Column="1"
+                HeightRequest="40"
+                Keyboard="Numeric"
+                TextColor="White"
+                PlaceholderColor="Gray"
+                HorizontalOptions="Fill" />
+
+        </Grid>
+
+        <Label
+            Text="Lifespan 0 = permanent"
+            FontSize="12"
+            TextColor="Gray" />
+
+        <Grid
+            ColumnDefinitions="*,*"
+            ColumnSpacing="10"
+            Margin="0,4,0,0">
+
+            <Button
+                Grid.Column="0"
+                Text="Cancel"
+                HeightRequest="40"
+                Clicked="Cancel_Clicked" />
+
+            <Button
+                Grid.Column="1"
+                Text="OK"
+                HeightRequest="40"
+                Clicked="Ok_Clicked" />
+
+        </Grid>
+
+    </VerticalStackLayout>
+
+</ContentPage>
