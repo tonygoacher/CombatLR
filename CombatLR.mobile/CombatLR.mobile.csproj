@@ -32,7 +32,7 @@
 		<ApplicationTitle>CombatLR.mobile</ApplicationTitle>
 
 		<!-- App Identifier -->
-		<ApplicationId>com.companyname.combatlr.mobile</ApplicationId>
+		<ApplicationId>com.combatlr.mobile</ApplicationId>
 
 		<!-- Versions -->
 		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
