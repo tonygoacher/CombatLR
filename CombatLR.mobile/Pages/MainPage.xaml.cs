@@ -22,7 +22,8 @@ namespace CombatLR.mobile.Pages
             None,
             SetHome,
             AddZone,
-            MoveZone
+            MoveZone,
+            AddPickup,
         }
 
         private CoordinateOperation _coordinateOperation =
@@ -48,9 +49,21 @@ namespace CombatLR.mobile.Pages
 
         private int _currentZoneIndex = -1;
 
+        private enum GameObjectMode
+        {
+            Zone,
+            Pickups
+        }
+
+        private GameObjectMode _gameObjectMode =
+            GameObjectMode.Zone;
+
+        private int _currentPickupIndex = -1;
+
         private bool _showAllZones = true;
 
         private readonly List<Grid> _zoneMarkers = new();
+        private readonly List<Grid> _pickupMarkers = new();
 
 #if ANDROID
         private Android.Views.View? _nativeMapView;
@@ -75,10 +88,12 @@ namespace CombatLR.mobile.Pages
         public MainPage(MainPageModel model)
         {
             InitializeComponent();
+            GameObjectTypePicker.SelectedIndexChanged +=
+                GameObjectTypePicker_SelectedIndexChanged;
             BindingContext = model;
             _locationService = new LocationService();
             _gameObjectCoordinateService =  new GameObjectCoordinateService();
-
+            GameObjectTypePicker.SelectedIndex = 0;
             UpdateGameObjectControls();
 
 #if ANDROID
@@ -186,8 +201,11 @@ namespace CombatLR.mobile.Pages
         {
             _gamePlan = _gamePlanService.CreateNew();
             ClearZoneMarkers();
+            ClearPickupMarkers();   
 
             _currentZoneIndex = -1;
+            _currentPickupIndex = -1;
+
             HomeMarker.IsVisible = false;
             UpdateGameObjectControls();
       
@@ -259,8 +277,9 @@ namespace CombatLR.mobile.Pages
                     _gamePlan.Zones.Count > 0
                     ? 0
                     : -1;
+                _currentPickupIndex = -1;
 
-                RenderZones();
+                RenderGameObjects();
                 UpdateGameObjectControls();
 
                 MapInfoLabel.Text =
@@ -348,37 +367,61 @@ namespace CombatLR.mobile.Pages
         }
 
         private async void EditObject_Clicked(
-   object? sender,
-   EventArgs e)
+       object? sender,
+       EventArgs e)
         {
-            if (GameObjectTypePicker.SelectedIndex != 0)
-                return;
+            if (_gameObjectMode == GameObjectMode.Zone)
+            {
+                if (_currentZoneIndex < 0 ||
+                    _currentZoneIndex >= _gamePlan.Zones.Count)
+                {
+                    return;
+                }
 
+                var zone =
+                    _gamePlan.Zones[_currentZoneIndex];
+
+                await Navigation.PushModalAsync(
+                    new ZoneEditPage(
+                        zone,
+                        _currentZoneIndex + 1));
+
+                RenderGameObjects();
+                UpdateZoneInfo();
+
+                return;
+            }
+
+            // Pickup mode
             if (_currentZoneIndex < 0 ||
                 _currentZoneIndex >= _gamePlan.Zones.Count)
             {
                 return;
             }
 
-            var zone =
+            var currentZone =
                 _gamePlan.Zones[_currentZoneIndex];
 
+            if (_currentPickupIndex < 0 ||
+                _currentPickupIndex >= currentZone.Pickups.Count)
+            {
+                return;
+            }
+
+            var pickup =
+                currentZone.Pickups[_currentPickupIndex];
+
             var editPage =
-            new ZoneEditPage(
-          zone,
-          _currentZoneIndex + 1);
+                new PickupEditPage(pickup);
 
             await Navigation.PushModalAsync(editPage);
 
             await editPage.Completion;
 
+            RenderPickups();
+            UpdatePickupInfo();
+            UpdateGameObjectControls();
 
-            MapInfoLabel.Text =
-                $"EDIT RETURNED\n" +
-                $"Radius: {zone.RadiusMetres:F1} m";
-
-            RenderZones();
-            UpdateZoneInfo();
         }
 
         private void HandleMapTap(Point point)
@@ -481,15 +524,35 @@ namespace CombatLR.mobile.Pages
                     AddZoneAtPosition(gps);
                     return;
 
+                case CoordinateOperation.AddPickup:
+
+                    _coordinateOperation =
+                        CoordinateOperation.None;
+
+                    AddPickupAtPosition(gps);
+                    return;
+
             }
 
             // No pending placement operation.
-            // If a zone is selected, a map tap moves it.
-            if (_currentZoneIndex >= 0 &&
+            // If a zone is selected in Zone mode, a map tap moves it.
+            if (_gameObjectMode == GameObjectMode.Zone &&
+                _currentZoneIndex >= 0 &&
                 _currentZoneIndex < _gamePlan.Zones.Count &&
                 _gamePlan.Home is not null)
             {
                 MoveZoneToPosition(gps);
+                return;
+            }
+
+            // If a pickup is selected in Pickups mode,
+            // a map tap moves it.
+            if (_gameObjectMode == GameObjectMode.Pickups &&
+                _currentZoneIndex >= 0 &&
+                _currentZoneIndex < _gamePlan.Zones.Count &&
+                _gamePlan.Home is not null)
+            {
+                MovePickupToPosition(gps);
             }
 
 
@@ -756,11 +819,11 @@ namespace CombatLR.mobile.Pages
             var oldHome =
                 _gamePlan.Home;
 
-            // If Home already exists, first convert every
-            // existing game object to an absolute GPS position.
             var zoneGpsPositions =
                 new List<MapCoordinateService.GeoPoint>();
 
+            var pickupGpsPositions =
+                new List<List<MapCoordinateService.GeoPoint>>();
             if (oldHome is not null)
             {
                 foreach (var zone in _gamePlan.Zones)
@@ -772,6 +835,22 @@ namespace CombatLR.mobile.Pages
                             zone.NorthMetres);
 
                     zoneGpsPositions.Add(gps);
+
+                    var zonePickupPositions =
+                        new List<MapCoordinateService.GeoPoint>();
+
+                    foreach (var pickup in zone.Pickups)
+                    {
+                        var pickupGps =
+                            _gameObjectCoordinateService.LocalToGps(
+                                oldHome,
+                                pickup.EastMetres,
+                                pickup.NorthMetres);
+
+                        zonePickupPositions.Add(pickupGps);
+                    }
+
+                    pickupGpsPositions.Add(zonePickupPositions);
                 }
             }
 
@@ -793,20 +872,31 @@ namespace CombatLR.mobile.Pages
                      i < _gamePlan.Zones.Count;
                      i++)
                 {
-                    var gps =
-                        zoneGpsPositions[i];
+                    var zone =
+                        _gamePlan.Zones[i];
 
-                    var local =
-                        _gameObjectCoordinateService.GpsToLocal(
-                            newHome,
-                            gps.Latitude,
-                            gps.Longitude);
+                    var pickupPositions =
+                        pickupGpsPositions[i];
 
-                    _gamePlan.Zones[i].EastMetres =
-                        local.EastMetres;
+                    for (var j = 0;
+                         j < zone.Pickups.Count;
+                         j++)
+                    {
+                        var gps =
+                            pickupPositions[j];
 
-                    _gamePlan.Zones[i].NorthMetres =
-                        local.NorthMetres;
+                        var local =
+                            _gameObjectCoordinateService.GpsToLocal(
+                                newHome,
+                                gps.Latitude,
+                                gps.Longitude);
+
+                        zone.Pickups[j].EastMetres =
+                            local.EastMetres;
+
+                        zone.Pickups[j].NorthMetres =
+                            local.NorthMetres;
+                    }
                 }
             }
 
@@ -828,7 +918,7 @@ namespace CombatLR.mobile.Pages
                 imagePoint.Y);
 
             UpdateGameObjectControls();
-            RenderZones();
+            RenderGameObjects();
 
             MapInfoLabel.Text =
                 $"HOME SET\n" +
@@ -919,6 +1009,9 @@ namespace CombatLR.mobile.Pages
 
                         CoordinateOperation.MoveZone =>
                             "MOVE ZONE\nTap the map",
+
+                        CoordinateOperation.AddPickup =>
+                            "ADD PICKUP\nTap the map",
 
                         _ =>
                             "Tap the map"
@@ -1037,65 +1130,181 @@ namespace CombatLR.mobile.Pages
             var homeAvailable =
                 _gamePlan.Home is not null;
 
-            var objectsAvailable =
-                homeAvailable &&
-                _gamePlan.Zones.Count > 0;
+            if (!homeAvailable)
+            {
+                AddObjectButton.IsEnabled = false;
+                PreviousZoneButton.IsEnabled = false;
+                NextZoneButton.IsEnabled = false;
+                DeleteObjectButton.IsEnabled = false;
+                EditObjectButton.IsEnabled = false;
+                ShowAllObjectsButton.IsEnabled = false;
 
-            AddObjectButton.IsEnabled =
-                homeAvailable;
+                CurrentObjectLabel.Text = "0 / 0";
+                return;
+            }
 
-            PreviousZoneButton.IsEnabled =
-                objectsAvailable;
+            if (_gameObjectMode == GameObjectMode.Zone)
+            {
+                var objectsAvailable =
+                    _gamePlan.Zones.Count > 0;
 
-            NextZoneButton.IsEnabled =
-                objectsAvailable;
+                AddObjectButton.IsEnabled = true;
+                PreviousZoneButton.IsEnabled = objectsAvailable;
+                NextZoneButton.IsEnabled = objectsAvailable;
+                DeleteObjectButton.IsEnabled = objectsAvailable;
+                EditObjectButton.IsEnabled = objectsAvailable;
+                ShowAllObjectsButton.IsEnabled = objectsAvailable;
 
-            DeleteObjectButton.IsEnabled =
-                objectsAvailable;
+                CurrentObjectLabel.Text =
+                    objectsAvailable
+                        ? $"{_currentZoneIndex + 1} / {_gamePlan.Zones.Count}"
+                        : "0 / 0";
 
-            EditObjectButton.IsEnabled =
-                objectsAvailable;
+                return;
+            }
 
-            ShowAllObjectsButton.IsEnabled =
-                objectsAvailable;
+            // Pickups mode.
+            if (_currentZoneIndex < 0 ||
+                _currentZoneIndex >= _gamePlan.Zones.Count)
+            {
+                AddObjectButton.IsEnabled = false;
+                PreviousZoneButton.IsEnabled = false;
+                NextZoneButton.IsEnabled = false;
+                DeleteObjectButton.IsEnabled = false;
+                EditObjectButton.IsEnabled = false;
+                ShowAllObjectsButton.IsEnabled = false;
+
+                CurrentObjectLabel.Text = "0 / 0";
+                return;
+            }
+
+            var pickups =
+                _gamePlan.Zones[_currentZoneIndex].Pickups;
+
+            var pickupsAvailable =
+                pickups.Count > 0;
+
+            AddObjectButton.IsEnabled = true;
+            PreviousZoneButton.IsEnabled = pickupsAvailable;
+            NextZoneButton.IsEnabled = pickupsAvailable;
+            DeleteObjectButton.IsEnabled = pickupsAvailable;
+            EditObjectButton.IsEnabled = pickupsAvailable;
+            ShowAllObjectsButton.IsEnabled = false;
+            
+            // "Show All" doesn't have a useful meaning for pickups yet.
+            ShowAllObjectsButton.IsEnabled = false;
 
             CurrentObjectLabel.Text =
-                objectsAvailable
-                    ? $"{_currentZoneIndex + 1} / {_gamePlan.Zones.Count}"
+                pickupsAvailable
+                    ? $"{_currentPickupIndex + 1} / {pickups.Count}"
                     : "0 / 0";
         }
 
         private void PreviousZone_Clicked(
-    object? sender,
-    EventArgs e)
+      object? sender,
+      EventArgs e)
         {
+
             if (_gamePlan.Zones.Count == 0)
                 return;
 
-            if (_currentZoneIndex > 0)
-                _currentZoneIndex--;
 
-            RenderZones();
+            if (_gameObjectMode == GameObjectMode.Pickups)
+            {
+                if (_currentZoneIndex < 0 ||
+                    _currentZoneIndex >= _gamePlan.Zones.Count)
+                {
+                    return;
+                }
 
-            UpdateZoneInfo();
+                var pickups =
+                    _gamePlan.Zones[_currentZoneIndex].Pickups;
+
+                if (pickups.Count == 0)
+                    return;
+
+                if (_currentPickupIndex < 0)
+                {
+                    _currentPickupIndex =
+                        pickups.Count - 1;
+                }
+                else if (_currentPickupIndex > 0)
+                {
+                    _currentPickupIndex--;
+                }
+
+                RenderPickups();
+                UpdatePickupInfo();
+                UpdateGameObjectControls();
+
+                return;
+            }
+            else 
+            {
+                if (_currentZoneIndex > 0)
+                    _currentZoneIndex--;
+
+                _currentPickupIndex = -1;
+
+                UpdateZoneInfo();
+                UpdateGameObjectControls();
+                RenderGameObjects();
+            }
+
         }
 
         private void NextZone_Clicked(
-    object? sender,
-    EventArgs e)
+           object? sender,
+           EventArgs e)
         {
             if (_gamePlan.Zones.Count == 0)
                 return;
 
-            if (_currentZoneIndex <
-                _gamePlan.Zones.Count - 1)
+            if (_gameObjectMode == GameObjectMode.Pickups)
             {
-                _currentZoneIndex++;
+                if (_currentZoneIndex < 0 ||
+                    _currentZoneIndex >= _gamePlan.Zones.Count)
+                {
+                    return;
+                }
+
+                var pickups =
+                    _gamePlan.Zones[_currentZoneIndex].Pickups;
+
+                if (pickups.Count == 0)
+                    return;
+
+                if (_currentPickupIndex < 0)
+                {
+                    _currentPickupIndex = 0;
+                }
+                else if (_currentPickupIndex <
+                         pickups.Count - 1)
+                {
+                    _currentPickupIndex++;
+                }
+
+                RenderPickups();
+                UpdatePickupInfo();
+                UpdateGameObjectControls();
+
+                return;
             }
+            else 
+            {
 
-            RenderZones();
+                if (_currentZoneIndex <
+                    _gamePlan.Zones.Count - 1)
+                {
+                    _currentZoneIndex++;
+                }
 
-            UpdateZoneInfo();
+                _currentPickupIndex = -1;
+
+                UpdateZoneInfo();
+                UpdateGameObjectControls();
+                RenderGameObjects();
+            }
         }
 
         private async void MoveZone_Clicked(
@@ -1131,7 +1340,7 @@ namespace CombatLR.mobile.Pages
             zone.NorthMetres =
                 local.NorthMetres;
 
-            RenderZones();
+            RenderGameObjects();
 
             UpdateZoneInfo();
         }
@@ -1145,7 +1354,63 @@ namespace CombatLR.mobile.Pages
 
             UpdateGameObjectControls();
 
-            RenderZones();
+            RenderGameObjects();
+        }
+
+        private void RenderPickups()
+        {
+            ClearPickupMarkers();
+
+            if (_gameObjectMode != GameObjectMode.Pickups)
+                return;
+
+            if (_mapDefinition is null ||
+                _coordinateService is null ||
+                _gamePlan.Home is null)
+            {
+                return;
+            }
+
+            if (_currentZoneIndex < 0 ||
+                _currentZoneIndex >= _gamePlan.Zones.Count)
+            {
+                return;
+            }
+
+            var zone =
+                _gamePlan.Zones[_currentZoneIndex];
+
+            for (var i = 0;
+                 i < zone.Pickups.Count;
+                 i++)
+            {
+                var pickup =
+                    zone.Pickups[i];
+
+                var gps =
+                    _gameObjectCoordinateService.LocalToGps(
+                        _gamePlan.Home,
+                        pickup.EastMetres,
+                        pickup.NorthMetres);
+
+                var imagePoint =
+                    _coordinateService.GpsToImage(
+                        gps.Latitude,
+                        gps.Longitude);
+
+                var marker =
+                    CreatePickupMarker(
+                        pickup,
+                        i);
+
+                PositionPickupMarker(
+                    marker,
+                    imagePoint.X,
+                    imagePoint.Y);
+
+                MapVisualLayer.Children.Add(marker);
+                _pickupMarkers.Add(marker);
+            }
         }
 
         private void RenderZones()
@@ -1198,6 +1463,20 @@ namespace CombatLR.mobile.Pages
                 MapVisualLayer.Children.Add(marker);
 
                 _zoneMarkers.Add(marker);
+            }
+        }
+
+        private void RenderGameObjects()
+        {
+            RenderZones();
+
+            if (_gameObjectMode == GameObjectMode.Pickups)
+            {
+                RenderPickups();
+            }
+            else
+            {
+                ClearPickupMarkers();
             }
         }
 
@@ -1373,6 +1652,37 @@ namespace CombatLR.mobile.Pages
             _zoneMarkers.Clear();
         }
 
+        private void UpdatePickupInfo()
+        {
+            if (_currentZoneIndex < 0 ||
+                _currentZoneIndex >= _gamePlan.Zones.Count)
+            {
+                return;
+            }
+
+            var pickups =
+                _gamePlan.Zones[_currentZoneIndex].Pickups;
+
+            if (_currentPickupIndex < 0 ||
+                _currentPickupIndex >= pickups.Count)
+            {
+                MapInfoLabel.Text =
+                    $"ZONE {_currentZoneIndex + 1}\n" +
+                    "No pickups";
+                return;
+            }
+
+            var pickup =
+                pickups[_currentPickupIndex];
+
+            MapInfoLabel.Text =
+                $"PICKUP {_currentPickupIndex + 1}\n" +
+                $"Type: {pickup.Type}\n" +
+                $"E: {pickup.EastMetres:F1} m\n" +
+                $"N: {pickup.NorthMetres:F1} m\n" +
+                $"Spawn: {pickup.SpawnTimeSeconds} s\n" +
+                $"Lifespan: {pickup.LifespanSeconds} s";
+        }
         private void UpdateZoneInfo()
         {
             if (_currentZoneIndex < 0 ||
@@ -1427,10 +1737,11 @@ namespace CombatLR.mobile.Pages
 
             _currentZoneIndex =
                 _gamePlan.Zones.Count - 1;
+            _currentPickupIndex = -1;
 
             UpdateGameObjectControls();
 
-            RenderZones();
+            RenderGameObjects();
 
             MapInfoLabel.Text =
                 $"ZONE {_currentZoneIndex + 1} ADDED\n" +
@@ -1465,9 +1776,10 @@ namespace CombatLR.mobile.Pages
 
             _currentZoneIndex =
                 _gamePlan.Zones.Count - 1;
+            _currentPickupIndex = -1;
 
             UpdateGameObjectControls();
-            RenderZones();
+            RenderGameObjects();
             UpdateZoneInfo();
         }
 
@@ -1494,21 +1806,24 @@ namespace CombatLR.mobile.Pages
             zone.NorthMetres =
                 local.NorthMetres;
 
-            RenderZones();
+            RenderGameObjects();
             UpdateZoneInfo();
         }
 
         private void AddObject_Clicked(
-    object? sender,
-    EventArgs e)
+     object? sender,
+     EventArgs e)
         {
-            if (GameObjectTypePicker.SelectedIndex != 0)
+            if (_gameObjectMode == GameObjectMode.Zone)
+            {
+                AddZone_Clicked(sender, e);
                 return;
+            }
 
-            AddZone_Clicked(sender, e);
+            AddPickup_Clicked(sender, e);
         }
 
-      
+
         private void ShowAllObjects_Clicked(
     object? sender,
     EventArgs e)
@@ -1525,11 +1840,138 @@ namespace CombatLR.mobile.Pages
         {
             Shell.Current.FlyoutIsPresented = true;
         }
+
+
         private async void DeleteObject_Clicked(
-        object? sender,
-        EventArgs e)
+            object? sender,
+            EventArgs e)
         {
-            if (GameObjectTypePicker.SelectedIndex != 0)
+            if (GameObjectTypePicker.SelectedIndex == 0)
+            {
+                // Delete Zone
+                if (_currentZoneIndex < 0 ||
+                    _currentZoneIndex >= _gamePlan.Zones.Count)
+                {
+                    return;
+                }
+
+                var zoneNumber =
+                    _currentZoneIndex + 1;
+
+                var confirmed =
+                    await DisplayAlert(
+                        "Delete Zone",
+                        $"Delete Zone {zoneNumber}?",
+                        "Delete",
+                        "Cancel");
+
+                if (!confirmed)
+                    return;
+
+                _gamePlan.Zones.RemoveAt(
+                    _currentZoneIndex);
+
+                if (_gamePlan.Zones.Count == 0)
+                {
+                    _currentZoneIndex = -1;
+                }
+                else if (_currentZoneIndex >=
+                         _gamePlan.Zones.Count)
+                {
+                    _currentZoneIndex =
+                        _gamePlan.Zones.Count - 1;
+                }
+
+                _currentPickupIndex = -1;
+
+                UpdateGameObjectControls();
+                RenderGameObjects();
+                UpdateZoneInfo();
+
+                return;
+            }
+
+            // Delete Pickup
+            if (_currentZoneIndex < 0 ||
+                _currentZoneIndex >= _gamePlan.Zones.Count)
+            {
+                return;
+            }
+
+            var zone =
+                _gamePlan.Zones[_currentZoneIndex];
+
+            if (_currentPickupIndex < 0 ||
+                _currentPickupIndex >= zone.Pickups.Count)
+            {
+                return;
+            }
+
+            var pickup =
+                zone.Pickups[_currentPickupIndex];
+
+            var confirmedPickup =
+                await DisplayAlert(
+                    "Delete Pickup",
+                    $"Delete Pickup {_currentPickupIndex + 1}?",
+                    "Delete",
+                    "Cancel");
+
+            if (!confirmedPickup)
+                return;
+
+            zone.Pickups.RemoveAt(
+                _currentPickupIndex);
+
+            if (zone.Pickups.Count == 0)
+            {
+                _currentPickupIndex = -1;
+            }
+            else if (_currentPickupIndex >=
+                     zone.Pickups.Count)
+            {
+                _currentPickupIndex =
+                    zone.Pickups.Count - 1;
+            }
+
+            UpdateGameObjectControls();
+            RenderPickups();
+            UpdatePickupInfo();
+        }
+
+        private void GameObjectTypePicker_SelectedIndexChanged(
+     object? sender,
+     EventArgs e)
+        {
+            _gameObjectMode =
+                GameObjectTypePicker.SelectedIndex == 1
+                    ? GameObjectMode.Pickups
+                    : GameObjectMode.Zone;
+
+            if(_gameObjectMode == GameObjectMode.Pickups)
+            {
+                _currentPickupIndex = -1;
+                if (_currentZoneIndex >= 0 &&
+                  _currentZoneIndex < _gamePlan.Zones.Count)
+                {
+                    if (_gamePlan.Zones[_currentZoneIndex].Pickups.Count != 0)
+                    {
+                        _currentPickupIndex = 0;
+                    }
+                }
+            }
+
+            
+
+            UpdateGameObjectControls();
+            RenderGameObjects();
+        }
+
+        private async void AddPickup_Clicked(
+            object? sender,
+            EventArgs e)
+        {
+            if (_gamePlan.Home is null)
                 return;
 
             if (_currentZoneIndex < 0 ||
@@ -1538,39 +1980,248 @@ namespace CombatLR.mobile.Pages
                 return;
             }
 
-            var zoneNumber =
-                _currentZoneIndex + 1;
+            var coordinate =
+                await AcquireCoordinateAsync(
+                    CoordinateOperation.AddPickup);
 
-            var confirmed =
-                await DisplayAlert(
-                    "Delete Zone",
-                    $"Delete Zone {zoneNumber}?",
-                    "Delete",
-                    "Cancel");
-
-            if (!confirmed)
+            if (coordinate is null)
                 return;
 
-            _gamePlan.Zones.RemoveAt(
-                _currentZoneIndex);
+            AddPickupAtPosition(coordinate.Value);
+        }
 
-            if (_gamePlan.Zones.Count == 0)
+        private void AddPickupAtPosition(
+    MapCoordinateService.GeoPoint position)
+        {
+            if (_gamePlan.Home is null)
+                return;
+
+            if (_currentZoneIndex < 0 ||
+                _currentZoneIndex >= _gamePlan.Zones.Count)
             {
-                _currentZoneIndex = -1;
+                return;
             }
-            else if (_currentZoneIndex >=
-                     _gamePlan.Zones.Count)
-            {
-                _currentZoneIndex =
-                    _gamePlan.Zones.Count - 1;
-            }
+
+            var local =
+                _gameObjectCoordinateService.GpsToLocal(
+                    _gamePlan.Home,
+                    position.Latitude,
+                    position.Longitude);
+
+            var zone =
+                _gamePlan.Zones[_currentZoneIndex];
+
+            var pickup =
+                new GamePickup
+                {
+                    Id = _gamePlan. AllocatePickupId(),
+                    EastMetres = local.EastMetres,
+                    NorthMetres = local.NorthMetres,
+                    Type = PickupType.Health,
+                    SpawnTimeSeconds = 0,
+                    LifespanSeconds = 0
+                };
+
+            zone.Pickups.Add(pickup);
+
+            _currentPickupIndex =
+                zone.Pickups.Count - 1;
+
+            _coordinateOperation =
+                CoordinateOperation.None;
 
             UpdateGameObjectControls();
-            RenderZones();
-            UpdateZoneInfo();
+            RenderPickups();
+            UpdatePickupInfo();
+        }
+
+        private void MovePickupToPosition(
+    MapCoordinateService.GeoPoint position)
+        {
+            if (_gamePlan.Home is null)
+                return;
+
+            if (_currentZoneIndex < 0 ||
+                _currentZoneIndex >= _gamePlan.Zones.Count)
+            {
+                return;
+            }
+
+            var zone =
+                _gamePlan.Zones[_currentZoneIndex];
+
+            if (_currentPickupIndex < 0 ||
+                _currentPickupIndex >= zone.Pickups.Count)
+            {
+                return;
+            }
+
+            var local =
+                _gameObjectCoordinateService.GpsToLocal(
+                    _gamePlan.Home,
+                    position.Latitude,
+                    position.Longitude);
+
+            var pickup =
+                zone.Pickups[_currentPickupIndex];
+
+            pickup.EastMetres =
+                local.EastMetres;
+
+            pickup.NorthMetres =
+                local.NorthMetres;
+
+            RenderPickups();
+            UpdatePickupInfo();
+        }
+
+        private static ImageSource GetPickupImageSource(
+        PickupType type)
+        {
+            return type switch
+            {
+                PickupType.Health =>
+                    ImageSource.FromFile(
+                        "pickup_health.png"),
+
+                PickupType.Reload =>
+                    ImageSource.FromFile(
+                        "pickup_reload.png"),
+
+                PickupType.WeaponBonus =>
+                    ImageSource.FromFile(
+                        "pickup_weapon_bonus.png"),
+
+                _ =>
+                    ImageSource.FromFile(
+                        "pickup_health.png")
+            };
+        }
+
+        private void PositionPickupMarker(
+    Grid marker,
+    double imageX,
+    double imageY)
+        {
+            if (_mapDefinition is null)
+                return;
+
+            
+            var imageWidth =
+                _mapDefinition.Image.Width;
+
+            var imageHeight =
+                _mapDefinition.Image.Height;
+
+            var areaWidth =
+                MapContainer.Width;
+
+            var areaHeight =
+                MapContainer.Height;
+
+            if (areaWidth <= 0 ||
+                areaHeight <= 0)
+            {
+                return;
+            }
+
+            var scale =
+                Math.Min(
+                    areaWidth / imageWidth,
+                    areaHeight / imageHeight);
+
+            var displayedWidth =
+                imageWidth * scale;
+
+            var displayedHeight =
+                imageHeight * scale;
+
+            var imageLeft =
+                (areaWidth - displayedWidth) / 2.0;
+
+            var imageTop =
+                (areaHeight - displayedHeight) / 2.0;
+
+            marker.TranslationX =
+                imageLeft +
+                imageX * scale -
+                marker.WidthRequest / 2.0;
+
+            marker.TranslationY =
+                imageTop +
+                imageY * scale -
+                marker.HeightRequest / 2.0;
+        }
+
+        private void ClearPickupMarkers()
+        {
+            foreach (var marker in _pickupMarkers)
+            {
+                MapVisualLayer.Children.Remove(marker);
+            }
+
+            _pickupMarkers.Clear();
+        }
+
+        private Grid CreatePickupMarker(
+         GamePickup pickup,
+         int pickupIndex)
+        {
+            var marker =
+                new Grid
+                {
+                    WidthRequest = 40,
+                    HeightRequest = 40,
+                    HorizontalOptions = LayoutOptions.Start,
+                    VerticalOptions = LayoutOptions.Start,
+                    InputTransparent = true
+                };
+
+            var image =
+                new Image
+                {
+                    Source = GetPickupImageSource(
+                        pickup.Type),
+                    WidthRequest = 32,
+                    HeightRequest = 32,
+                    Aspect = Aspect.AspectFit,
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Center,
+                    InputTransparent = true
+                };
+
+            if (_gameObjectMode == GameObjectMode.Pickups &&
+                pickupIndex == _currentPickupIndex)
+            {
+                var highlight =
+                    new Border
+                    {
+                        Stroke = Colors.Green,
+                        StrokeThickness = 3,
+                        BackgroundColor = Colors.Transparent,
+                        StrokeShape =
+                            new RoundRectangle
+                            {
+                                CornerRadius = 999
+                            },
+                        Padding = 2,
+                        InputTransparent = true
+                    };
+
+                highlight.Content = image;
+
+                marker.Children.Add(highlight);
+            }
+            else
+            {
+                marker.Children.Add(image);
+            }
+
+            return marker;
         }
 
 
-
     }
+
+
 }
