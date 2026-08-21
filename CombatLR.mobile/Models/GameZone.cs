@@ -15,4 +15,6 @@ public class GameZone
     // How long the previous zone remains active after
     // this zone starts.
     public int TransitionTime { get; set; }
+
+    public List<GamePickup> Pickups { get; set; } = new();
 }

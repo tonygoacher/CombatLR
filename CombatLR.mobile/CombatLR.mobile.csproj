@@ -32,7 +32,7 @@
 		<ApplicationTitle>CombatLR.mobile</ApplicationTitle>
 
 		<!-- App Identifier -->
-		<ApplicationId>com.companyname.combatlr.mobile</ApplicationId>
+		<ApplicationId>com.combatlr.mobile</ApplicationId>
 
 		<!-- Versions -->
 		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
@@ -78,9 +78,22 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <MauiXaml Update="Pages\PickupEditPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="Pages\ZoneEditPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Resources\Images\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Compile Update="Pages\PickupEditPage.xaml.cs">
+	    <DependentUpon>PickupEditPage.xaml</DependentUpon>
+	  </Compile>
 	</ItemGroup>
 	
 </Project>
