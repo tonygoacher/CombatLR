@@ -22,9 +22,9 @@ bool SpoofNavigation::Begin()
     return true;
 }
 
-void SpoofNavigation::Update()
+bool SpoofNavigation::Update()
 {
-    // Nothing to do. The test position is set explicitly.
+    return true;
 }
 
 NavigationData SpoofNavigation::GetData() const

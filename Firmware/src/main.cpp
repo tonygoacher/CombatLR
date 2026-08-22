@@ -115,7 +115,7 @@ void setup()
         Serial.println("Display init failed");
         fatal();
     }
-
+/*
 display->AddWidget(
     new TestWidget(
         WidgetCoordinateSpace::Map,
@@ -129,7 +129,7 @@ display->AddWidget(
         0,
         0,
         TFT_GREEN));
-
+*/
 //    display->SetMapZoom(2.0);
   //  display->Update();
 
@@ -137,29 +137,18 @@ display->AddWidget(
 }
 
 int rot = 0;
-float zoom = 2.0f;
+float zoom = 0.7f;
 float zoomDir = 0.0f;
 
 void loop()
 {
 
-     NavigationDisplayTestLoop();
+    NavigationDisplayTestLoop();
     display->SetRotation(rot);
 
     display->SetMapZoom(zoom);
 
     display->Update();   
     
-    zoom += zoomDir;
-    if(zoom >4.0f)
-    {
-        zoomDir = -zoomDir;
-    }
-    else
-    {
-        if(zoom < 1.5f)
-        {
-            zoomDir =- zoomDir;
-        }
-    }
+  
 }
