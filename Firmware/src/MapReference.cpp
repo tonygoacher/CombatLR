@@ -208,6 +208,7 @@ _pointBX =
 _pointBY =
     pointB["Y"].as<float>() -
     sourceCropY;
+    
 
     _gpsALatitude =
         gpsA["Latitude"].as<double>();
@@ -438,6 +439,12 @@ const double mapAngleDegrees =
         mapX) *
     180.0 / M_PI;
 
+
+    Serial.printf(
+    "AB map vector: X=%.3f Y=%.3f\n",
+    mapX,
+    mapY);
+
 const double gpsBearingDegrees =
     atan2(
         gameEast,
@@ -550,6 +557,20 @@ while (_mapUpHeading >= 360.0f)
         aNorth * _northToMapY;
 
     _configured = true;
+
+    Serial.printf(
+    "Map origin diagnostic:\n"
+    "  A game EN=(%.3f,%.3f)\n"
+    "  origin=(%.3f,%.3f)\n"
+    "  transform E=(%.6f,%.6f) N=(%.6f,%.6f)\n",
+    aEast,
+    aNorth,
+    _mapOriginX,
+    _mapOriginY,
+    _eastToMapX,
+    _eastToMapY,
+    _northToMapX,
+    _northToMapY);
 
     Serial.printf(
         "MapReference: Home map=(%.3f,%.3f)\n",
