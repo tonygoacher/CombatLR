@@ -93,6 +93,73 @@ bool GamePlan::Load(const char* filename)
 
     _valid = true;
 
+    JsonArray zones =
+    document["zones"].as<JsonArray>();
+
+if (zones.isNull())
+{
+    Serial.println(
+        "GamePlan: missing zones");
+
+    return false;
+}
+
+for (JsonObject zoneJson : zones)
+{
+    Zone zone;
+
+    zone.eastMetres =
+        zoneJson["eastMetres"].as<double>();
+
+    zone.northMetres =
+        zoneJson["northMetres"].as<double>();
+
+    zone.radiusMetres =
+        zoneJson["radiusMetres"].as<double>();
+
+    zone.startTime =
+        zoneJson["startTime"].as<uint32_t>();
+
+    zone.transitionTime =
+        zoneJson["transitionTime"].as<uint32_t>();
+
+    JsonArray pickups =
+        zoneJson["pickups"].as<JsonArray>();
+
+    if (!pickups.isNull())
+    {
+        for (JsonObject pickupJson : pickups)
+        {
+            Pickup pickup;
+
+            pickup.eastMetres =
+                pickupJson["eastMetres"].as<double>();
+
+            pickup.northMetres =
+                pickupJson["northMetres"].as<double>();
+
+            pickup.type =
+                pickupJson["type"].as<int>();
+
+            pickup.spawnTimeSeconds =
+                pickupJson["spawnTimeSeconds"].as<uint32_t>();
+
+            pickup.lifespanSeconds =
+                pickupJson["lifespanSeconds"].as<uint32_t>();
+
+            pickup.id =
+                pickupJson["id"].as<int>();
+
+            zone.pickups.emplace(
+                pickup.id,
+                pickup);
+        }
+    }
+
+    _zones.push_back(
+        std::move(zone));
+}
+
     Serial.printf(
         "GamePlan: loaded version %d\n",
         _version);
@@ -123,4 +190,10 @@ double GamePlan::GetHomeLatitude() const
 double GamePlan::GetHomeLongitude() const
 {
     return _homeLongitude;
+}
+
+
+const std::vector<Zone>& GamePlan::GetZones() const
+{
+    return _zones;
 }
