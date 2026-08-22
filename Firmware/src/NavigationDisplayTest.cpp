@@ -7,6 +7,8 @@
 #include "NavigationNMEA.h"
 #include "GamePlan.h"
 #include "MapReference.h"
+#include "MillisGameTime.h"
+#include "GameController.h"
 
 /*
  * Production navigation/display API.
@@ -28,6 +30,8 @@ namespace
     NavigationNMEA  navigation(9,46);
     GeoReference geoReference;
     MapReference mapReference;
+    MillisGameTime gameTime;
+    
 
     constexpr double HOME_LATITUDE  = 53.593000;
     constexpr double HOME_LONGITUDE = -2.123000;
@@ -57,7 +61,7 @@ namespace
     constexpr float HEADING_STEP_DEGREES = 0.0f;// 15.0f;
 
     GamePlan gamePlan;
-}
+};
 
   NavigationData data;
   void UpdateNavigationDisplay()
@@ -191,6 +195,8 @@ void NavigationDisplayTestBegin()
             homeY);
     }
 
+    GameController::Instance().Initialise(gamePlan, gameTime);
+
 
     navigation.Begin();
 
@@ -198,6 +204,19 @@ void NavigationDisplayTestBegin()
     UpdateNavigationDisplay();
 
     lastMove = millis();
+
+    Serial.print("There are "); Serial.print(gamePlan.GetZones().size()); Serial.println(" zones.");
+    for(int i = 0 ; i < gamePlan.GetZones().size(); i++)
+    {
+        Serial.print("Zone "); Serial.println(i);
+        std::map< int, Pickup>::const_iterator pickupIter = gamePlan.GetZones()[i].pickups.cbegin();
+        while(pickupIter != gamePlan.GetZones()[i].pickups.cend())
+        {
+            Serial.print("Pickup ID   :"); Serial.println(pickupIter->second.id);
+            Serial.print("Pickup Type :"); Serial.println(pickupIter->second.type);
+            pickupIter++;
+        }            
+    }
 }
 
 void NavigationDisplayTestLoop()
