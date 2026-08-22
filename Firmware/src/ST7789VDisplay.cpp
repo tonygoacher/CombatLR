@@ -1,5 +1,6 @@
 #include "ST7789VDisplay.h"
 #include "MapCoordinate.h"
+#include "MapReference.h"
 
 #include <math.h>
 #include <string.h>
@@ -38,7 +39,7 @@ static constexpr int16_t CANVAS_CY =
 
 namespace
 {
-    MapCoordinate gNavigationMap;
+    MapReference gNavigationMap;
     GameCoordinate gNavigationPlayer{};
     float gNavigationHeading = 0.0f;
     bool gNavigationMapConfigured = false;
@@ -91,17 +92,20 @@ namespace
 }
 
 void ConfigureNavigationMap(
-    float mapHomeX,
-    float mapHomeY,
-    float pixelsPerMetre)
+    const char* mapFilename,
+    double homeLatitude,
+    double homeLongitude)
 {
-    gNavigationMap.Configure(
-        mapHomeX,
-        mapHomeY,
-        pixelsPerMetre);
+    if (!gNavigationMap.Load(mapFilename))
+    {
+        gNavigationMapConfigured = false;
+        return;
+    }
 
     gNavigationMapConfigured =
-        gNavigationMap.IsConfigured();
+        gNavigationMap.Configure(
+            homeLatitude,
+            homeLongitude);
 }
 
 void SetNavigationPlayerPosition(
@@ -680,13 +684,13 @@ void ST7789VDisplay::RenderMap()
 
     _mapSprite.fillSprite(TFT_BLACK);
 
-    const float scaleX =
-        static_cast<float>(SCREEN_WIDTH) /
-        static_cast<float>(_mapWidth);
+  const float scaleX =
+    static_cast<float>(CANVAS_WIDTH) /
+    static_cast<float>(_mapWidth);
 
-    const float scaleY =
-        static_cast<float>(SCREEN_HEIGHT) /
-        static_cast<float>(_mapHeight);
+const float scaleY =
+    static_cast<float>(CANVAS_HEIGHT) /
+    static_cast<float>(_mapHeight);
 
     const float fitScale =
         (scaleX < scaleY) ? scaleX : scaleY;
@@ -698,11 +702,11 @@ void ST7789VDisplay::RenderMap()
         return;
 
     const float visibleSourceWidth =
-        static_cast<float>(CANVAS_WIDTH) /
+        static_cast<float>(SCREEN_WIDTH) /
         effectiveScale;
 
     const float visibleSourceHeight =
-        static_cast<float>(CANVAS_HEIGHT) /
+        static_cast<float>(SCREEN_HEIGHT) /
         effectiveScale;
 
     float playerMapX =
@@ -712,13 +716,41 @@ void ST7789VDisplay::RenderMap()
         static_cast<float>(_mapHeight) * 0.5f;
 
     if (gNavigationMapConfigured &&
-        gNavigationPlayerVisible)
+    gNavigationPlayerVisible)
+{
+    Serial.printf(
+        "Map conversion input: east=%.2f north=%.2f\n",
+        gNavigationPlayer.east,
+        gNavigationPlayer.north);
+
+    if (!gNavigationMap.GameToMapPixel(
+                gNavigationPlayer,
+                playerMapX,
+                playerMapY))
     {
-        gNavigationMap.ToMapPixel(
-            gNavigationPlayer,
+        Serial.println("GameToMapPixel FAILED");
+
+        playerMapX =
+            static_cast<float>(_mapWidth) * 0.5f;
+
+        playerMapY =
+            static_cast<float>(_mapHeight) * 0.5f;
+    }
+    else
+    {
+        Serial.printf(
+            "GameToMapPixel result: x=%.2f y=%.2f\n",
             playerMapX,
             playerMapY);
     }
+}
+else
+{
+    Serial.printf(
+        "Map/player not configured: map=%d player=%d\n",
+        gNavigationMapConfigured,
+        gNavigationPlayerVisible);
+}
 
     float cameraMapX = playerMapX;
     float cameraMapY = playerMapY;
@@ -743,8 +775,7 @@ void ST7789VDisplay::RenderMap()
     }
     else
     {
-        cameraMapX =
-            static_cast<float>(_mapWidth) * 0.5f;
+        cameraMapX = playerMapX;
     }
 
     if (visibleSourceHeight <= static_cast<float>(_mapHeight))
@@ -763,9 +794,9 @@ void ST7789VDisplay::RenderMap()
     }
     else
     {
-        cameraMapY =
-            static_cast<float>(_mapHeight) * 0.5f;
+        cameraMapY = playerMapY;
     }
+    
 
     const float canvasCentreX =
         (static_cast<float>(CANVAS_WIDTH) - 1.0f) * 0.5f;
@@ -819,9 +850,21 @@ void ST7789VDisplay::RenderMap()
     }
 
     const float mapRotation =
-        gNavigationPlayerVisible
-            ? -gNavigationHeading
-            : 0.0f;
+    gNavigationPlayerVisible
+        ? gNavigationMap.GetMapUpHeading() -
+          gNavigationHeading
+        : 0.0f;
+
+        Serial.printf(
+    "Map camera: player=(%.2f,%.2f) camera=(%.2f,%.2f) "
+    "rotation=%.2f scale=%.3f\n",
+    playerMapX,
+    playerMapY,
+    cameraMapX,
+    cameraMapY,
+    mapRotation,
+    effectiveScale);
+
 
     _screenSprite.fillSprite(TFT_BLACK);
 
@@ -842,6 +885,7 @@ void ST7789VDisplay::RenderMap()
      */
     if (gNavigationPlayerVisible)
     {
+        Serial.println("Player visible");
         float playerCanvasX =
             canvasCentreX +
             (playerMapX - cameraMapX) *
@@ -883,11 +927,32 @@ void ST7789VDisplay::RenderMap()
                 lroundf(
                     canvasCentreY + rotatedY));
 
+        Serial.printf(
+            "Player canvas: %d,%d canvas centre: %.1f,%.1f\n",
+            playerScreenX,
+            playerScreenY,
+            canvasCentreX,
+            canvasCentreY);
+
         RenderNavigationPlayer(
             _screenSprite,
             playerScreenX,
             playerScreenY);
-    }
+
+            _screenSprite.drawCircle(
+    playerScreenX,
+    playerScreenY,
+    14,
+    TFT_YELLOW);
+
+_screenSprite.drawCircle(
+    playerScreenX,
+    playerScreenY,
+    15,
+    TFT_YELLOW);
+        }
+    else
+        Serial.println("Player not visible");
 }
 
 void ST7789VDisplay::TestSprites()

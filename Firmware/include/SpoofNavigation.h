@@ -13,7 +13,7 @@ public:
     SpoofNavigation();
 
     bool Begin() override;
-    void Update() override;
+    bool Update() override;
 
     NavigationData GetData() const override;
 

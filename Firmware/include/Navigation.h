@@ -39,7 +39,7 @@ public:
     virtual ~INavigation() = default;
 
     virtual bool Begin() = 0;
-    virtual void Update() = 0;
+    virtual bool Update() = 0;
 
     virtual NavigationData GetData() const = 0;
 
