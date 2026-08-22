@@ -58,14 +58,23 @@ namespace
 
     GamePlan gamePlan;
 }
+
+  NavigationData data;
   void UpdateNavigationDisplay()
 {
     Serial.println("UpdateNavigationDisplay");
 
-    /*
-     * GPS/NMEA reception is deliberately not used for this test.
-     * We are testing the known GPS position of placemarker C.
-     */
+  
+    if(navigation.Update())
+    {
+    
+        data = navigation.GetData();
+    }
+
+    if(!data.positionValid)
+    {
+        return;
+    }
 
     constexpr double TEST_LATITUDE =
         53.5506262;
@@ -73,14 +82,17 @@ namespace
     constexpr double TEST_LONGITUDE =
         -1.9986439;
 
+
+
     /*
      * Convert the known C GPS position into the local
      * GameCoordinate system.
      */
     const GameCoordinate position =
         geoReference.ToGameCoordinate(
-            TEST_LATITUDE,
-            TEST_LONGITUDE);
+            data.latitude,
+            data.longitude);
+            
 
     Serial.printf(
         "TEST C: GPS=(%.7f, %.7f)\n",

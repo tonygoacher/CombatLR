@@ -137,7 +137,7 @@ display->AddWidget(
 }
 
 int rot = 0;
-float zoom = 0.7f;
+float zoom =4.0f;
 float zoomDir = 0.0f;
 
 void loop()
