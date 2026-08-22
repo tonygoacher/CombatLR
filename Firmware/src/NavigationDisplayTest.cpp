@@ -131,7 +131,7 @@ namespace
      */
     SetNavigationPlayerPosition(
         position,
-        TEST_MAP_UP_HEADING);
+        data.heading);
 }
 
 void NavigationDisplayTestBegin()
