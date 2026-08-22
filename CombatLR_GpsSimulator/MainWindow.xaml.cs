@@ -28,6 +28,10 @@ public partial class MainWindow : Window
     private double _speedMps;
     private double _bearingDeg;
 
+    private double _displayBearingDeg;
+
+    private bool _hasDisplayBearing;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -162,12 +166,37 @@ public partial class MainWindow : Window
             var metres = _map.PixelDistanceMetres(_lastMotionPixel, p);
             _speedMps = metres / dt;
             if (metres > 0.001)
-                _bearingDeg = _map.BearingDegrees(_lastMotionPixel, p);
+            {
+                _bearingDeg =
+                    _map.BearingDegrees(_lastMotionPixel, p);
+
+                if (!_hasDisplayBearing)
+                {
+                    _displayBearingDeg = _bearingDeg;
+                    _hasDisplayBearing = true;
+                }
+                else
+                {
+                    const double smoothing = 0.10;
+
+                    double delta =
+                        ((_bearingDeg - _displayBearingDeg + 540.0) % 360.0) -
+                        180.0;
+
+                    _displayBearingDeg +=
+                        delta * smoothing;
+
+                    _displayBearingDeg =
+                        (_displayBearingDeg + 360.0) % 360.0;
+                }
+            }
         }
 
         _lastMotionPixel = p;
         _lastPositionTime = now;
         _gpsPixel = p;
+
+
         UpdateMarker();
     }
 
@@ -180,13 +209,18 @@ public partial class MainWindow : Window
         Canvas.SetTop(GpsMarker, _gpsPixel.Y - 11);
         Canvas.SetLeft(HeadingLine, _gpsPixel.X - 11);
         Canvas.SetTop(HeadingLine, _gpsPixel.Y - 11);
-        HeadingLine.RenderTransform = new RotateTransform(_bearingDeg, 11, 11);
+
+        HeadingLine.RenderTransform =
+            new RotateTransform(
+                _displayBearingDeg - _map.MapUpHeading,
+                11,
+                11);
 
         PositionText.Text =
             $"Pixel: {_gpsPixel.X:F1}, {_gpsPixel.Y:F1}    " +
             $"GPS: {gps.Latitude:F7}, {gps.Longitude:F7}";
         MotionText.Text =
-            $"Speed: {_speedMps * 3.6:F1} km/h    Bearing: {_bearingDeg:F0}°";
+            $"Speed: {_speedMps * 3.6:F1} km/h    Bearing: {_displayBearingDeg:F0}°";
     }
 
     private void Connect_Click(object sender, RoutedEventArgs e)
@@ -253,7 +287,7 @@ public partial class MainWindow : Window
         var rmc = BuildNmea(
             $"GPRMC,{time},A,{ToNmeaLat(gps.Latitude)},{LatHem(gps.Latitude)}," +
             $"{ToNmeaLon(gps.Longitude)},{LonHem(gps.Longitude)}," +
-            $"{_speedMps * 1.94384449:F1},{_bearingDeg:F1},{date},,,A");
+            $"{_speedMps * 1.94384449:F1},{_displayBearingDeg:F1},{date},,,A");
 
         var gga = BuildNmea(
             $"GPGGA,{time},{ToNmeaLat(gps.Latitude)},{LatHem(gps.Latitude)}," +
@@ -341,6 +375,8 @@ public sealed class MapDefinition
     public GpsPoint ReferenceGpsB { get; }
     public GpsPoint Centre { get; }
     public double PixelsPerMetre { get; }
+
+    public double MapUpHeading { get; }
     private MapDefinition(
         string bmp,
         string json,
@@ -348,6 +384,7 @@ public sealed class MapDefinition
         int height,
         double rotation,
         double mpp,
+        double mapUpHeading,
         double sourceCropX,
         double sourceCropY,
         GpsPoint tl,
@@ -365,6 +402,7 @@ public sealed class MapDefinition
         Height = height;
         RotationDegrees = rotation;
         MetresPerPixel = mpp;
+        MapUpHeading = mapUpHeading;
 
         TopLeft = tl;
         TopRight = tr;
@@ -392,6 +430,49 @@ public sealed class MapDefinition
         var pointB = reference.GetProperty("PointB");
         var gpsB = reference.GetProperty("GpsB");
 
+        double dx =
+    pointB.GetProperty("X").GetDouble() -
+    pointA.GetProperty("X").GetDouble();
+
+        double dy =
+            pointB.GetProperty("Y").GetDouble() -
+            pointA.GetProperty("Y").GetDouble();
+
+        double meanLatitude =
+            (gpsA.GetProperty("Latitude").GetDouble() +
+             gpsB.GetProperty("Latitude").GetDouble()) *
+            0.5 *
+            Math.PI / 180.0;
+
+        double east =
+            (gpsB.GetProperty("Longitude").GetDouble() -
+             gpsA.GetProperty("Longitude").GetDouble()) *
+            Math.PI / 180.0 *
+            Math.Cos(meanLatitude);
+
+        double north =
+            (gpsB.GetProperty("Latitude").GetDouble() -
+             gpsA.GetProperty("Latitude").GetDouble()) *
+            Math.PI / 180.0;
+
+        double gpsBearing =
+            Math.Atan2(east, north) *
+            180.0 /
+            Math.PI;
+
+        double mapAngle =
+            Math.Atan2(dy, dx) *
+            180.0 /
+            Math.PI;
+
+        double mapUpHeading =
+            gpsBearing -
+            mapAngle -
+            90.0;
+
+        mapUpHeading =
+            (mapUpHeading + 360.0) % 360.0;
+
 
         static GpsPoint P(JsonElement e) =>
             new(e.GetProperty("Latitude").GetDouble(), e.GetProperty("Longitude").GetDouble());
@@ -402,6 +483,7 @@ public sealed class MapDefinition
             img.GetProperty("Height").GetInt32(),
             r.GetProperty("RotationDegrees").GetDouble(),
             r.GetProperty("MetresPerPixel").GetDouble(),
+            mapUpHeading,
             crop.GetProperty("X").GetDouble(),
             crop.GetProperty("Y").GetDouble(),
             P(pf.GetProperty("TopLeft")),
@@ -797,19 +879,36 @@ public sealed class MapDefinition
         double dx = b.X - a.X, dy = b.Y - a.Y;
         return Math.Sqrt(dx * dx + dy * dy) * MetresPerPixel;
     }
-
     public double BearingDegrees(Point a, Point b)
     {
-        // Image Y increases downwards. Convert image displacement to a map
-        // north/east displacement using the map rotation.
         double dx = b.X - a.X;
         double dy = b.Y - a.Y;
 
-        double theta = RotationDegrees * Math.PI / 180.0;
-        double east = dx * Math.Cos(theta) - dy * Math.Sin(theta);
-        double north = -(dx * Math.Sin(theta) + dy * Math.Cos(theta));
+        if (Math.Abs(dx) < 0.000001 &&
+            Math.Abs(dy) < 0.000001)
+        {
+            return 0.0;
+        }
 
-        double bearing = Math.Atan2(east, north) * 180.0 / Math.PI;
+        /*
+         * Bitmap coordinates:
+         *
+         *   right =   0°
+         *   down  =  90°
+         *   left  = 180°
+         *   up    = 270°
+         *
+         * MapUpHeading is the compass bearing of bitmap-up.
+         */
+        double pixelAngle =
+            Math.Atan2(dy, dx) *
+            180.0 /
+            Math.PI;
+
+        double bearing =
+            MapUpHeading +
+            (pixelAngle - 270.0);
+
         return (bearing + 360.0) % 360.0;
     }
 }
