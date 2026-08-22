@@ -701,11 +701,20 @@ const float scaleY =
     if (effectiveScale <= 0.0f)
         return;
 
-    const float visibleSourceWidth =
+     /*
+     * The map is rendered into a 480x480 canvas so that there is
+     * sufficient image around the physical viewport for rotation.
+     *
+     * Camera following, however, is based on the actual 320x240
+     * display viewport.  This means the player remains centred until
+     * the map edge reaches the display edge, at every zoom level.
+     */
+
+    const float viewportSourceWidth =
         static_cast<float>(SCREEN_WIDTH) /
         effectiveScale;
 
-    const float visibleSourceHeight =
+    const float viewportSourceHeight =
         static_cast<float>(SCREEN_HEIGHT) /
         effectiveScale;
 
@@ -716,87 +725,93 @@ const float scaleY =
         static_cast<float>(_mapHeight) * 0.5f;
 
     if (gNavigationMapConfigured &&
-    gNavigationPlayerVisible)
-{
-    Serial.printf(
-        "Map conversion input: east=%.2f north=%.2f\n",
-        gNavigationPlayer.east,
-        gNavigationPlayer.north);
-
-    if (!gNavigationMap.GameToMapPixel(
+        gNavigationPlayerVisible)
+    {
+        if (!gNavigationMap.GameToMapPixel(
                 gNavigationPlayer,
                 playerMapX,
                 playerMapY))
-    {
-        Serial.println("GameToMapPixel FAILED");
+        {
+            playerMapX =
+                static_cast<float>(_mapWidth) * 0.5f;
 
-        playerMapX =
-            static_cast<float>(_mapWidth) * 0.5f;
-
-        playerMapY =
-            static_cast<float>(_mapHeight) * 0.5f;
+            playerMapY =
+                static_cast<float>(_mapHeight) * 0.5f;
+        }
     }
-    else
-    {
-        Serial.printf(
-            "GameToMapPixel result: x=%.2f y=%.2f\n",
-            playerMapX,
-            playerMapY);
-    }
-}
-else
-{
-    Serial.printf(
-        "Map/player not configured: map=%d player=%d\n",
-        gNavigationMapConfigured,
-        gNavigationPlayerVisible);
-}
 
+    /*
+     * Start by following the player.
+     */
     float cameraMapX = playerMapX;
     float cameraMapY = playerMapY;
 
-    /*
-     * Clamp the camera centre so that the unrotated logical camera canvas
-     * stays inside the source map.
+    Serial.printf(
+    "Camera pre-clamp: player=(%.2f,%.2f) camera=(%.2f,%.2f)\n",
+    playerMapX,
+    playerMapY,
+    cameraMapX,
+    cameraMapY);
+
+  
+        /*
+     * Clamp the camera using the actual display viewport.
+     *
+     * The camera follows the player until the map edge reaches
+     * the corresponding screen edge.  After that the camera stops
+     * and the player moves towards the screen edge.
+     *
+     * If the viewport is larger than the map, there is no valid
+     * camera position that keeps the whole viewport inside the map.
+     * In that case the camera is allowed to follow the player;
+     * pixels outside the map are already rendered as TFT_BLACK.
      */
-    if (visibleSourceWidth <= static_cast<float>(_mapWidth))
+
+    if (viewportSourceWidth < static_cast<float>(_mapWidth))
     {
         const float halfWidth =
-            visibleSourceWidth * 0.5f;
+            viewportSourceWidth * 0.5f;
 
-        const float minCameraX = halfWidth;
+        const float minCameraX =
+            halfWidth;
+
         const float maxCameraX =
             static_cast<float>(_mapWidth) - halfWidth;
 
-        cameraMapX = constrain(
-            cameraMapX,
-            minCameraX,
-            maxCameraX);
-    }
-    else
-    {
-        cameraMapX = playerMapX;
+        cameraMapX =
+            constrain(
+                cameraMapX,
+                minCameraX,
+                maxCameraX);
     }
 
-    if (visibleSourceHeight <= static_cast<float>(_mapHeight))
+    if (viewportSourceHeight < static_cast<float>(_mapHeight))
     {
         const float halfHeight =
-            visibleSourceHeight * 0.5f;
+            viewportSourceHeight * 0.5f;
 
-        const float minCameraY = halfHeight;
+        const float minCameraY =
+            halfHeight;
+
         const float maxCameraY =
             static_cast<float>(_mapHeight) - halfHeight;
 
-        cameraMapY = constrain(
-            cameraMapY,
-            minCameraY,
-            maxCameraY);
-    }
-    else
-    {
-        cameraMapY = playerMapY;
+        cameraMapY =
+            constrain(
+                cameraMapY,
+                minCameraY,
+                maxCameraY);
     }
     
+    Serial.printf(
+    "Camera post-clamp: player=(%.2f,%.2f) camera=(%.2f,%.2f) "
+    "viewportSource=(%.2f,%.2f)\n",
+    playerMapX,
+    playerMapY,
+    cameraMapX,
+    cameraMapY,
+    viewportSourceWidth,
+    viewportSourceHeight);
 
     const float canvasCentreX =
         (static_cast<float>(CANVAS_WIDTH) - 1.0f) * 0.5f;
@@ -893,7 +908,7 @@ else
 
         float playerCanvasY =
             canvasCentreY +
-            (cameraMapY - playerMapY) *
+            (playerMapY - cameraMapY) *
                 effectiveScale;
 
         const float angle =

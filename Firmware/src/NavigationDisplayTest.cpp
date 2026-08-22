@@ -57,67 +57,43 @@ namespace
     constexpr float HEADING_STEP_DEGREES = 0.0f;// 15.0f;
 
     GamePlan gamePlan;
-
-   void UpdateNavigationDisplay()
+}
+  void UpdateNavigationDisplay()
 {
     Serial.println("UpdateNavigationDisplay");
 
     /*
-     * Continue receiving NMEA so we know the receiver is working,
-     * but use the test position for the display.
+     * GPS/NMEA reception is deliberately not used for this test.
+     * We are testing the known GPS position of placemarker C.
      */
- //   if (!navigation.Update())
-    {
-   //     Serial.println("No update available");
-     //   return;
-    }
 
-    const NavigationData data =
-        navigation.GetData();
+    constexpr double TEST_LATITUDE =
+        53.5506262;
+
+    constexpr double TEST_LONGITUDE =
+        -1.9986439;
 
     /*
-     * Simulator position is authoritative for this display test.
+     * Convert the known C GPS position into the local
+     * GameCoordinate system.
      */
+    const GameCoordinate position =
+        geoReference.ToGameCoordinate(
+            TEST_LATITUDE,
+            TEST_LONGITUDE);
 
-    /*
-     * GPS position is authoritative for the display.
-     *
-     * The GPS position is converted into the same local
-     * GameCoordinate system used by MapReference.
-     */
-  constexpr double TEST_LATITUDE  = 53.5512359;
-constexpr double TEST_LONGITUDE = -1.9986676;
-
-GameCoordinate position =
-    geoReference.ToGameCoordinate(
+    Serial.printf(
+        "TEST C: GPS=(%.7f, %.7f)\n",
         TEST_LATITUDE,
         TEST_LONGITUDE);
 
-    SetNavigationPlayerPosition(
-        position,
-        TEST_MAP_UP_HEADING);
-
-    /*
-     * The simulator position is printed separately.
-     * This is the position we expect the GPS to represent.
-     */
     Serial.printf(
-        "Simulator Player: east=%+.1fm north=%+.1fm heading=%+.1f\n",
-        testEast,
-        testNorth,
-        TEST_MAP_UP_HEADING);
-
-    /*
-     * This is the actual position received from the GPS/NMEA data.
-     */
-    Serial.printf(
-        "GPS Player: east=%+.1fm north=%+.1fm heading=%+.1f\n",
+        "TEST C: GameCoordinate east=%+.3fm north=%+.3fm\n",
         position.east,
-        position.north,
-        data.heading);
+        position.north);
 
     /*
-     * Show where the actual GPS position maps onto the source map.
+     * Convert the same position into the BMP coordinate system.
      */
     float mapX;
     float mapY;
@@ -128,34 +104,22 @@ GameCoordinate position =
             mapY))
     {
         Serial.printf(
-            "GPS Map: x=%.2f y=%.2f px\n",
+            "TEST C: Map=(%.2f, %.2f) px\n",
             mapX,
             mapY);
     }
+    else
+    {
+        Serial.println(
+            "TEST C: GameToMapPixel FAILED");
+    }
 
     /*
- * C is the known reference point on the BMP.
- * Its GPS position is the same as TEST_LATITUDE/TEST_LONGITUDE.
- */
-GameCoordinate cPosition =
-    geoReference.ToGameCoordinate(
-        TEST_LATITUDE,
-        TEST_LONGITUDE);
-
-float cMapX;
-float cMapY;
-
-if (mapReference.GameToMapPixel(
-        cPosition,
-        cMapX,
-        cMapY))
-{
-    Serial.printf(
-        "C Map: x=%.2f y=%.2f px\n",
-        cMapX,
-        cMapY);
-}
-}
+     * Make this known position the player position.
+     */
+    SetNavigationPlayerPosition(
+        position,
+        TEST_MAP_UP_HEADING);
 }
 
 void NavigationDisplayTestBegin()
@@ -196,24 +160,24 @@ void NavigationDisplayTestBegin()
     gamePlan.GetHomeLatitude(),
     gamePlan.GetHomeLongitude());
 
-mapReference.Configure(
-    gamePlan.GetHomeLatitude(),
-    gamePlan.GetHomeLongitude());
+    mapReference.Configure(
+        gamePlan.GetHomeLatitude(),
+        gamePlan.GetHomeLongitude());
 
     GameCoordinate home;
-home.east = 0.0f;
-home.north = 0.0f;
+    home.east = 0.0f;
+    home.north = 0.0f;
 
-float homeX;
-float homeY;
+    float homeX;
+    float homeY;
 
-if (mapReference.GameToMapPixel(home, homeX, homeY))
-{
-    Serial.printf(
-        "Map Home: x=%.2f y=%.2f px\n",
-        homeX,
-        homeY);
-}
+    if (mapReference.GameToMapPixel(home, homeX, homeY))
+    {
+        Serial.printf(
+            "Map Home: x=%.2f y=%.2f px\n",
+            homeX,
+            homeY);
+    }
 
 
     navigation.Begin();
@@ -236,3 +200,4 @@ void NavigationDisplayTestLoop()
 
     UpdateNavigationDisplay();
 }
+
