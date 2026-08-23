@@ -24,16 +24,10 @@ public partial class ZoneEditPage : ContentPage
             zone.RadiusMetres.ToString("0.0");
         StartTimeEntry.Text = zone.StartTime.ToString();
 
-        TransitionTimeEntry.Text =
-          zone.TransitionTime.ToString(); ;
+        LifespanEntry.Text =
+          zone.LifespanSeconds.ToString(); ;
 
 
-        // Zone 1 has no previous zone,
-        // so transition time has no meaning.
-        if (zoneNumber == 1)
-        {
-            TransitionTimeEntry.IsEnabled = false;
-        }
     }
 
 
@@ -89,22 +83,22 @@ private static bool TryParseSeconds(
         _zone.StartTime =
             startTime;
 
-        if (TransitionTimeEntry.IsEnabled)
+        if (LifespanEntry.IsEnabled)
         {
             if (!TryParseSeconds(
-                    TransitionTimeEntry.Text,
-                    out var transitionTime))
+                    LifespanEntry.Text,
+                    out var lifespanTime))
             {
                 await DisplayAlert(
-                    "Invalid Transition Time",
+                    "Invalid Lifespan Time",
                     "Enter time in seconds",
                     "OK");
 
                 return;
             }
 
-            _zone.TransitionTime =
-                transitionTime;
+            _zone.LifespanSeconds =
+                lifespanTime;
         }
 
         _completionSource.TrySetResult(true);

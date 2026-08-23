@@ -120,8 +120,8 @@ for (JsonObject zoneJson : zones)
     zone.startTime =
         zoneJson["startTime"].as<uint32_t>();
 
-    zone.transitionTime =
-        zoneJson["transitionTime"].as<uint32_t>();
+    zone.lifespanSeconds =
+        zoneJson["lifespanSeconds"].as<uint32_t>();
 
     JsonArray pickups =
         zoneJson["pickups"].as<JsonArray>();

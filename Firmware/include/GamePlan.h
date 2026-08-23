@@ -26,7 +26,7 @@ struct Zone
     double radiusMetres;
 
     uint32_t startTime;
-    uint32_t transitionTime;
+    uint32_t lifespanSeconds;
 
     std::map<int, Pickup> pickups;
 };

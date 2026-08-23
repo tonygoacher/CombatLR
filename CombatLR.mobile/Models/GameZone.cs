@@ -12,9 +12,8 @@ public class GameZone
     // Time from the start of the game when this zone becomes active.
     public int StartTime { get; set; }
 
-    // How long the previous zone remains active after
-    // this zone starts.
-    public int TransitionTime { get; set; }
+    // The lifespan of this zone. Only 2 zones can be active
+    public int LifespanSeconds { get; set; }
 
     public List<GamePickup> Pickups { get; set; } = new();
 }

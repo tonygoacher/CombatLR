@@ -1700,7 +1700,7 @@ namespace CombatLR.mobile.Pages
                 $"N: {zone.NorthMetres:F1} m\n" +
                 $"Radius: {zone.RadiusMetres:F1} m\n" +
                 $"Start: {zone.StartTime}\n" +
-                $"Transition: {zone.TransitionTime}";
+                $"Lifespan: {zone.LifespanSeconds}";
         }
 
         private async void AddZone_Clicked(
@@ -1730,7 +1730,7 @@ namespace CombatLR.mobile.Pages
                     NorthMetres = local.NorthMetres,
                     RadiusMetres = 50.0,
                     StartTime = 0,
-                    TransitionTime = 0
+                    LifespanSeconds = 0
                 };
 
             _gamePlan.Zones.Add(zone);
@@ -1769,7 +1769,7 @@ namespace CombatLR.mobile.Pages
                     NorthMetres = local.NorthMetres,
                     RadiusMetres = 50.0,
                     StartTime = 0,
-                    TransitionTime = 0
+                    LifespanSeconds = 0
                 };
 
             _gamePlan.Zones.Add(zone);

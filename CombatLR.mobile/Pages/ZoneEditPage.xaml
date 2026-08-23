@@ -80,12 +80,12 @@
                     <Label
                         Grid.Row="2"
                         Grid.Column="0"
-                        Text="Transition:"
+                        Text="Lifespan:"
                         TextColor="White"
                         VerticalTextAlignment="Center" />
 
                     <Entry
-                        x:Name="TransitionTimeEntry"
+                        x:Name="LifespanEntry"
                         Grid.Row="2"
                         Grid.Column="1"
                         WidthRequest="90"
