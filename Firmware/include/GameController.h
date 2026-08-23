@@ -17,7 +17,8 @@ public:
     void Initialise(
         const GamePlan& gamePlan,
         IGameTime& gameTime);
-
+    
+    void ShowZoneInfo();
 private:
     GameController();
 

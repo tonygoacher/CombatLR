@@ -197,6 +197,7 @@ void NavigationDisplayTestBegin()
 
     GameController::Instance().Initialise(gamePlan, gameTime);
 
+    GameController::Instance().ShowZoneInfo();
 
     navigation.Begin();
 
@@ -205,18 +206,7 @@ void NavigationDisplayTestBegin()
 
     lastMove = millis();
 
-    Serial.print("There are "); Serial.print(gamePlan.GetZones().size()); Serial.println(" zones.");
-    for(int i = 0 ; i < gamePlan.GetZones().size(); i++)
-    {
-        Serial.print("Zone "); Serial.println(i);
-        std::map< int, Pickup>::const_iterator pickupIter = gamePlan.GetZones()[i].pickups.cbegin();
-        while(pickupIter != gamePlan.GetZones()[i].pickups.cend())
-        {
-            Serial.print("Pickup ID   :"); Serial.println(pickupIter->second.id);
-            Serial.print("Pickup Type :"); Serial.println(pickupIter->second.type);
-            pickupIter++;
-        }            
-    }
+  
 }
 
 void NavigationDisplayTestLoop()
