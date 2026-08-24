@@ -29,4 +29,8 @@ public:
 
     virtual const WidgetRenderPosition&
         GetPosition() const = 0;
+
+    virtual float GetMapScale() const = 0;
+
+     virtual float GetMapPixelsPerMetre() const = 0;
 };

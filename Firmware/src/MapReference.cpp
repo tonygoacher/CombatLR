@@ -361,6 +361,14 @@ double MapReference::GetGpsBLongitude() const
     return _gpsBLongitude;
 }
 
+float MapReference::GetPixelsPerMetre() const
+{
+    return static_cast<float>(
+        sqrt(
+            _eastToMapX * _eastToMapX +
+            _eastToMapY * _eastToMapY));
+}
+
 
 bool MapReference::Configure(
     double homeLatitude,

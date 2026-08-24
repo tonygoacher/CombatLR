@@ -26,6 +26,7 @@ public:
     float GetImageHeight() const;
 
     float GetMetresPerPixel() const;
+    float GetPixelsPerMetre() const;
 
     float GetPointAX() const;
     float GetPointAY() const;

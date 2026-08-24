@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "GeoReference.h"
 
 class IDisplayContext;
 
@@ -43,6 +44,8 @@ public:
      *     coordinates in screen pixels.
      */
     virtual WidgetPosition GetPosition() const = 0;
+
+    virtual GameCoordinate GetGamePosition() const = 0;
 
 
     /*

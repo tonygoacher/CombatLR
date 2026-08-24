@@ -1,4 +1,5 @@
 #pragma once
 
-void NavigationDisplayTestBegin();
+class IDisplay;
+void NavigationDisplayTestBegin(IDisplay*);
 void NavigationDisplayTestLoop();
