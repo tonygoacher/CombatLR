@@ -4,32 +4,14 @@
 #include <map>
 #include <vector>
 
+#include "Zone.h"
+#include "Pickup.h"
+
 class IGameTime;
 
-struct Pickup
-{
-    double eastMetres;
-    double northMetres;
 
-    int type;
 
-    uint32_t spawnTimeSeconds;
-    uint32_t lifespanSeconds;
 
-    int id;
-};
-
-struct Zone
-{
-    double eastMetres;
-    double northMetres;
-    double radiusMetres;
-
-    uint32_t startTime;
-    uint32_t lifespanSeconds;
-
-    std::map<int, Pickup> pickups;
-};
 
 /*
  * Minimal GamePlan representation.

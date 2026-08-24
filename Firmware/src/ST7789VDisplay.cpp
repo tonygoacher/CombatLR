@@ -402,33 +402,14 @@ float ST7789VDisplay::GetMapZoom() const
 uint16_t ST7789VDisplay::AddWidget(
     IWidget* widget)
 {
-    if (widget == nullptr)
+    uint16_t id = 0;
+    if (widget != nullptr)
     {
-        return 0;
-    }
 
-
-    for (uint16_t i = 0;
-         i < MAX_WIDGETS;
-         ++i)
-    {
-        if (!_widgets[i].active)
-        {
-            const uint16_t id =
-                AllocateWidgetId();
-
-
-            _widgets[i].id = id;
-            _widgets[i].widget = widget;
-            _widgets[i].active = true;
-
-
-            return id;
-        }
-    }
-
-
-    return 0;
+        id = ++_nextWidgetId;
+        _widgets.insert(std::pair<uint16_t , IWidget*>( _nextWidgetId, widget));
+    }    
+    return id;
 }
 
 
@@ -441,22 +422,15 @@ uint16_t ST7789VDisplay::AddWidget(
 bool ST7789VDisplay::RemoveWidget(
     uint16_t widgetId)
 {
-    WidgetEntry* entry =
-        FindWidget(widgetId);
-
-
-    if (entry == nullptr)
+    bool result = false;
+    std::map<uint16_t, IWidget*>::iterator widgetIter = _widgets.find(widgetId);
+    if(widgetIter != _widgets.end())
     {
-        return false;
+        _widgets.erase(widgetIter);
+        result = true;
     }
 
-
-    entry->id = 0;
-    entry->widget = nullptr;
-    entry->active = false;
-
-
-    return true;
+    return result;
 }
 
 
@@ -483,37 +457,6 @@ uint16_t ST7789VDisplay::AllocateWidgetId()
     return id;
 }
 
-
-/*
- * =============================================================
- * FindWidget
- * =============================================================
- */
-
-ST7789VDisplay::WidgetEntry*
-ST7789VDisplay::FindWidget(
-    uint16_t widgetId)
-{
-    if (widgetId == 0)
-    {
-        return nullptr;
-    }
-
-
-    for (uint16_t i = 0;
-         i < MAX_WIDGETS;
-         ++i)
-    {
-        if (_widgets[i].active &&
-            _widgets[i].id == widgetId)
-        {
-            return &_widgets[i];
-        }
-    }
-
-
-    return nullptr;
-}
 
 
 /*
@@ -578,10 +521,28 @@ ST7789VDisplay::TransformWidgetPosition(
      * metre coordinates into these coordinates.
      */
 
-    float x = position.x;
-    float y = position.y;
+    float x;
+    float y;
 
+    GameCoordinate gamePosition =
+        widget.GetGamePosition();
 
+    if (!gNavigationMap.GameToMapPixel(
+            gamePosition,
+            x,
+            y))
+    {
+        return result;
+    }
+
+Serial.printf(
+    "Map widget transform:\n"
+    "  game EN=(%.3f,%.3f)\n"
+    "  map pixel=(%.3f,%.3f)\n",
+    gamePosition.east,
+    gamePosition.north,
+    x,
+    y);
     /*
      * Convert source-map pixels into display pixels.
      *
@@ -590,11 +551,11 @@ ST7789VDisplay::TransformWidgetPosition(
      * use the same fit scale as the map image itself.
      */
     const float scaleX =
-        static_cast<float>(SCREEN_WIDTH) /
+        static_cast<float>(CANVAS_WIDTH) /
         static_cast<float>(_mapWidth);
 
     const float scaleY =
-        static_cast<float>(SCREEN_HEIGHT) /
+        static_cast<float>(CANVAS_HEIGHT) /
         static_cast<float>(_mapHeight);
 
     const float fitScale =
@@ -603,10 +564,22 @@ ST7789VDisplay::TransformWidgetPosition(
     const float effectiveScale =
         fitScale * _mapZoom;
 
+    x -= _cameraMapX;
+    y -= _cameraMapY;
+
+    Serial.printf(
+    "  map centred=(%.3f,%.3f)\n",
+    x,
+    y);
+
     x *= effectiveScale;
     y *= effectiveScale;
 
-
+Serial.printf(
+    "  effectiveScale=%.6f scaled=(%.3f,%.3f)\n",
+    effectiveScale,
+    x,
+    y);
     /*
      * Apply clockwise rotation.
      */
@@ -802,6 +775,9 @@ const float scaleY =
                 minCameraY,
                 maxCameraY);
     }
+
+    _cameraMapX = cameraMapX;
+    _cameraMapY = cameraMapY;
     
     Serial.printf(
     "Camera post-clamp: player=(%.2f,%.2f) camera=(%.2f,%.2f) "
@@ -1049,31 +1025,20 @@ void ST7789VDisplay::TestSprites()
 
 void ST7789VDisplay::RenderWidgets()
 {
-    for (uint16_t i = 0;
-         i < MAX_WIDGETS;
-         ++i)
+    WidgetCollection::iterator widgetIterator = _widgets.begin();
+    
+    while(widgetIterator != _widgets.end())
     {
-        if (!_widgets[i].active)
-        {
-            continue;
-        }
-
-
-        if (_widgets[i].widget == nullptr)
-        {
-            continue;
-        }
-
-
         /*
          * Calculate the final screen position.
          *
          * This is where the display applies map rotation
          * and zoom.
          */
+        
         const WidgetRenderPosition position =
             TransformWidgetPosition(
-                *_widgets[i].widget);
+                *(widgetIterator->second));
 
 
         /*
@@ -1087,10 +1052,12 @@ void ST7789VDisplay::RenderWidgets()
 
             DisplayContext(
                 TFT_eSprite& canvas,
-                const WidgetRenderPosition& position)
+                const WidgetRenderPosition& position,
+                float mapPixelsPerMetre)
                 :
                 _canvas(canvas),
-                _position(position)
+                _position(position),
+                _mapPixelsPerMetre(mapPixelsPerMetre)
             {
             }
 
@@ -1108,17 +1075,32 @@ void ST7789VDisplay::RenderWidgets()
             }
 
 
+            float GetMapScale() const override
+            {
+                return _position.scale;
+            }
+
+
+            float GetMapPixelsPerMetre() const override
+            {
+                return _mapPixelsPerMetre;
+            }
+
+
         private:
 
             TFT_eSprite& _canvas;
 
             const WidgetRenderPosition& _position;
+
+            float _mapPixelsPerMetre;
         };
 
 
-        DisplayContext context(
-            _screenSprite,
-            position);
+    DisplayContext context(
+        _screenSprite,
+        position,
+        gNavigationMap.GetPixelsPerMetre());
 
 
         /*
@@ -1126,8 +1108,10 @@ void ST7789VDisplay::RenderWidgets()
          *
          * It knows nothing about rotation.
          */
-        _widgets[i].widget->Render(
+        widgetIterator->second->Render(
             context);
+
+        widgetIterator++;
     }
 }
 

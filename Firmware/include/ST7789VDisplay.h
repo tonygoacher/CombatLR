@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <TFT_eSPI.h>
+#include <map>
 
 #include "IDisplay.h"
 #include "IWidget.h"
@@ -66,21 +67,10 @@ public:
 
 private:
 
-    /*
-     * ---------------------------------------------------------
-     * Widget storage
-     * ---------------------------------------------------------
-     */
+    typedef std::pair<uint16_t, IWidget*>  WidgetEntry;
+    typedef  std::map<uint16_t , IWidget*>WidgetCollection;
+    WidgetCollection _widgets;
 
-    struct WidgetEntry
-    {
-        uint16_t id;
-        IWidget* widget;
-        bool active;
-    };
-
-
-    WidgetEntry _widgets[MAX_WIDGETS];
 
     uint16_t _nextWidgetId;
 
@@ -136,6 +126,9 @@ private:
 
     float _mapZoom;
 
+    float _cameraMapX;
+    float _cameraMapY;
+
 
     /*
      * ---------------------------------------------------------
@@ -174,9 +167,6 @@ private:
 
     uint16_t AllocateWidgetId();
 
-
-    WidgetEntry* FindWidget(
-        uint16_t widgetId);
 
     void TestSprites();
 };

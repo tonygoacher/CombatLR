@@ -1,0 +1,23 @@
+#pragma once
+
+#include "IWidget.h"
+#include "Zone.h"
+
+class ZoneWidget : public IWidget
+{
+public:
+    explicit ZoneWidget(
+        const Zone& zone);
+
+    WidgetPosition GetPosition() const override;
+
+    WidgetCoordinateSpace GetCoordinateSpace() const override;
+
+    GameCoordinate GetGamePosition() const override;
+
+    void Render(
+        IDisplayContext& context) override;
+
+private:
+    const Zone& _zone;
+};

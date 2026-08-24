@@ -9,6 +9,8 @@
 #include "MapReference.h"
 #include "MillisGameTime.h"
 #include "GameController.h"
+#include "ZoneWidget.h"
+#include "IDisplay.h"
 
 /*
  * Production navigation/display API.
@@ -130,6 +132,9 @@ namespace
             "TEST C: GameToMapPixel FAILED");
     }
 
+
+    
+
     /*
      * Make this known position the player position.
      */
@@ -138,7 +143,7 @@ namespace
         data.heading);
 }
 
-void NavigationDisplayTestBegin()
+void NavigationDisplayTestBegin(IDisplay* display)
 {
     Serial.println();
     Serial.println(F("===================================="));
@@ -194,6 +199,10 @@ void NavigationDisplayTestBegin()
             homeX,
             homeY);
     }
+
+  
+    ZoneWidget* z = new ZoneWidget(gamePlan.GetZones()[0]);
+    display->AddWidget(z);
 
     GameController::Instance().Initialise(gamePlan, gameTime);
 
