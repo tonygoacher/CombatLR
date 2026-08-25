@@ -1,9 +1,11 @@
 #pragma once
 
 #include <stdint.h>
+#include "GeoReference.h"
 
-struct Pickup
+class Pickup
 {
+public:    
     double eastMetres;
     double northMetres;
 
@@ -13,4 +15,12 @@ struct Pickup
     uint32_t lifespanSeconds;
 
     int id;
+
+    GameCoordinate GetPosition() const
+    {
+        GameCoordinate g;
+        g.east = eastMetres;
+        g.north = northMetres;
+        return g;
+    }
 };

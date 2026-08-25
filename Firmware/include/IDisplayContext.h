@@ -12,8 +12,9 @@ struct WidgetRenderPosition
 
     /*
      * Useful later for map objects such as zones.
-     */
+     */ 
     float scale;
+    float zoom;
 };
 
 
