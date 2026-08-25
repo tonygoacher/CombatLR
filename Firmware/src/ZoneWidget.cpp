@@ -63,35 +63,19 @@ zonePosition.east =
 zonePosition.north =
     _zone.northMetres;
 
-const bool mapValid =
 
 
-    Serial.printf(
-        "ZoneWidget:\n"
-        "  game EN=(%.3f,%.3f)\n"
-        "  radius=%.3fm\n"
-        "  widget position=(%.3f,%.3f)\n"
-        "  widget scale=%.6f\n"
-        "  map scale=%.6f\n"
-        "  radius pixels=%.3f\n",
-        _zone.eastMetres,
-        _zone.northMetres,
-        _zone.radiusMetres,
-        position.x,
-        position.y,
-        position.scale,
-        mapScale,
-        radiusPixels);
+Serial.printf(
+    "ZoneWidget:\n"
+    "  game EN=(%.3f,%.3f)\n"
+    "  position=(%.3f,%.3f)\n"
+    "  zoom=%.3f\n",
+    _zone.eastMetres,
+    _zone.northMetres,
+    position.x,
+    position.y,
+    position.zoom);
 
-        Serial.printf(
-    "Zone scale: %.6f px/m, radius %.2fm -> %.2f map px -> %.2f screen px\n",
-    context.GetMapPixelsPerMetre(),
-    _zone.radiusMetres,
-    _zone.radiusMetres *
-        context.GetMapPixelsPerMetre(),
-    _zone.radiusMetres *
-        context.GetMapPixelsPerMetre() *
-        context.GetMapScale());
 
     canvas.drawCircle(
         static_cast<int16_t>(position.x),

@@ -477,155 +477,78 @@ uint16_t ST7789VDisplay::AllocateWidgetId()
  *
  * The widget itself is never rotated.
  */
-
-WidgetRenderPosition
-ST7789VDisplay::TransformWidgetPosition(
+WidgetRenderPosition ST7789VDisplay::TransformWidgetPosition(
     const IWidget& widget)
 {
-    const WidgetPosition position =
-        widget.GetPosition();
-
-
     WidgetRenderPosition result;
-
 
     /*
      * ---------------------------------------------------------
-     * Screen widget
+     * Screen widget (Physical screen space relative to viewport)
      * ---------------------------------------------------------
      */
-
-    if (widget.GetCoordinateSpace() ==
-        WidgetCoordinateSpace::Screen)
+    if (widget.GetCoordinateSpace() == WidgetCoordinateSpace::Screen)
     {
-        // Screen-space widget coordinates are specified in
-        // physical-display coordinates. Translate them into the
-        // larger logical canvas.
+        const WidgetPosition position = widget.GetPosition();
         result.x = VIEWPORT_X + position.x;
         result.y = VIEWPORT_Y + position.y;
         result.scale = 1.0f;
-
+        result.zoom = 1.0f;
         return result;
     }
 
-
     /*
      * ---------------------------------------------------------
-     * Map widget
+     * Map widget (World/Game space relative to map camera)
      * ---------------------------------------------------------
-     *
-     * Map coordinates are currently interpreted as pixels
-     * relative to the map image centre.
-     *
-     * A later map-coordinate layer can convert the CombatLR
-     * metre coordinates into these coordinates.
      */
+    float mapX = 0.0f;
+    float mapY = 0.0f;
 
-    float x;
-    float y;
+    GameCoordinate gamePosition = widget.GetGamePosition();
 
-    GameCoordinate gamePosition =
-        widget.GetGamePosition();
-
-    if (!gNavigationMap.GameToMapPixel(
-            gamePosition,
-            x,
-            y))
+    if (!gNavigationMap.GameToMapPixel(gamePosition, mapX, mapY))
     {
         return result;
     }
 
-Serial.printf(
-    "Map widget transform:\n"
-    "  game EN=(%.3f,%.3f)\n"
-    "  map pixel=(%.3f,%.3f)\n",
-    gamePosition.east,
-    gamePosition.north,
-    x,
-    y);
-    /*
-     * Convert source-map pixels into display pixels.
-     *
-     * At zoom 1.0 the complete source map is fitted into the
-     * 320x240 viewport.  Therefore map-widget coordinates must
-     * use the same fit scale as the map image itself.
-     */
-    const float scaleX =
-        static_cast<float>(CANVAS_WIDTH) /
-        static_cast<float>(_mapWidth);
+    // 1. Calculate effective scale matching RenderMap()
+    const float scaleX = static_cast<float>(CANVAS_WIDTH) / static_cast<float>(_mapWidth);
+    const float scaleY = static_cast<float>(CANVAS_HEIGHT) / static_cast<float>(_mapHeight);
+    const float fitScale = (scaleX < scaleY) ? scaleX : scaleY;
+    const float effectiveScale = fitScale * _mapZoom;
 
-    const float scaleY =
-        static_cast<float>(CANVAS_HEIGHT) /
-        static_cast<float>(_mapHeight);
+    // 2. Compute pixel offset relative to camera position
+    const float dx = (mapX - _cameraMapX) * effectiveScale;
+    const float dy = (mapY - _cameraMapY) * effectiveScale;
 
-    const float fitScale =
-        (scaleX < scaleY) ? scaleX : scaleY;
+    // 3. Obtain exact rotation angle applied during RenderMap()
+    const float mapRotation = gNavigationPlayerVisible
+        ? (gNavigationMap.GetMapUpHeading() - gNavigationHeading)
+        : 0.0f;
 
-    const float effectiveScale =
-        fitScale * _mapZoom;
-
-    x -= _cameraMapX;
-    y -= _cameraMapY;
-
-    Serial.printf(
-    "  map centred=(%.3f,%.3f)\n",
-    x,
-    y);
-
-    x *= effectiveScale;
-    y *= effectiveScale;
-
-Serial.printf(
-    "  effectiveScale=%.6f scaled=(%.3f,%.3f)\n",
-    effectiveScale,
-    x,
-    y);
-    /*
-     * Apply clockwise rotation.
-     */
-    const float radians =
-        _rotation *
-        (PI / 180.0f);
-
-
-    const float sinAngle =
-        sinf(radians);
-
-
-    const float cosAngle =
-        cosf(radians);
-
-
-    const float rotatedX =
-        (x * cosAngle) -
-        (y * sinAngle);
-
-
-    const float rotatedY =
-        (x * sinAngle) +
-        (y * cosAngle);
-
+    // 4. Convert degrees to radians and rotate offset vector
+    const float radians = mapRotation * (PI / 180.0f);
+    const float cosAngle = cosf(radians);
+    const float sinAngle = sinf(radians);
 
     /*
-     * Move from map-centred coordinates into screen
-     * coordinates.
+     * Note: Matches the rotation matrix applied during pushRotated()
      */
-    result.x =
-        CANVAS_CX +
-        rotatedX;
+    const float rotatedX = (dx * cosAngle) - (dy * sinAngle);
+    const float rotatedY = (dx * sinAngle) + (dy * cosAngle);
 
+    // 5. Translate offset back to logical Canvas Centre
+    const float canvasCentreX = (static_cast<float>(CANVAS_WIDTH) - 1.0f) * 0.5f;
+    const float canvasCentreY = (static_cast<float>(CANVAS_HEIGHT) - 1.0f) * 0.5f;
 
-    result.y =
-        CANVAS_CY +
-        rotatedY;
-
-
+    result.x = static_cast<int16_t>(lroundf(canvasCentreX + rotatedX));
+    result.y = static_cast<int16_t>(lroundf(canvasCentreY + rotatedY));
     result.scale = effectiveScale;
-
+    result.zoom = _mapZoom;
 
     return result;
 }
-
 
 /*
  * =============================================================
@@ -719,13 +642,14 @@ const float scaleY =
     float cameraMapX = playerMapX;
     float cameraMapY = playerMapY;
 
-    Serial.printf(
-    "Camera pre-clamp: player=(%.2f,%.2f) camera=(%.2f,%.2f)\n",
+Serial.printf(
+    "MAP camera state: "
+    "camera=(%.3f,%.3f) "
+    "player=(%.3f,%.3f)\n",
+    _cameraMapX,
+    _cameraMapY,
     playerMapX,
-    playerMapY,
-    cameraMapX,
-    cameraMapY);
-
+    playerMapY);
   
         /*
      * Clamp the camera using the actual display viewport.
@@ -846,7 +770,7 @@ const float scaleY =
           gNavigationHeading
         : 0.0f;
 
-        Serial.printf(
+  /*      Serial.printf(
     "Map camera: player=(%.2f,%.2f) camera=(%.2f,%.2f) "
     "rotation=%.2f scale=%.3f\n",
     playerMapX,
@@ -855,7 +779,7 @@ const float scaleY =
     cameraMapY,
     mapRotation,
     effectiveScale);
-
+*/
 
     _screenSprite.fillSprite(TFT_BLACK);
 
@@ -918,12 +842,6 @@ const float scaleY =
                 lroundf(
                     canvasCentreY + rotatedY));
 
-        Serial.printf(
-            "Player canvas: %d,%d canvas centre: %.1f,%.1f\n",
-            playerScreenX,
-            playerScreenY,
-            canvasCentreX,
-            canvasCentreY);
 
         RenderNavigationPlayer(
             _screenSprite,
@@ -1085,7 +1003,6 @@ void ST7789VDisplay::RenderWidgets()
             {
                 return _mapPixelsPerMetre;
             }
-
 
         private:
 

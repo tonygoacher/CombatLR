@@ -11,6 +11,9 @@
 #include "GameController.h"
 #include "ZoneWidget.h"
 #include "IDisplay.h"
+#include "TextureManager.h"
+#include "MapWidget.h"
+#include <SPIFFS.h>
 
 /*
  * Production navigation/display API.
@@ -63,6 +66,7 @@ namespace
     constexpr float HEADING_STEP_DEGREES = 0.0f;// 15.0f;
 
     GamePlan gamePlan;
+    TextureManager textureManager(SPIFFS);
 };
 
   NavigationData data;
@@ -99,7 +103,7 @@ namespace
             data.latitude,
             data.longitude);
             
-
+/*
     Serial.printf(
         "TEST C: GPS=(%.7f, %.7f)\n",
         TEST_LATITUDE,
@@ -109,6 +113,7 @@ namespace
         "TEST C: GameCoordinate east=%+.3fm north=%+.3fm\n",
         position.east,
         position.north);
+        */
 
     /*
      * Convert the same position into the BMP coordinate system.
@@ -204,6 +209,21 @@ void NavigationDisplayTestBegin(IDisplay* display)
     ZoneWidget* z = new ZoneWidget(gamePlan.GetZones()[0]);
     display->AddWidget(z);
 
+    if(gamePlan.GetZones()[0].pickups.size())
+    {
+        std::map<int ,  Pickup>::const_iterator pickupIter = gamePlan.GetZones()[0].pickups.find(3);
+        if(pickupIter != gamePlan.GetZones()[0].pickups.cend())
+        {
+            GameCoordinate position = pickupIter->second.GetPosition(); 
+            MapWidget* w = new MapWidget(textureManager, position, "/health.bmp" );
+            display->AddWidget(w);
+        }
+        else
+        {
+            Serial.println("Could not find pickup id 3");
+        }            
+    }
+
     GameController::Instance().Initialise(gamePlan, gameTime);
 
     GameController::Instance().ShowZoneInfo();
@@ -220,10 +240,6 @@ void NavigationDisplayTestBegin(IDisplay* display)
 
 void NavigationDisplayTestLoop()
 {
-    if (millis() - lastMove < MOVE_INTERVAL_MS)
-        return;
-
-    lastMove = millis();
 
  
 
