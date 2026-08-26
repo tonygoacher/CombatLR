@@ -597,10 +597,10 @@ public sealed class MapDefinition
          * Perpendicular GameCoordinate vector.
          */
         var gameAcrossEast =
-            -gameAlongNorth;
+           gameAlongNorth;
 
         var gameAcrossNorth =
-            gameAlongEast;
+            -gameAlongEast;
 
         /*
          * Unit vector along A -> B in map space.
@@ -806,10 +806,10 @@ public sealed class MapDefinition
             refNorth / geoDistance;
 
         var gameAcrossEast =
-            -gameAlongNorth;
+           gameAlongNorth;
 
         var gameAcrossNorth =
-            gameAlongEast;
+            -gameAlongEast;
 
         var mapAlongX =
             dx / pixelDistance;
