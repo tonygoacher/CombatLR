@@ -523,8 +523,10 @@ WidgetRenderPosition ST7789VDisplay::TransformWidgetPosition(
     const float dy = (mapY - _cameraMapY) * effectiveScale;
 
     // 3. Obtain exact rotation angle applied during RenderMap()
-    const float mapRotation = gNavigationPlayerVisible
-        ? (gNavigationMap.GetMapUpHeading() - gNavigationHeading)
+const float mapRotation =
+    gNavigationPlayerVisible
+        ? gNavigationHeading -
+          gNavigationMap.GetMapUpHeading()
         : 0.0f;
 
     // 4. Convert degrees to radians and rotate offset vector
@@ -583,6 +585,12 @@ void ST7789VDisplay::RenderMap()
         _screenSprite.fillSprite(TFT_BLACK);
         return;
     }
+
+    static bool havePreviousPlayerPosition = false;
+
+    static GameCoordinate previousPlayerPosition;
+
+
 
     /*
      * Camera behaviour:
@@ -676,6 +684,8 @@ Serial.printf(
     gNavigationPlayer.north,
     playerMapX,
     playerMapY);
+
+ 
   
         /*
      * Clamp the camera using the actual display viewport.
@@ -796,16 +806,89 @@ Serial.printf(
           gNavigationHeading
         : 0.0f;
 
-  /*      Serial.printf(
-    "Map camera: player=(%.2f,%.2f) camera=(%.2f,%.2f) "
-    "rotation=%.2f scale=%.3f\n",
+        // DEBUG
+if (gNavigationPlayerVisible)
+{
+  
+    if (havePreviousPlayerPosition)
+    {
+         
+        const double deltaEast =
+            gNavigationPlayer.east -
+            previousPlayerPosition.east;
+
+        const double deltaNorth =
+            gNavigationPlayer.north -
+            previousPlayerPosition.north;
+
+        const double distance =
+            sqrt(
+                deltaEast * deltaEast +
+                deltaNorth * deltaNorth);
+             Serial.print("BBBBBBBBB ");Serial.println(distance);
+        if (distance > 0.01)
+        {
+            double movementBearing =
+                atan2(
+                    deltaEast,
+                    deltaNorth) *
+                180.0 /
+                M_PI;
+
+            if (movementBearing < 0.0)
+                movementBearing += 360.0;
+
+            Serial.printf(
+                "MOVEMENT TEST:\n"
+                "  previous EN=(%.3f,%.3f)\n"
+                "  current  EN=(%.3f,%.3f)\n"
+                "  delta    EN=(%.3f,%.3f)\n"
+                "  distance=%.3fm\n"
+                "  movementBearing=%.3f\n"
+                "  navigationHeading=%.3f\n",
+                previousPlayerPosition.east,
+                previousPlayerPosition.north,
+                gNavigationPlayer.east,
+                gNavigationPlayer.north,
+                deltaEast,
+                deltaNorth,
+                distance,
+                movementBearing,
+                gNavigationHeading);
+        }
+    }
+
+    previousPlayerPosition =
+        gNavigationPlayer;
+
+    havePreviousPlayerPosition = true;
+}
+
+      //      __DEBUG
+
+    Serial.printf(
+    "PLAYER VECTOR: "
+    "game=(%.3f,%.3f) "
+    "map=(%.3f,%.3f) "
+    "heading=%.3f "
+    "mapUp=%.3f "
+    "rotation=%.3f\n",
+    gNavigationPlayer.east,
+    gNavigationPlayer.north,
     playerMapX,
     playerMapY,
-    cameraMapX,
-    cameraMapY,
-    mapRotation,
-    effectiveScale);
-*/
+    gNavigationHeading,
+    gNavigationMap.GetMapUpHeading(),
+    mapRotation);  
+
+    Serial.printf(
+    "ORIENTATION:\n"
+    "  mapUpHeading=%.3f\n"
+    "  playerHeading=%.3f\n"
+    "  mapRotation=%.3f\n",
+    gNavigationMap.GetMapUpHeading(),
+    gNavigationHeading,
+    mapRotation);
 
     _screenSprite.fillSprite(TFT_BLACK);
 

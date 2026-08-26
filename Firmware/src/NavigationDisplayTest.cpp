@@ -145,7 +145,8 @@ namespace
      */
     SetNavigationPlayerPosition(
         position,
-        data.heading);
+        //data.heading);
+        76.0f);
 }
 
 void NavigationDisplayTestBegin(IDisplay* display)
