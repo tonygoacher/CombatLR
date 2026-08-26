@@ -116,6 +116,8 @@ const int16_t bottom =
             position.y +
             scaledHeight * 0.5f));
 
+
+
 for (int16_t screenY = top;
      screenY < bottom;
      ++screenY)

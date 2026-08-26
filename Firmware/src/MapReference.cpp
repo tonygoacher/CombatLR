@@ -491,20 +491,24 @@ while (_mapUpHeading >= 360.0f)
     /*
      * Unit vector along A -> B in GameCoordinate space.
      */
-    const double gameAlongEast =
-        gameEast / gameLength;
+const double gameAlongEast =
+    gameEast / gameLength;
 
-    const double gameAlongNorth =
-        gameNorth / gameLength;
+const double gameAlongNorth =
+    gameNorth / gameLength;
 
-    /*
-     * Perpendicular GameCoordinate vector.
-     */
-    const double gameAcrossEast =
-        -gameAlongNorth;
+/*
+ * Perpendicular GameCoordinate vector.
+ *
+ * This is the opposite handedness to the previous
+ * implementation.  It matches the orientation used by
+ * the mobile map transform.
+ */
+const double gameAcrossEast =
+    gameAlongNorth;
 
-    const double gameAcrossNorth =
-        gameAlongEast;
+const double gameAcrossNorth =
+    -gameAlongEast;
 
     /*
      * Unit vector along A -> B in map space.
@@ -626,6 +630,17 @@ bool MapReference::GameToMapPixel(
             _eastToMapY +
         static_cast<double>(position.north) *
             _northToMapY);
+
+            Serial.printf(
+    "GameToMap coefficients:\n"
+    "  eastToMapX  = %.9f\n"
+    "  eastToMapY  = %.9f\n"
+    "  northToMapX = %.9f\n"
+    "  northToMapY = %.9f\n",
+    _eastToMapX,
+    _eastToMapY,
+    _northToMapX,
+    _northToMapY);
 
     return true;
 }

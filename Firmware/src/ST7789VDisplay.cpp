@@ -547,6 +547,23 @@ WidgetRenderPosition ST7789VDisplay::TransformWidgetPosition(
     result.scale = effectiveScale;
     result.zoom = _mapZoom;
 
+Serial.printf(
+    "Widget transform: "
+    "game=(%.3f,%.3f) "
+    "map=(%.3f,%.3f) "
+    "camera=(%.3f,%.3f) "
+    "rotation=%.3f "
+    "result=(%.3f,%.3f)\n",
+    gamePosition.east,
+    gamePosition.north,
+    mapX,
+    mapY,
+    _cameraMapX,
+    _cameraMapY,
+    mapRotation,
+    result.x,
+    result.y);
+
     return result;
 }
 
@@ -648,6 +665,15 @@ Serial.printf(
     "player=(%.3f,%.3f)\n",
     _cameraMapX,
     _cameraMapY,
+    playerMapX,
+    playerMapY);
+
+    Serial.printf(
+    "PLAYER MAP POSITION: "
+    "game=(%.3f,%.3f) "
+    "map=(%.3f,%.3f)\n",
+    gNavigationPlayer.east,
+    gNavigationPlayer.north,
     playerMapX,
     playerMapY);
   
