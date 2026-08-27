@@ -1,4 +1,5 @@
 #include "NavigationDisplayTest.h"
+#include "TFT_eSPI.h"
 
 #include <Arduino.h>
 
@@ -14,6 +15,8 @@
 #include "TextureManager.h"
 #include "MapWidget.h"
 #include <SPIFFS.h>
+#include "Ports.h"
+#include "ADCZoom.h"
 
 /*
  * Production navigation/display API.
@@ -36,7 +39,7 @@ namespace
     GeoReference geoReference;
     MapReference mapReference;
     MillisGameTime gameTime;
-    
+    IDisplay* theDisplay;
 
     constexpr double HOME_LATITUDE  = 53.593000;
     constexpr double HOME_LONGITUDE = -2.123000;
@@ -67,6 +70,7 @@ namespace
 
     GamePlan gamePlan;
     TextureManager textureManager(SPIFFS);
+    IZoom* zoomDevice = new ADCZoom(ZOOMADC);
 };
 
   NavigationData data;
@@ -103,17 +107,7 @@ namespace
             data.latitude,
             data.longitude);
             
-/*
-    Serial.printf(
-        "TEST C: GPS=(%.7f, %.7f)\n",
-        TEST_LATITUDE,
-        TEST_LONGITUDE);
 
-    Serial.printf(
-        "TEST C: GameCoordinate east=%+.3fm north=%+.3fm\n",
-        position.east,
-        position.north);
-        */
 
     /*
      * Convert the same position into the BMP coordinate system.
@@ -137,7 +131,9 @@ namespace
             "TEST C: GameToMapPixel FAILED");
     }
 
-
+    float zoom = zoomDevice->GetZoom();
+    Serial.print("Zoom: "); Serial.println(zoom);
+    theDisplay->SetMapZoom(zoom);
     
 
     /*
@@ -154,7 +150,7 @@ void NavigationDisplayTestBegin(IDisplay* display)
     Serial.println(F("===================================="));
     Serial.println(F("Navigation display integration test"));
     Serial.println(F("===================================="));
-
+    theDisplay = display;
     if(!gamePlan.Load("/gameplan.json"))
     {
         Serial.println("Failed to load gameplan");
@@ -206,7 +202,7 @@ void NavigationDisplayTestBegin(IDisplay* display)
     }
 
   
-    ZoneWidget* z = new ZoneWidget(gamePlan.GetZones()[0]);
+    ZoneWidget* z = new ZoneWidget(gamePlan.GetZones()[0], TFT_GREEN);
     display->AddWidget(z);
 
     if(gamePlan.GetZones()[0].pickups.size())

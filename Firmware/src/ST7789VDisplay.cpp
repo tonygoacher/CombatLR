@@ -60,7 +60,7 @@ namespace
             screenX,
             screenY,
             radius,
-            TFT_RED);
+            TFT_BLUE);
 
         canvas.drawCircle(
             screenX,
@@ -563,8 +563,9 @@ Serial.printf(
     "map=(%.3f,%.3f) "
     "camera=(%.3f,%.3f) "
     "rotation=%.3f "
-    "result=(%.3f,%.3f)\n",
-    gamePosition.east,
+    "result=(%.3f,%.3f)"
+    "zoom=%.3f\n",
+    gamePosition.east,  
     gamePosition.north,
     mapX,
     mapY,
@@ -572,7 +573,8 @@ Serial.printf(
     _cameraMapY,
     mapRotation,
     result.x,
-    result.y);
+    result.y, 
+    _mapZoom);
 
     return result;
 }
@@ -597,7 +599,7 @@ void ST7789VDisplay::RenderMap()
     static bool havePreviousPlayerPosition = false;
 
     static GameCoordinate previousPlayerPosition;
-
+    Serial.print("Map Zoom is:"); Serial.println(_mapZoom);
 
 
     /*
@@ -874,29 +876,7 @@ if (gNavigationPlayerVisible)
 
       //      __DEBUG
 
-    Serial.printf(
-    "PLAYER VECTOR: "
-    "game=(%.3f,%.3f) "
-    "map=(%.3f,%.3f) "
-    "heading=%.3f "
-    "mapUp=%.3f "
-    "rotation=%.3f\n",
-    gNavigationPlayer.east,
-    gNavigationPlayer.north,
-    playerMapX,
-    playerMapY,
-    gNavigationHeading,
-    gNavigationMap.GetMapUpHeading(),
-    mapRotation);  
-
-    Serial.printf(
-    "ORIENTATION:\n"
-    "  mapUpHeading=%.3f\n"
-    "  playerHeading=%.3f\n"
-    "  mapRotation=%.3f\n",
-    gNavigationMap.GetMapUpHeading(),
-    gNavigationHeading,
-    mapRotation);
+  
 
     _screenSprite.fillSprite(TFT_BLACK);
 
@@ -965,17 +945,7 @@ if (gNavigationPlayerVisible)
             playerScreenX,
             playerScreenY);
 
-            _screenSprite.drawCircle(
-    playerScreenX,
-    playerScreenY,
-    14,
-    TFT_YELLOW);
-
-_screenSprite.drawCircle(
-    playerScreenX,
-    playerScreenY,
-    15,
-    TFT_YELLOW);
+        
         }
     else
         Serial.println("Player not visible");

@@ -77,8 +77,6 @@ void loop()
     NavigationDisplayTestLoop();
     display->SetRotation(rot);
 
-    display->SetMapZoom(zoom);
-
     display->Update();   
     
   
