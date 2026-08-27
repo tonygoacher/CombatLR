@@ -40,17 +40,56 @@ static constexpr int16_t CANVAS_CY =
 namespace
 {
     MapReference gNavigationMap;
-    GameCoordinate gNavigationPlayer{};
+
     float gNavigationHeading = 0.0f;
     bool gNavigationMapConfigured = false;
-    bool gNavigationPlayerVisible = false;
+  
 
-    void RenderNavigationPlayer(
+   
+}
+
+void ConfigureNavigationMap(
+    const char* mapFilename,
+    double homeLatitude,
+    double homeLongitude)
+{
+    if (!gNavigationMap.Load(mapFilename))
+    {
+        gNavigationMapConfigured = false;
+        return;
+    }
+
+    gNavigationMapConfigured =
+        gNavigationMap.Configure(
+            homeLatitude,
+            homeLongitude);
+}
+
+
+
+
+
+ST7789VDisplay::ST7789VDisplay()
+    :
+    _widgets{},
+    _nextWidgetId(1),
+    _tft(),
+    _mapSprite(&_tft),
+    _screenSprite(&_tft),
+    _mapImage(nullptr),
+    _mapWidth(0),
+    _mapHeight(0),
+    _rotation(0.0f),
+    _mapZoom(1.0f),
+    _initialised(false)
+{}
+
+ void ST7789VDisplay::RenderNavigationPlayer(
         TFT_eSprite& canvas,
         int16_t screenX,
         int16_t screenY)
     {
-        if (!gNavigationPlayerVisible)
+        if (!_playerVisible)
             return;
 
         constexpr int16_t radius = 8;
@@ -89,102 +128,11 @@ namespace
             2,
             TFT_WHITE);
     }
-}
 
-void ConfigureNavigationMap(
-    const char* mapFilename,
-    double homeLatitude,
-    double homeLongitude)
-{
-    if (!gNavigationMap.Load(mapFilename))
-    {
-        gNavigationMapConfigured = false;
-        return;
-    }
-
-    gNavigationMapConfigured =
-        gNavigationMap.Configure(
-            homeLatitude,
-            homeLongitude);
-}
-
-void SetNavigationPlayerPosition(
-    const GameCoordinate& position,
-    float headingDegrees)
-{
-    gNavigationPlayer = position;
-
-    while (headingDegrees >= 360.0f)
-        headingDegrees -= 360.0f;
-
-    while (headingDegrees < 0.0f)
-        headingDegrees += 360.0f;
-
-    gNavigationHeading = headingDegrees;
-    gNavigationPlayerVisible = true;
-}
-
-void SetNavigationPlayerVisible(bool visible)
-{
-    gNavigationPlayerVisible = visible;
-}
-
-    
-
-
-ST7789VDisplay::ST7789VDisplay(
-    const uint16_t* mapImage,
-    uint16_t mapWidth,
-    uint16_t mapHeight)
-    :
-    _widgets{},
-    _nextWidgetId(1),
-    _tft(),
-    _mapSprite(&_tft),
-    _screenSprite(&_tft),
-    _mapImage(nullptr),
-    _mapWidth(mapWidth),
-    _mapHeight(mapHeight),
-    _rotation(0.0f),
-    _mapZoom(1.0f),
-    _initialised(false)
-{
-    /*
-     * Copy the map image into PSRAM.
-     *
-     * The image is RGB565, therefore:
-     *
-     * width * height * 2 bytes
-     */
-    const size_t imageBytes =
-        static_cast<size_t>(_mapWidth) *
-        static_cast<size_t>(_mapHeight) *
-        sizeof(uint16_t);
-
-
-    if (mapImage != nullptr)
-    {
-        _mapImage =
-            static_cast<uint16_t*>(
-                ps_malloc(imageBytes));
-
-
-        if (_mapImage != nullptr)
-        {
-            memcpy(
-                _mapImage,
-                mapImage,
-                imageBytes);
-        }
-    }
-}
 
 
 ST7789VDisplay::~ST7789VDisplay()
 {
-    FreeSprites();
-
-
     if (_mapImage != nullptr)
     {
         free(_mapImage);
@@ -523,11 +471,8 @@ WidgetRenderPosition ST7789VDisplay::TransformWidgetPosition(
     const float dy = (mapY - _cameraMapY) * effectiveScale;
 
     // 3. Obtain exact rotation angle applied during RenderMap()
-const float mapRotation =
-    gNavigationPlayerVisible
-        ? gNavigationHeading -
-          gNavigationMap.GetMapUpHeading()
-        : 0.0f;
+const float mapRotation = _rotation;
+
 
     // 4. Convert degrees to radians and rotate offset vector
   const float radians =
@@ -557,24 +502,7 @@ const float rotatedY =
     result.scale = effectiveScale;
     result.zoom = _mapZoom;
 
-Serial.printf(
-    "Widget transform: "
-    "game=(%.3f,%.3f) "
-    "map=(%.3f,%.3f) "
-    "camera=(%.3f,%.3f) "
-    "rotation=%.3f "
-    "result=(%.3f,%.3f)"
-    "zoom=%.3f\n",
-    gamePosition.east,  
-    gamePosition.north,
-    mapX,
-    mapY,
-    _cameraMapX,
-    _cameraMapY,
-    mapRotation,
-    result.x,
-    result.y, 
-    _mapZoom);
+
 
     return result;
 }
@@ -599,8 +527,6 @@ void ST7789VDisplay::RenderMap()
     static bool havePreviousPlayerPosition = false;
 
     static GameCoordinate previousPlayerPosition;
-    Serial.print("Map Zoom is:"); Serial.println(_mapZoom);
-
 
     /*
      * Camera behaviour:
@@ -656,10 +582,10 @@ const float scaleY =
         static_cast<float>(_mapHeight) * 0.5f;
 
     if (gNavigationMapConfigured &&
-        gNavigationPlayerVisible)
+        _playerVisible)
     {
         if (!gNavigationMap.GameToMapPixel(
-                gNavigationPlayer,
+                _playerPosition,
                 playerMapX,
                 playerMapY))
         {
@@ -677,26 +603,7 @@ const float scaleY =
     float cameraMapX = playerMapX;
     float cameraMapY = playerMapY;
 
-Serial.printf(
-    "MAP camera state: "
-    "camera=(%.3f,%.3f) "
-    "player=(%.3f,%.3f)\n",
-    _cameraMapX,
-    _cameraMapY,
-    playerMapX,
-    playerMapY);
-
-    Serial.printf(
-    "PLAYER MAP POSITION: "
-    "game=(%.3f,%.3f) "
-    "map=(%.3f,%.3f)\n",
-    gNavigationPlayer.east,
-    gNavigationPlayer.north,
-    playerMapX,
-    playerMapY);
-
  
-  
         /*
      * Clamp the camera using the actual display viewport.
      *
@@ -749,15 +656,6 @@ Serial.printf(
     _cameraMapX = cameraMapX;
     _cameraMapY = cameraMapY;
     
-    Serial.printf(
-    "Camera post-clamp: player=(%.2f,%.2f) camera=(%.2f,%.2f) "
-    "viewportSource=(%.2f,%.2f)\n",
-    playerMapX,
-    playerMapY,
-    cameraMapX,
-    cameraMapY,
-    viewportSourceWidth,
-    viewportSourceHeight);
 
     const float canvasCentreX =
         (static_cast<float>(CANVAS_WIDTH) - 1.0f) * 0.5f;
@@ -810,32 +708,27 @@ Serial.printf(
         }
     }
 
-    const float mapRotation =
-    gNavigationPlayerVisible
-        ? gNavigationMap.GetMapUpHeading() -
-          gNavigationHeading
-        : 0.0f;
+    const float mapRotation = _rotation;
 
         // DEBUG
-if (gNavigationPlayerVisible)
+if (_playerVisible)
 {
   
     if (havePreviousPlayerPosition)
     {
          
         const double deltaEast =
-            gNavigationPlayer.east -
+            _playerPosition.east -
             previousPlayerPosition.east;
 
         const double deltaNorth =
-            gNavigationPlayer.north -
+            _playerPosition.north -
             previousPlayerPosition.north;
 
         const double distance =
             sqrt(
                 deltaEast * deltaEast +
                 deltaNorth * deltaNorth);
-             Serial.print("BBBBBBBBB ");Serial.println(distance);
         if (distance > 0.01)
         {
             double movementBearing =
@@ -848,28 +741,11 @@ if (gNavigationPlayerVisible)
             if (movementBearing < 0.0)
                 movementBearing += 360.0;
 
-            Serial.printf(
-                "MOVEMENT TEST:\n"
-                "  previous EN=(%.3f,%.3f)\n"
-                "  current  EN=(%.3f,%.3f)\n"
-                "  delta    EN=(%.3f,%.3f)\n"
-                "  distance=%.3fm\n"
-                "  movementBearing=%.3f\n"
-                "  navigationHeading=%.3f\n",
-                previousPlayerPosition.east,
-                previousPlayerPosition.north,
-                gNavigationPlayer.east,
-                gNavigationPlayer.north,
-                deltaEast,
-                deltaNorth,
-                distance,
-                movementBearing,
-                gNavigationHeading);
         }
     }
 
     previousPlayerPosition =
-        gNavigationPlayer;
+        _playerPosition;
 
     havePreviousPlayerPosition = true;
 }
@@ -895,9 +771,9 @@ if (gNavigationPlayerVisible)
      * Rotate the player offset by the same map rotation so it remains
      * correctly registered with the map.
      */
-    if (gNavigationPlayerVisible)
+    if (_playerVisible)
     {
-        Serial.println("Player visible");
+
         float playerCanvasX =
             canvasCentreX +
             (playerMapX - cameraMapX) *
@@ -947,8 +823,7 @@ if (gNavigationPlayerVisible)
 
         
         }
-    else
-        Serial.println("Player not visible");
+
 }
 
 void ST7789VDisplay::TestSprites()
@@ -1127,22 +1002,32 @@ void ST7789VDisplay::RenderWidgets()
  * =============================================================
  */
 
-void ST7789VDisplay::Update()
+void ST7789VDisplay::Update(
+    const GameCoordinate& playerPosition,
+    float heading,
+    float zoom,
+    bool playerVisible)
 {
     if (!_initialised)
     {
         return;
     }
 
-    // 1. Render rotated map into _screenSprite
-    RenderMap();
+    _playerPosition = playerPosition;
+    _playerVisible = playerVisible;
 
-    // 2. Render widgets on top
+    _rotation =
+        gNavigationMap.GetMapUpHeading() -
+        heading;
+
+    _mapZoom = zoom;
+
+    RenderMap();
     RenderWidgets();
 
-    // 3. Present the completed frame
-    _screenSprite.pushSprite(-VIEWPORT_X, -VIEWPORT_Y);
-
+    _screenSprite.pushSprite(
+        -VIEWPORT_X,
+        -VIEWPORT_Y);
 }
 
 
@@ -1167,4 +1052,61 @@ void ST7789VDisplay::Clear()
     _screenSprite.pushSprite(
         -VIEWPORT_X,
         -VIEWPORT_Y);
+}
+
+bool ST7789VDisplay::SetBackground(
+    const uint16_t* image,
+    uint16_t width,
+    uint16_t height)
+{
+    if (image == nullptr ||
+        width == 0 ||
+        height == 0)
+    {
+        return false;
+    }
+
+    const size_t imageBytes =
+        static_cast<size_t>(width) *
+        static_cast<size_t>(height) *
+        sizeof(uint16_t);
+
+    uint16_t* newImage =
+        static_cast<uint16_t*>(
+            ps_malloc(imageBytes));
+
+    if (newImage == nullptr)
+    {
+        Serial.println(
+            "ST7789VDisplay: failed to allocate background");
+
+        return false;
+    }
+
+    memcpy(
+        newImage,
+        image,
+        imageBytes);
+
+    /*
+     * The new background is now safely copied.
+     * We can release the previous one.
+     */
+    if (_mapImage != nullptr)
+    {
+        free(_mapImage);
+    }
+
+    _mapImage = newImage;
+
+    _mapWidth = width;
+    _mapHeight = height;
+
+    /*
+     * A new background starts in its neutral state.
+     */
+    _rotation = 0.0f;
+    _mapZoom = 1.0f;
+
+    return true;
 }

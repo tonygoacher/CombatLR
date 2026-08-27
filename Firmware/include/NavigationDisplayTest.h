@@ -1,5 +1,6 @@
 #pragma once
 
 class IDisplay;
-void NavigationDisplayTestBegin(IDisplay*);
-void NavigationDisplayTestLoop();
+class DisplayManager;
+void NavigationDisplayTestBegin();
+void UpdateNavigationDisplay(DisplayManager&);

@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <memory>
 #include "ESP32LaserTag.h"
 #include "Ports.h"
 #include "SPIFFS.h"
@@ -12,10 +13,15 @@
 #include "IDisplay.h"
 #include "ST7789VDisplay.h"
 #include "TestWidget.h"
+#include "DisplayManager.h"
+#include "ZoomCommand.h"
+#include "DisplayBackgroundCommand.h"
 
 
 BMPImage mapdata;
-ST7789VDisplay* display = nullptr;
+
+TextureManager textureManager(SPIFFS);
+DisplayManager displayManager(textureManager);
 
 void fatal()
 {
@@ -50,21 +56,16 @@ void setup()
     }
 
 
-    display = new ST7789VDisplay(
-        mapdata.GetData(),
-        mapdata.GetWidth(),
-        mapdata.GetHeight());
 
+    displayManager.Begin();
 
-    if (!display->Init())
-    {
-        Serial.println("Display init failed");
-        fatal();
-    }
+    displayManager.Send(
+    std::unique_ptr<IDisplayCommand>(
+        new DisplayBackgroundCommand(
+            "/map.bmp")));
 
+    NavigationDisplayTestBegin();
 
-
-    NavigationDisplayTestBegin(display);
 }
 
 int rot = 0;
@@ -74,10 +75,7 @@ float zoomDir = 0.0f;
 void loop()
 {
 
-    NavigationDisplayTestLoop();
-    display->SetRotation(rot);
+    UpdateNavigationDisplay(displayManager);
 
-    display->Update();   
-    
   
 }

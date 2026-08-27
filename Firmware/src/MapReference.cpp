@@ -53,7 +53,7 @@ void printDouble( double val, unsigned int precision){
         frac = (val - int(val)) * precision;
     else
         frac = (int(val)- val ) * precision;
-    Serial.println(frac,DEC) ;
+
 } 
 
 bool MapReference::Load(const char* filename)

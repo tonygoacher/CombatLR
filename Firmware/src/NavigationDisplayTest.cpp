@@ -17,6 +17,11 @@
 #include <SPIFFS.h>
 #include "Ports.h"
 #include "ADCZoom.h"
+#include "ZoomCommand.h"
+#include "PlayerPositionCommand.h"
+#include "TurnMapToHeadingCommand.h"
+#include "DisplayManager.h"
+
 
 /*
  * Production navigation/display API.
@@ -69,108 +74,68 @@ namespace
     constexpr float HEADING_STEP_DEGREES = 0.0f;// 15.0f;
 
     GamePlan gamePlan;
-    TextureManager textureManager(SPIFFS);
+ 
     IZoom* zoomDevice = new ADCZoom(ZOOMADC);
 };
 
   NavigationData data;
-  void UpdateNavigationDisplay()
-{
-    Serial.println("UpdateNavigationDisplay");
-
-  
+  void UpdateNavigationDisplay(DisplayManager& displayManager)
+{  
     if(navigation.Update())
     {
-    
+        
         data = navigation.GetData();
-    }
 
-    if(!data.positionValid)
-    {
-        return;
-    }
+   
 
-    constexpr double TEST_LATITUDE =
-        53.5506262;
+        /*
+        * Convert the known C GPS position into the local
+        * GameCoordinate system.
+        */
+        const GameCoordinate playerPosition =
+            geoReference.ToGameCoordinate(
+                data.latitude,
+                data.longitude);
 
-    constexpr double TEST_LONGITUDE =
-        -1.9986439;
+        Serial.printf("GameCoordinate Rx data:%.3f %.3f\n", playerPosition.east, playerPosition.north);
+                    
+        float zoom = zoomDevice->GetZoom();
+                
+        displayManager.Send(
+            std::unique_ptr<IDisplayCommand>(
+                new PlayerPositionCommand(
+                    playerPosition)));
 
+        displayManager.Send(
+            std::unique_ptr<IDisplayCommand>(
+                new TurnMapToHeadingCommand(
+                    data.heading)));
 
+        displayManager.Send(
+            std::unique_ptr<IDisplayCommand>(
+                new ZoomCommand(
+                    zoom)));
 
-    /*
-     * Convert the known C GPS position into the local
-     * GameCoordinate system.
-     */
-    const GameCoordinate position =
-        geoReference.ToGameCoordinate(
-            data.latitude,
-            data.longitude);
-            
+                
+    }                
 
-
-    /*
-     * Convert the same position into the BMP coordinate system.
-     */
-    float mapX;
-    float mapY;
-
-    if (mapReference.GameToMapPixel(
-            position,
-            mapX,
-            mapY))
-    {
-        Serial.printf(
-            "TEST C: Map=(%.2f, %.2f) px\n",
-            mapX,
-            mapY);
-    }
-    else
-    {
-        Serial.println(
-            "TEST C: GameToMapPixel FAILED");
-    }
-
-    float zoom = zoomDevice->GetZoom();
-    Serial.print("Zoom: "); Serial.println(zoom);
-    theDisplay->SetMapZoom(zoom);
-    
-
-    /*
-     * Make this known position the player position.
-     */
-    SetNavigationPlayerPosition(
-        position,
-        data.heading);
 }
 
-void NavigationDisplayTestBegin(IDisplay* display)
+void NavigationDisplayTestBegin()
 {
     Serial.println();
     Serial.println(F("===================================="));
     Serial.println(F("Navigation display integration test"));
     Serial.println(F("===================================="));
-    theDisplay = display;
+   
     if(!gamePlan.Load("/gameplan.json"))
     {
         Serial.println("Failed to load gameplan");
         while(1)
         {};
     }
-    else
-    {
-        Serial.println("Gameplan loaded ok");
-    }
 
-    if (!mapReference.Load("/map.json"))
-    {
-        Serial.println("Map reference load failed");
-        while(1)
-        {};
-        // fa
-    }    
-
-    ConfigureNavigationMap(
+       ConfigureNavigationMap(
     "/map.json",
     gamePlan.GetHomeLatitude(),
     gamePlan.GetHomeLongitude());
@@ -185,40 +150,7 @@ void NavigationDisplayTestBegin(IDisplay* display)
     mapReference.Configure(
         gamePlan.GetHomeLatitude(),
         gamePlan.GetHomeLongitude());
-
-    GameCoordinate home;
-    home.east = 0.0f;
-    home.north = 0.0f;
-
-    float homeX;
-    float homeY;
-
-    if (mapReference.GameToMapPixel(home, homeX, homeY))
-    {
-        Serial.printf(
-            "Map Home: x=%.2f y=%.2f px\n",
-            homeX,
-            homeY);
-    }
-
-  
-    ZoneWidget* z = new ZoneWidget(gamePlan.GetZones()[0], TFT_GREEN);
-    display->AddWidget(z);
-
-    if(gamePlan.GetZones()[0].pickups.size())
-    {
-        std::map<int ,  Pickup>::const_iterator pickupIter = gamePlan.GetZones()[0].pickups.find(3);
-        if(pickupIter != gamePlan.GetZones()[0].pickups.cend())
-        {
-            GameCoordinate position = pickupIter->second.GetPosition(); 
-            MapWidget* w = new MapWidget(textureManager, position, "/health.bmp" );
-            display->AddWidget(w);
-        }
-        else
-        {
-            Serial.println("Could not find pickup id 3");
-        }            
-    }
+ 
 
     GameController::Instance().Initialise(gamePlan, gameTime);
 
@@ -227,19 +159,8 @@ void NavigationDisplayTestBegin(IDisplay* display)
     navigation.Begin();
 
 
-    UpdateNavigationDisplay();
-
-    lastMove = millis();
 
   
 }
 
-void NavigationDisplayTestLoop()
-{
-
- 
-
-
-    UpdateNavigationDisplay();
-}
 
