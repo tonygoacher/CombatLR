@@ -7,7 +7,7 @@ class ZoneWidget : public IWidget
 {
 public:
     explicit ZoneWidget(
-        const Zone& zone);
+        const Zone& zone, uint32_t colour);
 
     WidgetPosition GetPosition() const override;
 
@@ -20,4 +20,5 @@ public:
 
 private:
     const Zone& _zone;
+    const uint32_t _colour;
 };

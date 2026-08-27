@@ -6,9 +6,10 @@
 extern MapReference gNavigationMap;
 
 ZoneWidget::ZoneWidget(
-    const Zone& zone)
+    const Zone& zone, uint32_t colour)
     :
-    _zone(zone)
+    _zone(zone),
+    _colour(colour)
 {
 }
 
@@ -65,28 +66,13 @@ zonePosition.north =
 
 
 
-Serial.printf(
-    "ZoneWidget:\n"
-    "  game EN=(%.3f,%.3f)\n"
-    "  position=(%.3f,%.3f)\n"
-    "  zoom=%.3f\n",
-    _zone.eastMetres,
-    _zone.northMetres,
-    position.x,
-    position.y,
-    position.zoom);
-
-
-    canvas.drawCircle(
+    canvas.drawSmoothArc(
         static_cast<int16_t>(position.x),
         static_cast<int16_t>(position.y),
         static_cast<int16_t>(radiusPixels),
-        TFT_RED);
+        static_cast<int16_t>(radiusPixels)+4,
+        0,360,
+        _colour, TFT_BLACK);
 
 
-        canvas.drawCircle(
-            static_cast<int16_t>(position.x),
-            static_cast<int16_t>(position.y),
-            static_cast<int16_t>(radiusPixels)+1,
-            TFT_RED);
 }

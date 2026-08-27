@@ -4,5 +4,7 @@
 #define TXPORT  1
 #define RXPORT  2
 
+#define ZOOMADC  3
+
 
 #endif
