@@ -37,33 +37,8 @@ static constexpr int16_t CANVAS_CY =
     CANVAS_HEIGHT / 2;
 
 
-namespace
-{
-    MapReference gNavigationMap;
 
-    float gNavigationHeading = 0.0f;
-    bool gNavigationMapConfigured = false;
-  
 
-   
-}
-
-void ConfigureNavigationMap(
-    const char* mapFilename,
-    double homeLatitude,
-    double homeLongitude)
-{
-    if (!gNavigationMap.Load(mapFilename))
-    {
-        gNavigationMapConfigured = false;
-        return;
-    }
-
-    gNavigationMapConfigured =
-        gNavigationMap.Configure(
-            homeLatitude,
-            homeLongitude);
-}
 
 
 
@@ -81,7 +56,8 @@ ST7789VDisplay::ST7789VDisplay()
     _mapHeight(0),
     _rotation(0.0f),
     _mapZoom(1.0f),
-    _initialised(false)
+    _initialised(false),
+    _navMapConfigured(false)
 {}
 
  void ST7789VDisplay::RenderNavigationPlayer(
@@ -455,7 +431,7 @@ WidgetRenderPosition ST7789VDisplay::TransformWidgetPosition(
 
     GameCoordinate gamePosition = widget.GetGamePosition();
 
-    if (!gNavigationMap.GameToMapPixel(gamePosition, mapX, mapY))
+    if (!_navigationMap.GameToMapPixel(gamePosition, mapX, mapY))
     {
         return result;
     }
@@ -581,10 +557,10 @@ const float scaleY =
     float playerMapY =
         static_cast<float>(_mapHeight) * 0.5f;
 
-    if (gNavigationMapConfigured &&
+    if (_navMapConfigured &&
         _playerVisible)
     {
-        if (!gNavigationMap.GameToMapPixel(
+        if (!_navigationMap.GameToMapPixel(
                 _playerPosition,
                 playerMapX,
                 playerMapY))
@@ -979,7 +955,7 @@ void ST7789VDisplay::RenderWidgets()
     DisplayContext context(
         _screenSprite,
         position,
-        gNavigationMap.GetPixelsPerMetre());
+        _navigationMap.GetPixelsPerMetre());
 
 
         /*
@@ -1017,7 +993,7 @@ void ST7789VDisplay::Update(
     _playerVisible = playerVisible;
 
     _rotation =
-        gNavigationMap.GetMapUpHeading() -
+        _mapUpHeading -
         heading;
 
     _mapZoom = zoom;
@@ -1053,6 +1029,13 @@ void ST7789VDisplay::Clear()
         -VIEWPORT_X,
         -VIEWPORT_Y);
 }
+
+void ST7789VDisplay::SetMapConfigData(const ConfigureMapCommand::MapConfigData& configData)
+{
+    _mapUpHeading = configData.mapUpHeading;    
+}
+
+
 
 bool ST7789VDisplay::SetBackground(
     const uint16_t* image,
@@ -1109,4 +1092,36 @@ bool ST7789VDisplay::SetBackground(
     _mapZoom = 1.0f;
 
     return true;
+}
+
+bool ST7789VDisplay::ConfigureNavigationMap(
+    const char* mapFilename,
+    double homeLatitude,
+    double homeLongitude)
+{
+    _navMapConfigured = false;
+    Serial.println("ConfigureNavigationMap");
+    if (!_navigationMap.Load(mapFilename))
+    {
+        Serial.printf("Failed to load %s", mapFilename);
+        return false;
+    }
+    else
+    {
+         _navMapConfigured = true;
+    }
+
+    if(_navMapConfigured &&!_navigationMap.Configure(
+            homeLatitude,
+            homeLongitude))
+            {
+                Serial.println("Failed to configure _navigationMap");
+                _navMapConfigured = false;
+            }
+    _mapUpHeading = _navigationMap.GetMapUpHeading();
+            Serial.printf(
+    "Navigation map up heading = %.3f\n",
+    _mapUpHeading);
+
+    return _navMapConfigured; 
 }

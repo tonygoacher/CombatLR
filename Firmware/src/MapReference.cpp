@@ -647,5 +647,6 @@ bool MapReference::GameToMapPixel(
 
 float MapReference::GetMapUpHeading() const
 {
+    Serial.printf("Map up in MapREf is %.3f\n", _mapUpHeading);
     return _mapUpHeading;
 }

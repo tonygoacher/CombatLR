@@ -15,6 +15,10 @@ public:
 
     virtual bool Init() = 0;
 
+    virtual bool ConfigureNavigationMap(
+    const char* mapFilename,
+    double homeLatitude,
+    double homeLongitude) =0;
 
     /*
      * Dynamic map rotation in degrees.

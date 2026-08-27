@@ -7,6 +7,8 @@
 #include "IDisplay.h"
 #include "IWidget.h"
 #include "IDisplayContext.h"
+#include "ConfigureMapCommand.h"
+#include "MapReference.h"
 
 
 class ST7789VDisplay : public IDisplay
@@ -57,6 +59,10 @@ public:
     void Clear() override;
 
     void SetPlayerHeading(float headingDegrees);
+
+    void SetMapConfigData(const ConfigureMapCommand::MapConfigData& configData);
+
+    bool ConfigureNavigationMap( const char* mapFilename,  double homeLatitude, double homeLongitude) override;
 
 
 
@@ -125,6 +131,8 @@ private:
     float _cameraMapX;
     float _cameraMapY;
 
+    float _mapUpHeading;
+
 
     /*
      * ---------------------------------------------------------
@@ -173,4 +181,7 @@ private:
 
 
     void TestSprites();
+
+    MapReference _navigationMap;
+    bool _navMapConfigured;
 };
