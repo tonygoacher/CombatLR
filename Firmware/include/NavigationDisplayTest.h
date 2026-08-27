@@ -2,5 +2,5 @@
 
 class IDisplay;
 class DisplayManager;
-void NavigationDisplayTestBegin();
+void NavigationDisplayTestBegin(DisplayManager&);
 void UpdateNavigationDisplay(DisplayManager&);

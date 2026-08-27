@@ -21,6 +21,7 @@
 #include "PlayerPositionCommand.h"
 #include "TurnMapToHeadingCommand.h"
 #include "DisplayManager.h"
+#include "ConfigureMapCommand.h"
 
 
 /*
@@ -28,10 +29,7 @@
  *
  * These are free functions implemented by ST7789VDisplay.cpp.
  */
-void ConfigureNavigationMap(
-    const char* mapFilename,
-    double homeLatitude,
-    double homeLongitude);
+
 
 void SetNavigationPlayerPosition(
     const GameCoordinate& position,
@@ -42,7 +40,7 @@ namespace
     //SpoofNavigation navigation;
     NavigationNMEA  navigation(9,46);
     GeoReference geoReference;
-    MapReference mapReference;
+   
     MillisGameTime gameTime;
     IDisplay* theDisplay;
 
@@ -114,14 +112,14 @@ namespace
         displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new ZoomCommand(
-                    zoom)));
+                    0.8f)));
 
                 
     }                
 
 }
 
-void NavigationDisplayTestBegin()
+void NavigationDisplayTestBegin(DisplayManager& displayManager)
 {
     Serial.println();
     Serial.println(F("===================================="));
@@ -135,7 +133,7 @@ void NavigationDisplayTestBegin()
         {};
     }
 
-       ConfigureNavigationMap(
+    displayManager.ConfigureNavigationMap(
     "/map.json",
     gamePlan.GetHomeLatitude(),
     gamePlan.GetHomeLongitude());
@@ -147,19 +145,12 @@ void NavigationDisplayTestBegin()
     gamePlan.GetHomeLatitude(),
     gamePlan.GetHomeLongitude());
 
-    mapReference.Configure(
-        gamePlan.GetHomeLatitude(),
-        gamePlan.GetHomeLongitude());
- 
 
     GameController::Instance().Initialise(gamePlan, gameTime);
 
     GameController::Instance().ShowZoneInfo();
 
     navigation.Begin();
-
-
-
   
 }
 

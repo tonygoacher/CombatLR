@@ -64,7 +64,7 @@ void setup()
         new DisplayBackgroundCommand(
             "/map.bmp")));
 
-    NavigationDisplayTestBegin();
+    NavigationDisplayTestBegin(displayManager);
 
 }
 
