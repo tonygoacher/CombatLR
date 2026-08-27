@@ -12,25 +12,16 @@
 class ST7789VDisplay : public IDisplay
 {
 public:
+    ST7789VDisplay();
 
-    static constexpr uint16_t MAX_WIDGETS = 32;
+    ~ST7789VDisplay();
 
+    bool Init();
 
-    /*
-     * mapImage is RGB565 pixel data.
-     *
-     * The image is copied into PSRAM.
-     */
-    ST7789VDisplay(
-        const uint16_t* mapImage,
-        uint16_t mapWidth,
-        uint16_t mapHeight);
-
-
-    ~ST7789VDisplay() override;
-
-
-    bool Init() override;
+    bool SetBackground(
+        const uint16_t* image,
+        uint16_t width,
+        uint16_t height);
 
 
     void SetRotation(
@@ -55,7 +46,12 @@ public:
         uint16_t widgetId) override;
 
 
-    void Update() override;
+    
+    void Update(
+    const GameCoordinate& playerPosition,
+    float heading,
+    float zoom,
+    bool playerVisible) override;
 
 
     void Clear() override;
@@ -140,6 +136,9 @@ private:
 
     float _playerHeading;
     bool _playerHeadingValid;
+    GameCoordinate _playerPosition;
+
+    bool _playerVisible;
 
 
     /*
@@ -158,6 +157,11 @@ private:
 
 
     void RenderWidgets();
+
+    void RenderNavigationPlayer(
+        TFT_eSprite& canvas,
+        int16_t screenX,
+        int16_t screenY);
 
 
     WidgetRenderPosition

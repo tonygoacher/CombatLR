@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "GameCoordinate.h"
 
 class IWidget;
 
@@ -52,7 +53,11 @@ public:
     /*
      * Render the current display.
      */
-    virtual void Update() = 0;
+    virtual void Update(
+    const GameCoordinate& playerPosition,
+    float heading,
+    float zoom,
+    bool playerVisible) = 0;
 
 
     virtual void Clear() = 0;
