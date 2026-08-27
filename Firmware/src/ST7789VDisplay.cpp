@@ -530,15 +530,23 @@ const float mapRotation =
         : 0.0f;
 
     // 4. Convert degrees to radians and rotate offset vector
-    const float radians = mapRotation * (PI / 180.0f);
-    const float cosAngle = cosf(radians);
-    const float sinAngle = sinf(radians);
+  const float radians =
+    -mapRotation *
+    (PI / 180.0f);
 
-    /*
-     * Note: Matches the rotation matrix applied during pushRotated()
-     */
-    const float rotatedX = (dx * cosAngle) - (dy * sinAngle);
-    const float rotatedY = (dx * sinAngle) + (dy * cosAngle);
+const float sinAngle =
+    sinf(radians);
+
+const float cosAngle =
+    cosf(radians);
+
+const float rotatedX =
+    (dx * cosAngle) -
+    (dy * sinAngle);
+
+const float rotatedY =
+    (dx * sinAngle) +
+    (dy * cosAngle);
 
     // 5. Translate offset back to logical Canvas Centre
     const float canvasCentreX = (static_cast<float>(CANVAS_WIDTH) - 1.0f) * 0.5f;
