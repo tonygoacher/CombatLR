@@ -9,6 +9,7 @@ class MapWidget : public IWidget
 public:
 
     MapWidget(
+        uint32_t id,
         TextureManager& textureManager,
         const GameCoordinate& position,
         const char* filename);

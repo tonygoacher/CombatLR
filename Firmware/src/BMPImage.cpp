@@ -411,9 +411,10 @@ bool BMPImage::Load(
     file.close();
 
     Serial.printf(
-        "BMPImage: loaded %ux%u RGB565 image\n",
+        "BMPImage: loaded %ux%u RGB565 image %s\n",
         _width,
-        _height);
+        _height,
+        filename);
 
     return true;
 }
