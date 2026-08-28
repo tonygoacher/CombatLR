@@ -53,7 +53,7 @@ void printDouble( double val, unsigned int precision){
         frac = (val - int(val)) * precision;
     else
         frac = (int(val)- val ) * precision;
-    Serial.println(frac,DEC) ;
+
 } 
 
 bool MapReference::Load(const char* filename)
@@ -630,22 +630,13 @@ bool MapReference::GameToMapPixel(
             _eastToMapY +
         static_cast<double>(position.north) *
             _northToMapY);
-
-            Serial.printf(
-    "GameToMap coefficients:\n"
-    "  eastToMapX  = %.9f\n"
-    "  eastToMapY  = %.9f\n"
-    "  northToMapX = %.9f\n"
-    "  northToMapY = %.9f\n",
-    _eastToMapX,
-    _eastToMapY,
-    _northToMapX,
-    _northToMapY);
+           
 
     return true;
 }
 
 float MapReference::GetMapUpHeading() const
 {
+    Serial.printf("Map up in MapREf is %.3f\n", _mapUpHeading);
     return _mapUpHeading;
 }

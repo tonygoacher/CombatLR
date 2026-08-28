@@ -2,17 +2,7 @@
 
 #include <Arduino.h>
 
-/*
- * Game coordinates are deliberately independent of GPS.
- *
- * X = metres east of Home
- * Y = metres north of Home
- */
-struct GameCoordinate
-{
-    float east = 0.0f;
-    float north = 0.0f;
-};
+#include "GameCoordinate.h"
 
 /*
  * Defines the GPS origin of a game session and converts GPS positions

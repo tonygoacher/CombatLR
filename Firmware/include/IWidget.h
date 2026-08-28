@@ -19,10 +19,26 @@ struct WidgetPosition
     float y;
 };
 
+enum class WidgetType
+{
+    Pickup,
+    Zone
+};
+
 
 class IWidget
 {
 public:
+
+    IWidget(
+        int id,
+        WidgetType type)
+        :
+        _id(id),
+        _visible(true),
+        _type(type)
+    {
+    }
 
     virtual ~IWidget() = default;
 
@@ -47,6 +63,9 @@ public:
 
     virtual GameCoordinate GetGamePosition() const = 0;
 
+    bool GetVisible() { return _visible;}
+    void SetVisible(bool visible){ _visible = visible;}
+
 
     /*
      * Render the widget.
@@ -58,4 +77,21 @@ public:
      */
     virtual void Render(
         IDisplayContext& context) = 0;
+
+            int GetId() const
+    {
+        return _id;
+    }
+
+    WidgetType GetType() const
+    {
+        return _type;
+    }
+
+protected:
+    const int _id;
+    const WidgetType _type;    
+    bool _visible;
+
+
 };

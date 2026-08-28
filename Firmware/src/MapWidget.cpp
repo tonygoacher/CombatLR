@@ -2,11 +2,13 @@
 #include "TFT_eSPI.h"
 #include "IDisplayContext.h"
 
-MapWidget::MapWidget(
+    MapWidget::MapWidget(
+    uint32_t id,
     TextureManager& textureManager,
     const GameCoordinate& position,
     const char* filename)
     :
+    IWidget(id, WidgetType::Pickup),
     _position(position),
     _texture(
         textureManager.GetTexture(filename))
@@ -68,21 +70,6 @@ void MapWidget::Render(
      *
      * Black pixels are transparent.
      */
-
-
-Serial.printf(
-    "MapWidget:\n"
-    "  game EN=(%.3f,%.3f)\n"
-    "  position=(%.3f,%.3f)\n"
-    "  zoom=%.3f\n"
-    "  texture=%ux%u\n",
-    _position.east,
-    _position.north,
-    position.x,
-    position.y,
-    position.zoom,
-    _texture->GetWidth(),
-    _texture->GetHeight());
 
     const float scaledWidth =
     static_cast<float>(width) *
@@ -165,4 +152,12 @@ for (int16_t screenY = top;
             colour);
     }
     }
+
+    canvas.drawSmoothArc(
+    static_cast<int16_t>(left + (scaledWidth /2)),
+    static_cast<int16_t>(top + (scaledHeight / 2)),
+    static_cast<int16_t>(scaledWidth * 0.7 ),
+    static_cast<int16_t>(scaledWidth * 0.7 )+4,
+    0,360,
+    TFT_RED, TFT_BLACK);
 }

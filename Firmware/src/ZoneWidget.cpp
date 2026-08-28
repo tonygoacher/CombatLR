@@ -3,12 +3,17 @@
 #include "IDisplayContext.h"
 #include "MapReference.h"
 
-extern MapReference gNavigationMap;
+
 
 ZoneWidget::ZoneWidget(
-    const Zone& zone, uint32_t colour)
+    uint32_t id,
+    const GameCoordinate& position,
+    const uint16_t radius,
+    uint32_t colour)
     :
-    _zone(zone),
+    IWidget(id, WidgetType::Zone),
+    _radius(radius),
+    _position(position),
     _colour(colour)
 {
 }
@@ -29,8 +34,8 @@ ZoneWidget::GetGamePosition() const
 {
     GameCoordinate position;
 
-    position.east = _zone.eastMetres;
-    position.north = _zone.northMetres;
+    position.east = _position.east;
+    position.north = _position.north;
 
     return position;
 }
@@ -48,23 +53,9 @@ void ZoneWidget::Render(
         context.GetMapScale();
 
     const float radiusPixels =
-        static_cast<float>(_zone.radiusMetres) *
+        static_cast<float>(_radius) *
         context.GetMapPixelsPerMetre() *
         context.GetMapScale();
-
-        float mapX = 0.0f;
-float mapY = 0.0f;
-
-
-GameCoordinate zonePosition;
-
-zonePosition.east =
-    _zone.eastMetres;
-
-zonePosition.north =
-    _zone.northMetres;
-
-
 
     canvas.drawSmoothArc(
         static_cast<int16_t>(position.x),

@@ -16,17 +16,23 @@
 #include "MapWidget.h"
 #include <SPIFFS.h>
 #include "Ports.h"
-#include "ADCZoom.h"
+#include "SteppedZoom.h"
+#include "ZoomCommand.h"
+#include "PlayerPositionCommand.h"
+#include "TurnMapToHeadingCommand.h"
+#include "DisplayManager.h"
+#include "ConfigureMapCommand.h"
+#include "AddWidgetCommand.h"
+#include "AddZoneCommand.h"
+#include "PickupTypes.h"
+
 
 /*
  * Production navigation/display API.
  *
  * These are free functions implemented by ST7789VDisplay.cpp.
  */
-void ConfigureNavigationMap(
-    const char* mapFilename,
-    double homeLatitude,
-    double homeLongitude);
+
 
 void SetNavigationPlayerPosition(
     const GameCoordinate& position,
@@ -37,7 +43,7 @@ namespace
     //SpoofNavigation navigation;
     NavigationNMEA  navigation(9,46);
     GeoReference geoReference;
-    MapReference mapReference;
+   
     MillisGameTime gameTime;
     IDisplay* theDisplay;
 
@@ -69,108 +75,70 @@ namespace
     constexpr float HEADING_STEP_DEGREES = 0.0f;// 15.0f;
 
     GamePlan gamePlan;
-    TextureManager textureManager(SPIFFS);
-    IZoom* zoomDevice = new ADCZoom(ZOOMADC);
+ 
+    IZoom* zoomDevice = new SteppedZoom(ZOOMSWITCHPORT);
 };
 
   NavigationData data;
-  void UpdateNavigationDisplay()
-{
-    Serial.println("UpdateNavigationDisplay");
-
-  
+  void UpdateNavigationDisplay(DisplayManager& displayManager)
+{  
+   
     if(navigation.Update())
     {
-    
+        
         data = navigation.GetData();
-    }
 
-    if(!data.positionValid)
-    {
-        return;
-    }
+        /*
+        * Convert the known C GPS position into the local
+        * GameCoordinate system.
+        */
+        const GameCoordinate playerPosition =
+            geoReference.ToGameCoordinate(
+                data.latitude,
+                data.longitude);
+                    
+               
+        displayManager.Send(
+            std::unique_ptr<IDisplayCommand>(
+                new PlayerPositionCommand(
+                    playerPosition)));
 
-    constexpr double TEST_LATITUDE =
-        53.5506262;
-
-    constexpr double TEST_LONGITUDE =
-        -1.9986439;
-
-
-
-    /*
-     * Convert the known C GPS position into the local
-     * GameCoordinate system.
-     */
-    const GameCoordinate position =
-        geoReference.ToGameCoordinate(
-            data.latitude,
-            data.longitude);
-            
+        displayManager.Send(
+            std::unique_ptr<IDisplayCommand>(
+                new TurnMapToHeadingCommand(
+                    data.heading)));
 
 
-    /*
-     * Convert the same position into the BMP coordinate system.
-     */
-    float mapX;
-    float mapY;
-
-    if (mapReference.GameToMapPixel(
-            position,
-            mapX,
-            mapY))
-    {
-        Serial.printf(
-            "TEST C: Map=(%.2f, %.2f) px\n",
-            mapX,
-            mapY);
-    }
-    else
-    {
-        Serial.println(
-            "TEST C: GameToMapPixel FAILED");
-    }
-
-    float zoom = zoomDevice->GetZoom();
-    Serial.print("Zoom: "); Serial.println(zoom);
-    theDisplay->SetMapZoom(zoom);
+                
+                
+    }       
     
-
-    /*
-     * Make this known position the player position.
-     */
-    SetNavigationPlayerPosition(
-        position,
-        data.heading);
+    float zoom = 1.0f;
+    if(zoomDevice->GetZoom(zoom))
+    {
+        
+        displayManager.Send(
+        std::unique_ptr<IDisplayCommand>(
+            new ZoomCommand(
+                zoom)));    
+    }
 }
 
-void NavigationDisplayTestBegin(IDisplay* display)
+void NavigationDisplayTestBegin(DisplayManager& displayManager)
 {
     Serial.println();
     Serial.println(F("===================================="));
     Serial.println(F("Navigation display integration test"));
     Serial.println(F("===================================="));
-    theDisplay = display;
+   
     if(!gamePlan.Load("/gameplan.json"))
     {
         Serial.println("Failed to load gameplan");
         while(1)
         {};
     }
-    else
-    {
-        Serial.println("Gameplan loaded ok");
-    }
 
-    if (!mapReference.Load("/map.json"))
-    {
-        Serial.println("Map reference load failed");
-        while(1)
-        {};
-        // fa
-    }    
-
-    ConfigureNavigationMap(
+    displayManager.ConfigureNavigationMap(
     "/map.json",
     gamePlan.GetHomeLatitude(),
     gamePlan.GetHomeLongitude());
@@ -182,43 +150,6 @@ void NavigationDisplayTestBegin(IDisplay* display)
     gamePlan.GetHomeLatitude(),
     gamePlan.GetHomeLongitude());
 
-    mapReference.Configure(
-        gamePlan.GetHomeLatitude(),
-        gamePlan.GetHomeLongitude());
-
-    GameCoordinate home;
-    home.east = 0.0f;
-    home.north = 0.0f;
-
-    float homeX;
-    float homeY;
-
-    if (mapReference.GameToMapPixel(home, homeX, homeY))
-    {
-        Serial.printf(
-            "Map Home: x=%.2f y=%.2f px\n",
-            homeX,
-            homeY);
-    }
-
-  
-    ZoneWidget* z = new ZoneWidget(gamePlan.GetZones()[0], TFT_GREEN);
-    display->AddWidget(z);
-
-    if(gamePlan.GetZones()[0].pickups.size())
-    {
-        std::map<int ,  Pickup>::const_iterator pickupIter = gamePlan.GetZones()[0].pickups.find(3);
-        if(pickupIter != gamePlan.GetZones()[0].pickups.cend())
-        {
-            GameCoordinate position = pickupIter->second.GetPosition(); 
-            MapWidget* w = new MapWidget(textureManager, position, "/health.bmp" );
-            display->AddWidget(w);
-        }
-        else
-        {
-            Serial.println("Could not find pickup id 3");
-        }            
-    }
 
     GameController::Instance().Initialise(gamePlan, gameTime);
 
@@ -226,20 +157,48 @@ void NavigationDisplayTestBegin(IDisplay* display)
 
     navigation.Begin();
 
+    const Zone& z = gamePlan.GetZones()[0];
+    AddZoneCommand* addZone = new AddZoneCommand(z.id, GameCoordinate(z.eastMetres, z.northMetres), z.radiusMetres, TFT_GREEN);
+    displayManager.Send(
+            std::unique_ptr<IDisplayCommand>(addZone));
 
-    UpdateNavigationDisplay();
+    if(gamePlan.GetZones()[0].pickups.size())
+    {
+        std::map<int ,  Pickup>::const_iterator pickupIter = gamePlan.GetZones()[0].pickups.find(3);
+        while(pickupIter != gamePlan.GetZones()[0].pickups.cend())
+        {
+            GameCoordinate position = pickupIter->second.GetPosition(); 
 
-    lastMove = millis();
+            std::string filename;
+            switch(pickupIter->second.type)
+            {
+                case PickupTypes::Health:
+                {
+                    filename = "/health.bmp";
+                }
+                break;
+                case PickupTypes::Ammo:
+                {
+                    filename = "/reload.bmp";
+                }
+                break;
+                
+                case PickupTypes::Bonus:
+                {
+                    filename = "/weapon.bmp";
+                }
+                break;
+            }
 
+            AddWidgetCommand* command = new AddWidgetCommand(pickupIter->second.id, WidgetType::Pickup, position, filename);
+            Serial.print("Adding widget type "); Serial.println(pickupIter->second.type);
+            displayManager.Send(
+            std::unique_ptr<IDisplayCommand>(command));
+            pickupIter++;
+        }
+         
+    }
   
 }
 
-void NavigationDisplayTestLoop()
-{
-
- 
-
-
-    UpdateNavigationDisplay();
-}
 

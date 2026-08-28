@@ -50,7 +50,6 @@ bool NavigationNMEA::Update()
             {
                 if (ProcessSentence(_line))
                 {
-                    Serial.println(_line);
                     newPacket = true;
                 }                    
             }
