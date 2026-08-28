@@ -5,6 +5,10 @@
 #include "TurnMapToHeadingCommand.h"
 #include "DisplayBackgroundCommand.h"
 #include "ConfigureMapCommand.h"
+#include "AddWidgetCommand.h"
+#include "MapWidget.h"
+#include "ZoneWidget.h"
+#include "AddZoneCommand.h"
 
 DisplayManager::DisplayManager(
     TextureManager& textureManager)
@@ -232,6 +236,26 @@ void DisplayManager::ProcessCommand(const IDisplayCommand* command)
             break;
         }
 
+        case DisplayCommandType::AddWidget:
+        {
+            AddWidget(
+                static_cast<
+                    const AddWidgetCommand*>(
+                        command));
+
+            break;
+        }
+
+        case DisplayCommandType::AddZone:
+        {
+            AddZone(
+                static_cast<
+                    const AddZoneCommand*>(
+                        command));
+
+            break;
+        }
+
         default:
             break;
     }   
@@ -240,7 +264,6 @@ void DisplayManager::ProcessCommand(const IDisplayCommand* command)
 
 void DisplayManager::SetZoom(const ZoomCommand* command)
 {
-    Serial.print("Zoom Command: "); Serial.println(command->GetZoom());
     _zoom = command->GetZoom();
 }
 
@@ -248,14 +271,12 @@ void DisplayManager::SetPlayerPosition(const PlayerPositionCommand* command)
 {
     _playerPosition = command->GetPosition();
     _playerVisible = true;
-    Serial.printf("Player position %f %f\n", command->GetPosition().east, command->GetPosition().north);
 }
 
 void DisplayManager::TurnMapToHeading(const TurnMapToHeadingCommand* command)
 {
     
     _heading = command->GetHeading();   
-    Serial.printf("HEading %.3f\n", _heading);
 }
 
 void DisplayManager::DisplayBackground(
@@ -308,8 +329,44 @@ void DisplayManager::ConfigureMap(const ConfigureMapCommand * command)
 
 void DisplayManager::AddWidget(const AddWidgetCommand* command)
 {
-    
+    if (command == nullptr)
+        return;
+
+    switch (command->GetWidgetType())
+    {
+        case WidgetType::Pickup:
+        {
+            MapWidget* widget =
+                new MapWidget(
+                    command->GetId(),
+                    _textureManager,
+                    command->GetPosition(),
+                    command->GetTextureFilename().c_str());
+
+            _display->AddWidget(widget);
+
+            break;
+        }
+
+    }
 }
+
+void DisplayManager::AddZone(const AddZoneCommand* command)
+{
+
+    if (command == nullptr)
+        return;
+
+    ZoneWidget* widget =
+        new ZoneWidget(
+            command->GetId(),
+            command->GetPosition(),
+            command->GetRadius(),
+            command->GetColour());
+
+    _display->AddWidget(widget);
+}
+
 
 void DisplayManager::ConfigureNavigationMap(
     const char* mapFilename,

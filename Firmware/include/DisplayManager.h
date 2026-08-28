@@ -17,6 +17,8 @@ class PlayerPositionCommand;
 class TurnMapToHeadingCommand;
 class DisplayBackgroundCommand;
 class ConfigureMapCommand;
+class AddWidgetCommand;
+class AddZoneCommand;
 
 
 class DisplayManager
@@ -48,6 +50,7 @@ private:
     void DisplayBackground(const DisplayBackgroundCommand *);
     void ConfigureMap(const ConfigureMapCommand *);
     void AddWidget(const AddWidgetCommand* command);
+    void AddZone(const AddZoneCommand* command);
 
 std::deque<
     std::unique_ptr<IDisplayCommand>>

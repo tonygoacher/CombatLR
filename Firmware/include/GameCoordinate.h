@@ -6,8 +6,17 @@
  * X = metres east of Home
  * Y = metres north of Home
  */
-struct GameCoordinate
+class GameCoordinate
 {
-    float east = 0.0f;
-    float north = 0.0f;
+public:
+    GameCoordinate(float eastPos, float northPos)
+    :east(eastPos),
+    north(northPos)
+    {};
+    GameCoordinate()
+    : east(0.0f),
+    north(0.0f)
+    {}
+    float east;
+    float north;
 };
