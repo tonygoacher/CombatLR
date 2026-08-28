@@ -35,6 +35,7 @@ public:
         WidgetType type)
         :
         _id(id),
+        _visible(true),
         _type(type)
     {
     }
@@ -62,6 +63,9 @@ public:
 
     virtual GameCoordinate GetGamePosition() const = 0;
 
+    bool GetVisible() { return _visible;}
+    void SetVisible(bool visible){ _visible = visible;}
+
 
     /*
      * Render the widget.
@@ -87,6 +91,7 @@ public:
 protected:
     const int _id;
     const WidgetType _type;    
+    bool _visible;
 
 
 };

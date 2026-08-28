@@ -140,9 +140,10 @@ for (JsonObject zoneJson : zones)
             pickup.northMetres =
                 pickupJson["northMetres"].as<double>();
 
-            pickup.type =
-                pickupJson["type"].as<int>();
-
+           
+            int intType = pickupJson["type"].as<int>();
+            pickup.type = static_cast<PickupTypes>(intType);
+            
             pickup.spawnTimeSeconds =
                 pickupJson["spawnTimeSeconds"].as<uint32_t>();
 

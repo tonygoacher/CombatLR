@@ -57,11 +57,6 @@ void ZoneWidget::Render(
         context.GetMapPixelsPerMetre() *
         context.GetMapScale();
 
-        float mapX = 0.0f;
-float mapY = 0.0f;
-
-
-
     canvas.drawSmoothArc(
         static_cast<int16_t>(position.x),
         static_cast<int16_t>(position.y),
