@@ -6,5 +6,9 @@
 
 #define ZOOMSWITCHPORT  3
 
+#define LRC 8
+#define BCLK    18
+#define DATA    17
+
 
 #endif

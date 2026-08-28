@@ -3,14 +3,20 @@
 
 #include "SteppedZoom.h"
 #include "countof.h"
+#include "MAX98357ASounds.h"
+#include <SPIFFS.h>
 
+#include "Ports.h"
+MAX98357ASounds sounds(SPIFFS,BCLK,LRC,DATA);
 
 SteppedZoom::SteppedZoom(int port)
 : _switch(port),
 _current(0),
 _last(-1)
 {
-
+    Serial.println("AAAAAAAAAAAAAAAA");
+    sounds.Begin();
+  
 }
 
 bool SteppedZoom::GetZoom(float& newZoom)
@@ -19,6 +25,7 @@ bool SteppedZoom::GetZoom(float& newZoom)
     static const float zooms[]= {0.8f, 1.5f, 2.0f, 2.8f, 3.3f, 4.0f};
     if(_switch.Pressed())
     {
+        sounds.Play("/sounds/milshot.wav");
         _current++;
         if(_current >= countof(zooms))
         {
