@@ -24,6 +24,7 @@
 #include "ConfigureMapCommand.h"
 #include "AddWidgetCommand.h"
 #include "AddZoneCommand.h"
+#include "PickupTypes.h"
 
 
 /*
@@ -164,18 +165,38 @@ void NavigationDisplayTestBegin(DisplayManager& displayManager)
     if(gamePlan.GetZones()[0].pickups.size())
     {
         std::map<int ,  Pickup>::const_iterator pickupIter = gamePlan.GetZones()[0].pickups.find(3);
-        if(pickupIter != gamePlan.GetZones()[0].pickups.cend())
+        while(pickupIter != gamePlan.GetZones()[0].pickups.cend())
         {
             GameCoordinate position = pickupIter->second.GetPosition(); 
 
-            AddWidgetCommand* command = new AddWidgetCommand(pickupIter->second.id, WidgetType::Pickup, position, "/health.bmp");
+            std::string filename;
+            switch(pickupIter->second.type)
+            {
+                case PickupTypes::Health:
+                {
+                    filename = "/health.bmp";
+                }
+                break;
+                case PickupTypes::Ammo:
+                {
+                    filename = "/reload.bmp";
+                }
+                break;
+                
+                case PickupTypes::Bonus:
+                {
+                    filename = "/weapon.bmp";
+                }
+                break;
+            }
+
+            AddWidgetCommand* command = new AddWidgetCommand(pickupIter->second.id, WidgetType::Pickup, position, filename);
+            Serial.print("Adding widget type "); Serial.println(pickupIter->second.type);
             displayManager.Send(
             std::unique_ptr<IDisplayCommand>(command));
+            pickupIter++;
         }
-        else
-        {
-            Serial.println("Could not find pickup id 3");
-        }            
+         
     }
   
 }

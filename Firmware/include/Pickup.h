@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "GeoReference.h"
+#include "PickupTypes.h"
 
 class Pickup
 {
@@ -9,7 +10,7 @@ public:
     double eastMetres;
     double northMetres;
 
-    int type;
+    PickupTypes type;
 
     uint32_t spawnTimeSeconds;
     uint32_t lifespanSeconds;

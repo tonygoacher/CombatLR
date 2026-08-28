@@ -152,4 +152,12 @@ for (int16_t screenY = top;
             colour);
     }
     }
+
+    canvas.drawSmoothArc(
+    static_cast<int16_t>(left + (scaledWidth /2)),
+    static_cast<int16_t>(top + (scaledHeight / 2)),
+    static_cast<int16_t>(scaledWidth * 0.7 ),
+    static_cast<int16_t>(scaledWidth * 0.7 )+4,
+    0,360,
+    TFT_RED, TFT_BLACK);
 }
