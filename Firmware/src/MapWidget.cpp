@@ -2,11 +2,13 @@
 #include "TFT_eSPI.h"
 #include "IDisplayContext.h"
 
-MapWidget::MapWidget(
+    MapWidget::MapWidget(
+    uint32_t id,
     TextureManager& textureManager,
     const GameCoordinate& position,
     const char* filename)
     :
+    IWidget(id, WidgetType::Pickup),
     _position(position),
     _texture(
         textureManager.GetTexture(filename))

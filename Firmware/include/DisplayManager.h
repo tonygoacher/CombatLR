@@ -47,6 +47,7 @@ private:
     void TurnMapToHeading(const TurnMapToHeadingCommand*);
     void DisplayBackground(const DisplayBackgroundCommand *);
     void ConfigureMap(const ConfigureMapCommand *);
+    void AddWidget(const AddWidgetCommand* command);
 
 std::deque<
     std::unique_ptr<IDisplayCommand>>
