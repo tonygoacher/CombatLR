@@ -6,12 +6,15 @@ class TestWidget : public IWidget
 {
 public:
     TestWidget(
+        uint32_t id,
+        WidgetType type,
         WidgetCoordinateSpace space,
         float x,
         float y,
         uint16_t col
     )
         :
+        IWidget(id,type),
         _space(space),
         _x(x),
         _y(y),

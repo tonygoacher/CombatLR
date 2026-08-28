@@ -5,9 +5,9 @@
 
 extern MapReference gNavigationMap;
 
-ZoneWidget::ZoneWidget(
-    const Zone& zone, uint32_t colour)
+ZoneWidget::ZoneWidget(uint32_t id, const Zone& zone, uint32_t colour)
     :
+    IWidget(id, WidgetType::Zone),
     _zone(zone),
     _colour(colour)
 {

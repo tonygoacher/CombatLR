@@ -14,7 +14,7 @@ public:
     uint32_t spawnTimeSeconds;
     uint32_t lifespanSeconds;
 
-    int id;
+    uint32_t id;
 
     GameCoordinate GetPosition() const
     {

@@ -306,6 +306,11 @@ void DisplayManager::ConfigureMap(const ConfigureMapCommand * command)
     _display->SetMapConfigData(command->GetMapConfigData());
 }
 
+void DisplayManager::AddWidget(const AddWidgetCommand* command)
+{
+    
+}
+
 void DisplayManager::ConfigureNavigationMap(
     const char* mapFilename,
     double homeLatitude,

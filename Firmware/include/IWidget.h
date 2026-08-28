@@ -19,10 +19,25 @@ struct WidgetPosition
     float y;
 };
 
+enum class WidgetType
+{
+    Pickup,
+    Zone
+};
+
 
 class IWidget
 {
 public:
+
+    IWidget(
+        int id,
+        WidgetType type)
+        :
+        _id(id),
+        _type(type)
+    {
+    }
 
     virtual ~IWidget() = default;
 
@@ -58,4 +73,20 @@ public:
      */
     virtual void Render(
         IDisplayContext& context) = 0;
+
+            int GetId() const
+    {
+        return _id;
+    }
+
+    WidgetType GetType() const
+    {
+        return _type;
+    }
+
+protected:
+    const int _id;
+    const WidgetType _type;    
+
+
 };

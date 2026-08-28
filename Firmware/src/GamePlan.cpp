@@ -123,6 +123,8 @@ for (JsonObject zoneJson : zones)
     zone.lifespanSeconds =
         zoneJson["lifespanSeconds"].as<uint32_t>();
 
+    zone.id = ZoneWidgetIdBase + _zones.size(); // Zone id's start at ZoneWidgetIdBase
+
     JsonArray pickups =
         zoneJson["pickups"].as<JsonArray>();
 
