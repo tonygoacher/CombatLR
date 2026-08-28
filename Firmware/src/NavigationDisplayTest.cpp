@@ -76,7 +76,7 @@ namespace
 
     GamePlan gamePlan;
  
-    IZoom* zoomDevice = new SteppedZoom(ZOOMSWITCHPORT);
+    IZoom* zoomDevice = nullptr;
 };
 
   NavigationData data;
@@ -156,6 +156,8 @@ void NavigationDisplayTestBegin(DisplayManager& displayManager)
     GameController::Instance().ShowZoneInfo();
 
     navigation.Begin();
+
+    zoomDevice = new SteppedZoom(ZOOMSWITCHPORT);
 
     const Zone& z = gamePlan.GetZones()[0];
     AddZoneCommand* addZone = new AddZoneCommand(z.id, GameCoordinate(z.eastMetres, z.northMetres), z.radiusMetres, TFT_GREEN);
