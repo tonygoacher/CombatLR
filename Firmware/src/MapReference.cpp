@@ -630,17 +630,7 @@ bool MapReference::GameToMapPixel(
             _eastToMapY +
         static_cast<double>(position.north) *
             _northToMapY);
-
-            Serial.printf(
-    "GameToMap coefficients:\n"
-    "  eastToMapX  = %.9f\n"
-    "  eastToMapY  = %.9f\n"
-    "  northToMapX = %.9f\n"
-    "  northToMapY = %.9f\n",
-    _eastToMapX,
-    _eastToMapY,
-    _northToMapX,
-    _northToMapY);
+           
 
     return true;
 }

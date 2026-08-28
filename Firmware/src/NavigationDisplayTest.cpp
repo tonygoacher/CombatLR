@@ -16,12 +16,14 @@
 #include "MapWidget.h"
 #include <SPIFFS.h>
 #include "Ports.h"
-#include "ADCZoom.h"
+#include "SteppedZoom.h"
 #include "ZoomCommand.h"
 #include "PlayerPositionCommand.h"
 #include "TurnMapToHeadingCommand.h"
 #include "DisplayManager.h"
 #include "ConfigureMapCommand.h"
+#include "AddWidgetCommand.h"
+#include "AddZoneCommand.h"
 
 
 /*
@@ -73,18 +75,17 @@ namespace
 
     GamePlan gamePlan;
  
-    IZoom* zoomDevice = new ADCZoom(ZOOMADC);
+    IZoom* zoomDevice = new SteppedZoom(ZOOMSWITCHPORT);
 };
 
   NavigationData data;
   void UpdateNavigationDisplay(DisplayManager& displayManager)
 {  
+   
     if(navigation.Update())
     {
         
         data = navigation.GetData();
-
-   
 
         /*
         * Convert the known C GPS position into the local
@@ -94,11 +95,8 @@ namespace
             geoReference.ToGameCoordinate(
                 data.latitude,
                 data.longitude);
-
-        Serial.printf("GameCoordinate Rx data:%.3f %.3f\n", playerPosition.east, playerPosition.north);
                     
-        float zoom = zoomDevice->GetZoom();
-                
+               
         displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new PlayerPositionCommand(
@@ -109,14 +107,20 @@ namespace
                 new TurnMapToHeadingCommand(
                     data.heading)));
 
-        displayManager.Send(
-            std::unique_ptr<IDisplayCommand>(
-                new ZoomCommand(
-                    0.8f)));
 
                 
-    }                
-
+                
+    }       
+    
+    float zoom = 1.0f;
+    if(zoomDevice->GetZoom(zoom))
+    {
+        
+        displayManager.Send(
+        std::unique_ptr<IDisplayCommand>(
+            new ZoomCommand(
+                zoom)));    
+    }
 }
 
 void NavigationDisplayTestBegin(DisplayManager& displayManager)
@@ -151,6 +155,28 @@ void NavigationDisplayTestBegin(DisplayManager& displayManager)
     GameController::Instance().ShowZoneInfo();
 
     navigation.Begin();
+
+    const Zone& z = gamePlan.GetZones()[0];
+    AddZoneCommand* addZone = new AddZoneCommand(z.id, GameCoordinate(z.eastMetres, z.northMetres), z.radiusMetres, TFT_GREEN);
+    displayManager.Send(
+            std::unique_ptr<IDisplayCommand>(addZone));
+
+    if(gamePlan.GetZones()[0].pickups.size())
+    {
+        std::map<int ,  Pickup>::const_iterator pickupIter = gamePlan.GetZones()[0].pickups.find(3);
+        if(pickupIter != gamePlan.GetZones()[0].pickups.cend())
+        {
+            GameCoordinate position = pickupIter->second.GetPosition(); 
+
+            AddWidgetCommand* command = new AddWidgetCommand(pickupIter->second.id, WidgetType::Pickup, position, "/health.bmp");
+            displayManager.Send(
+            std::unique_ptr<IDisplayCommand>(command));
+        }
+        else
+        {
+            Serial.println("Could not find pickup id 3");
+        }            
+    }
   
 }
 

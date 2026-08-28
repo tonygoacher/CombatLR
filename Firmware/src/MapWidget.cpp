@@ -71,21 +71,6 @@ void MapWidget::Render(
      * Black pixels are transparent.
      */
 
-
-Serial.printf(
-    "MapWidget:\n"
-    "  game EN=(%.3f,%.3f)\n"
-    "  position=(%.3f,%.3f)\n"
-    "  zoom=%.3f\n"
-    "  texture=%ux%u\n",
-    _position.east,
-    _position.north,
-    position.x,
-    position.y,
-    position.zoom,
-    _texture->GetWidth(),
-    _texture->GetHeight());
-
     const float scaledWidth =
     static_cast<float>(width) *
     widgetScale;

@@ -1,12 +1,14 @@
 #pragma once
 
 #include "IWidget.h"
-#include "Zone.h"
-
 class ZoneWidget : public IWidget
 {
 public:
-    ZoneWidget(uint32_t id,  const Zone& zone, uint32_t colour);
+    ZoneWidget(
+        uint32_t id,
+        const GameCoordinate& position,
+        const uint16_t radius,
+        uint32_t colour);
 
     WidgetPosition GetPosition() const override;
 
@@ -17,7 +19,12 @@ public:
     void Render(
         IDisplayContext& context) override;
 
+    void SetColour(uint32_t colour);
+
+    uint32_t GetColour() const;
+
 private:
-    const Zone& _zone;
-    const uint32_t _colour;
+    GameCoordinate _position;
+    uint32_t _colour;
+    uint16_t _radius;
 };

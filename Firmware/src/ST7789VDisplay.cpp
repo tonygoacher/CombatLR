@@ -452,7 +452,7 @@ const float mapRotation = _rotation;
 
     // 4. Convert degrees to radians and rotate offset vector
   const float radians =
-    -mapRotation *
+    mapRotation *
     (PI / 180.0f);
 
 const float sinAngle =
