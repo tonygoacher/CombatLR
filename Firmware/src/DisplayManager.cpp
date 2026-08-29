@@ -9,6 +9,8 @@
 #include "MapWidget.h"
 #include "ZoneWidget.h"
 #include "AddZoneCommand.h"
+#include "RemoveWidgetCommand.h"
+#include "SetWidgetColourCommand.h"
 
 DisplayManager::DisplayManager(
     TextureManager& textureManager)
@@ -197,8 +199,9 @@ void DisplayManager::ProcessCommand(const IDisplayCommand* command)
                 static_cast<const ZoomCommand*>(command);
                SetZoom(zoomCommand);
 
-            break;
+           
         }
+        break;
 
         case DisplayCommandType::DisplayBackground:
         {
@@ -215,8 +218,9 @@ void DisplayManager::ProcessCommand(const IDisplayCommand* command)
                 static_cast<const PlayerPositionCommand*>(command);
 
             SetPlayerPosition(positionCommand);
-            break;
+         
         }
+        break;
 
         case DisplayCommandType::TurnMapToHeading:
         {
@@ -224,8 +228,9 @@ void DisplayManager::ProcessCommand(const IDisplayCommand* command)
                 static_cast<const TurnMapToHeadingCommand*>(command);
 
             TurnMapToHeading(headingCommand);
-            break;
+            
         }
+        break;
 
         case DisplayCommandType::ConfigureMap:
         {
@@ -233,8 +238,9 @@ void DisplayManager::ProcessCommand(const IDisplayCommand* command)
                 static_cast<const ConfigureMapCommand*>(command);
 
             ConfigureMap(configMapCommand);
-            break;
+            
         }
+        break;
 
         case DisplayCommandType::AddWidget:
         {
@@ -243,8 +249,9 @@ void DisplayManager::ProcessCommand(const IDisplayCommand* command)
                     const AddWidgetCommand*>(
                         command));
 
-            break;
+           
         }
+        break;
 
         case DisplayCommandType::AddZone:
         {
@@ -253,10 +260,34 @@ void DisplayManager::ProcessCommand(const IDisplayCommand* command)
                     const AddZoneCommand*>(
                         command));
 
-            break;
+          
         }
+        break;
+
+        case DisplayCommandType::RemoveWidget:
+        {
+            RemoveWidget(
+                static_cast<
+                    const RemoveWidgetCommand*>(
+                        command));
+
+
+        }
+        break;
+
+        case DisplayCommandType::SetWidgetColour:
+        {
+            SetWidgetColour(
+                static_cast<
+                    const SetWidgetColourCommand*>(
+                        command));
+
+
+        }
+        break;
 
         default:
+            Serial.printf("Unknown display command %d\n", command->GetType());
             break;
     }   
 }
@@ -349,6 +380,24 @@ void DisplayManager::AddZone(const AddZoneCommand* command)
 
     _display->AddWidget(widget);
 }
+
+void DisplayManager::RemoveWidget(const RemoveWidgetCommand* command)
+{
+       if (command == nullptr)
+        return;
+    Serial.printf("Display mamager remove widget ID %d\n",command->GetWidgetId());
+    _display->RemovedWidget(command->GetWidgetId()); 
+}
+
+void DisplayManager::SetWidgetColour(const SetWidgetColourCommand* command)
+{
+    if (command == nullptr)
+        return;
+
+    Serial.printf("Display mamager set widget colour ID %lx %d\n",command->GetWidgetId(), command->GetColour());
+    _display->SetWidgetColour(command->GetWidgetId(), command->GetColour());        
+}
+
 
 
 void DisplayManager::ConfigureNavigationMap(

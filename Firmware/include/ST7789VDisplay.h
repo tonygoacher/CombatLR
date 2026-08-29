@@ -30,6 +30,8 @@ public:
     float GetRotation() const override;
 
 
+    void RemovedWidget(uint32_t widgetId) override;
+    
     void SetMapZoom(
         float zoom) override;
 
@@ -61,7 +63,7 @@ public:
 
     bool ConfigureNavigationMap( const char* mapFilename,  double homeLatitude, double homeLongitude) override;
 
-
+    void SetWidgetColour(uint32_t widgetId, uint32_t colour) override;
 
 
 private:
@@ -71,10 +73,7 @@ private:
     WidgetCollection _widgets;
 
 
-    uint16_t _nextWidgetId;
-
-
-    /*
+     /*
      * ---------------------------------------------------------
      * TFT
      * ---------------------------------------------------------
@@ -172,9 +171,6 @@ private:
     WidgetRenderPosition
     TransformWidgetPosition(
         const IWidget& widget);
-
-
-    uint16_t AllocateWidgetId();
 
 
     void TestSprites();

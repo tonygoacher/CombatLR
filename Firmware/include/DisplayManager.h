@@ -19,6 +19,8 @@ class DisplayBackgroundCommand;
 class ConfigureMapCommand;
 class AddWidgetCommand;
 class AddZoneCommand;
+class RemoveWidgetCommand;
+class SetWidgetColourCommand;
 
 
 class DisplayManager
@@ -51,6 +53,8 @@ private:
     void ConfigureMap(const ConfigureMapCommand *);
     void AddWidget(const AddWidgetCommand* command);
     void AddZone(const AddZoneCommand* command);
+    void RemoveWidget(const RemoveWidgetCommand* command);
+    void SetWidgetColour(const SetWidgetColourCommand* command);
 
 std::deque<
     std::unique_ptr<IDisplayCommand>>

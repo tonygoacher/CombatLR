@@ -25,6 +25,7 @@
 #include "AddWidgetCommand.h"
 #include "AddZoneCommand.h"
 #include "PickupTypes.h"
+#include "ZoneEngine.h"
 
 
 /*
@@ -77,6 +78,8 @@ namespace
     GamePlan gamePlan;
  
     IZoom* zoomDevice = nullptr;
+
+    ZoneEngine* zoneEngine;
 };
 
   NavigationData data;
@@ -122,6 +125,8 @@ namespace
             new ZoomCommand(
                 zoom)));    
     }
+
+    zoneEngine->Update(0);
 }
 
 void NavigationDisplayTestBegin(DisplayManager& displayManager)
@@ -159,6 +164,7 @@ void NavigationDisplayTestBegin(DisplayManager& displayManager)
 
     zoomDevice = new SteppedZoom(ZOOMSWITCHPORT);
 
+    /*
     const Zone& z = gamePlan.GetZones()[0];
     AddZoneCommand* addZone = new AddZoneCommand(z.id, GameCoordinate(z.eastMetres, z.northMetres), z.radiusMetres, TFT_GREEN);
     displayManager.Send(
@@ -200,6 +206,8 @@ void NavigationDisplayTestBegin(DisplayManager& displayManager)
         }
          
     }
+        */
+    zoneEngine = new ZoneEngine(gamePlan, displayManager);
   
 }
 

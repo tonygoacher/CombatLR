@@ -12,6 +12,7 @@ enum class DisplayCommandType
     ShowPlayer,
     HidePlayer,
     ConfigureMap,
+    SetWidgetColour,
 };
 
 class IDisplayCommand
