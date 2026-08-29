@@ -4,10 +4,10 @@
 #include "SteppedZoom.h"
 #include "countof.h"
 #include "MAX98357ASounds.h"
-#include <SPIFFS.h>
+#include <LittleFS.h>
 
 #include "Ports.h"
-MAX98357ASounds sounds(SPIFFS,BCLK,LRC,DATA);
+MAX98357ASounds sounds(LittleFS,BCLK,LRC,DATA);
 
 SteppedZoom::SteppedZoom(int port)
 : _switch(port),

@@ -9,6 +9,7 @@
 #include "IDisplayContext.h"
 #include "ConfigureMapCommand.h"
 #include "MapReference.h"
+#include "Texture.h"
 
 
 class ST7789VDisplay : public IDisplay
@@ -20,11 +21,7 @@ public:
 
     bool Init();
 
-    bool SetBackground(
-        const uint16_t* image,
-        uint16_t width,
-        uint16_t height);
-
+    bool SetBackground(const char * filename);
 
     void SetRotation(
         float angle) override;
@@ -184,4 +181,5 @@ private:
 
     MapReference _navigationMap;
     bool _navMapConfigured;
+    Texture _backgroundTexture;
 };

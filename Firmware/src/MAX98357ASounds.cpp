@@ -1,33 +1,27 @@
 #include "MAX98357ASounds.h"
 
-#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 
-MAX98357ASounds*
-    MAX98357ASounds::_instance = nullptr;
-
 namespace
 {
-    constexpr uint32_t RiffId = 0x46464952; // "RIFF"
-    constexpr uint32_t WaveId = 0x45564157; // "WAVE"
-    constexpr uint32_t FmtId  = 0x20746D66; // "fmt "
-    constexpr uint32_t DataId = 0x61746164; // "data"
+    constexpr uint32_t RIFF_ID = 0x46464952; // "RIFF"
+    constexpr uint32_t WAVE_ID = 0x45564157; // "WAVE"
+    constexpr uint32_t FMT_ID  = 0x20746D66; // "fmt "
+    constexpr uint32_t DATA_ID = 0x61746164; // "data"
 
-    uint32_t ReadUInt32(const uint8_t* data)
+    uint16_t ReadUInt16(const uint8_t* p)
     {
-        return
-            static_cast<uint32_t>(data[0]) |
-            (static_cast<uint32_t>(data[1]) << 8) |
-            (static_cast<uint32_t>(data[2]) << 16) |
-            (static_cast<uint32_t>(data[3]) << 24);
+        return static_cast<uint16_t>(p[0]) |
+               static_cast<uint16_t>(p[1]) << 8;
     }
 
-    uint16_t ReadUInt16(const uint8_t* data)
+    uint32_t ReadUInt32(const uint8_t* p)
     {
-        return
-            static_cast<uint16_t>(data[0]) |
-            (static_cast<uint16_t>(data[1]) << 8);
+        return static_cast<uint32_t>(p[0]) |
+               static_cast<uint32_t>(p[1]) << 8 |
+               static_cast<uint32_t>(p[2]) << 16 |
+               static_cast<uint32_t>(p[3]) << 24;
     }
 }
 
@@ -41,35 +35,28 @@ MAX98357ASounds::MAX98357ASounds(
     _bclkPin(bclkPin),
     _lrcPin(lrcPin),
     _dataPin(dataPin),
+    _i2s(),
     _audioTask(nullptr),
-    _playbackData(nullptr),
-    _playbackSize(0),
-    _playbackPosition(0),
-    _uncachedData(nullptr),
-    _uncachedSize(0),
+    _mutex(nullptr),
+    _cachedSamples(),
+    _currentData(nullptr),
+    _currentSize(0),
+    _currentPosition(0),
+    _currentOwnedData(nullptr),
     _playing(false),
-    _finished(true),
     _stopRequested(false),
-    _waitingForFinalTransmit(false),
-    _transmitComplete(false),
+    _finished(true),
     _volume(1.0f),
-    _cache(),
-    _initialised(false),
-    _i2s(
-    0,
-    0,
-    dataPin,
-    bclkPin,
-    lrcPin)
-
+    _initialised(false)
 {
-
-
 }
 
 MAX98357ASounds::~MAX98357ASounds()
 {
-    Stop();
+    if (_initialised)
+    {
+        Stop();
+    }
 
     if (_audioTask != nullptr)
     {
@@ -77,24 +64,26 @@ MAX98357ASounds::~MAX98357ASounds()
         _audioTask = nullptr;
     }
 
-    for (CachedSample& sample : _cache)
+    for (CachedSample& sample : _cachedSamples)
     {
         free(sample.data);
         sample.data = nullptr;
     }
 
-    _cache.clear();
+    _cachedSamples.clear();
 
-    ReleaseUncachedSample();
+    ReleaseCurrentSample();
 
-    if (_instance == this)
+    if (_mutex != nullptr)
     {
-        _instance = nullptr;
+        vSemaphoreDelete(_mutex);
+        _mutex = nullptr;
     }
 
     if (_initialised)
     {
         _i2s.end();
+        _initialised = false;
     }
 }
 
@@ -106,35 +95,80 @@ bool MAX98357ASounds::Begin()
     }
 
     /*
-     * The MAX98357A is an _i2s digital amplifier.
+     * MAX98357A wiring:
      *
-     * ALL game audio is:
-     *   22050 Hz
-     *   16-bit
-     *   mono
-     *   uncompressed PCM WAV
+     *   GPIO18 -> BCLK
+     *   GPIO8  -> LRC / WS
+     *   GPIO17 -> DIN
      *
-     * The installed Arduino _i2s library uses the ESP-IDF _i2s
-     * driver and DMA internally.
+     * The MAX98357A is an I2S receiver/amplifier. It has no
+     * I2C address.
      */
+    Serial.printf(
+        "MAX98357A: BCLK=%d LRC=%d DATA=%d\n",
+        _bclkPin,
+        _lrcPin,
+        _dataPin);
 
-     Serial.println("BBBBBBBBBBBBBBBBB");
-    _i2s.setAllPins(_bclkPin, _lrcPin, -1, _dataPin);
-    if (_i2s.begin(
-            I2S_PHILIPS_MODE,
-            SampleRate,
-            BitsPerSample) == 0)
+    /*
+     * Arduino-ESP32 3.x requires the pins to be configured
+     * before the I2S channel is started.
+     */
+    _i2s.setPins(
+        _bclkPin,
+        _lrcPin,
+        _dataPin);
+
+    /*
+     * Standard Philips I2S, 16 kHz, 16-bit, mono.
+     *
+     * I2SClass uses the ESP32 I2S peripheral and its DMA
+     * transfer mechanism; this class does not implement an
+     * audio ISR or an onTransmit callback.
+     */
+if (!_i2s.begin(
+        I2S_MODE_STD,
+        SAMPLE_RATE,
+        I2S_DATA_BIT_WIDTH_16BIT,
+        I2S_SLOT_MODE_MONO,
+        I2S_STD_SLOT_BOTH))
+{
+    Serial.println(
+        "MAX98357ASounds: I2S begin failed");
+
+    return false;
+}
+
+
+// DEBUG
+
+int16_t samples[256];
+
+for (int i = 0; i < 256; ++i)
+{
+    samples[i] =
+        static_cast<int16_t>(
+            sinf(
+                2.0f * PI * 440.0f *
+                static_cast<float>(i) /
+                SAMPLE_RATE) *
+            12000.0f);
+}
+
+_i2s.write(
+    reinterpret_cast<uint8_t*>(samples),
+    sizeof(samples));
+// __DEBUG
+    _mutex = xSemaphoreCreateMutex();
+
+    if (_mutex == nullptr)
     {
         Serial.println(
-            "MAX98357ASounds: _i2s begin failed");
+            "MAX98357ASounds: mutex creation failed");
+
+        _i2s.end();
         return false;
     }
-
-    Serial.println("CCCCCCCCCCCCCCCCCCCCCC");
-
-    _instance = this;
-    _i2s.onTransmit(OnTransmit);
-    Serial.println("DDDDDDDDDDDDDDDDD");
 
     if (xTaskCreatePinnedToCore(
             AudioTaskEntry,
@@ -148,12 +182,13 @@ bool MAX98357ASounds::Begin()
         Serial.println(
             "MAX98357ASounds: audio task creation failed");
 
-        _instance = nullptr;
+        vSemaphoreDelete(_mutex);
+        _mutex = nullptr;
+
         _i2s.end();
         return false;
     }
 
-    Serial.println("EEEEEEEEEEEEEEEEE");
     _initialised = true;
 
     Serial.println(
@@ -171,33 +206,94 @@ bool MAX98357ASounds::Play(
     }
 
     /*
-     * Load before stopping the current sound.  A failed file
-     * load therefore does not interrupt currently playing audio.
+     * Load before stopping the current sound. A filesystem error
+     * therefore does not interrupt an already playing sound.
      */
     uint8_t* data = nullptr;
     size_t size = 0;
 
-    if (!LoadWavFile(filename, data, size))
+    if (!LoadWav(
+            filename,
+            data,
+            size))
     {
         return false;
     }
 
     Stop();
 
-    ReleaseUncachedSample();
+    if (xSemaphoreTake(
+            _mutex,
+            portMAX_DELAY) != pdTRUE)
+    {
+        free(data);
+        return false;
+    }
 
-    _uncachedData = data;
-    _uncachedSize = size;
+    ReleaseCurrentSample();
 
-    _playbackData = data;
-    _playbackSize = size;
-    _playbackPosition = 0;
+    _currentOwnedData = data;
+    _currentData = data;
+    _currentSize = size;
+    _currentPosition = 0;
 
     _stopRequested = false;
-    _waitingForFinalTransmit = false;
-    _transmitComplete = false;
     _playing = true;
     _finished = false;
+Serial.printf(
+    "MAX98357ASounds: playing %s, %u bytes\n",
+    filename,
+    static_cast<unsigned>(size));
+    xSemaphoreGive(_mutex);
+
+    return true;
+}
+
+bool MAX98357ASounds::PlayCached(
+    const char* filename)
+{
+    if (!_initialised || filename == nullptr)
+    {
+        return false;
+    }
+
+    Stop();
+
+    if (xSemaphoreTake(
+            _mutex,
+            portMAX_DELAY) != pdTRUE)
+    {
+        return false;
+    }
+
+    /*
+     * The lookup is protected because UnCacheSample() can remove
+     * an entry from the vector.
+     */
+    CachedSample* sample =
+        FindCachedSample(filename);
+
+    if (sample == nullptr)
+    {
+        xSemaphoreGive(_mutex);
+
+        /*
+         * PlayCached deliberately never performs filesystem I/O.
+         */
+        return false;
+    }
+
+    ReleaseCurrentSample();
+
+    _currentData = sample->data;
+    _currentSize = sample->size;
+    _currentPosition = 0;
+
+    _stopRequested = false;
+    _playing = true;
+    _finished = false;
+
+    xSemaphoreGive(_mutex);
 
     return true;
 }
@@ -218,7 +314,10 @@ bool MAX98357ASounds::CacheSample(
     uint8_t* data = nullptr;
     size_t size = 0;
 
-    if (!LoadWavFile(filename, data, size))
+    if (!LoadWav(
+            filename,
+            data,
+            size))
     {
         return false;
     }
@@ -228,15 +327,38 @@ bool MAX98357ASounds::CacheSample(
     sample.data = data;
     sample.size = size;
 
-    try
-    {
-        _cache.push_back(std::move(sample));
-    }
-    catch (...)
+    if (xSemaphoreTake(
+            _mutex,
+            portMAX_DELAY) != pdTRUE)
     {
         free(data);
         return false;
     }
+
+    /*
+     * Check again after taking the mutex in case another caller
+     * cached the same filename while the WAV was being loaded.
+     */
+    if (FindCachedSample(filename) != nullptr)
+    {
+        xSemaphoreGive(_mutex);
+        free(data);
+        return true;
+    }
+
+    try
+    {
+        _cachedSamples.push_back(
+            std::move(sample));
+    }
+    catch (...)
+    {
+        xSemaphoreGive(_mutex);
+        free(data);
+        return false;
+    }
+
+    xSemaphoreGive(_mutex);
 
     Serial.printf(
         "MAX98357ASounds: cached %s (%u bytes)\n",
@@ -254,74 +376,66 @@ bool MAX98357ASounds::UnCacheSample(
         return false;
     }
 
-    for (auto iterator = _cache.begin();
-         iterator != _cache.end();
+    if (_mutex == nullptr)
+    {
+        return false;
+    }
+
+    if (xSemaphoreTake(
+            _mutex,
+            portMAX_DELAY) != pdTRUE)
+    {
+        return false;
+    }
+
+    for (auto iterator = _cachedSamples.begin();
+         iterator != _cachedSamples.end();
          ++iterator)
     {
         if (iterator->filename == filename)
         {
-            if (_playbackData == iterator->data)
+            /*
+             * Do not free a cached sample while it is the current
+             * playback source.
+             */
+            if (_currentData == iterator->data)
             {
-                Stop();
+                _playing = false;
+                _stopRequested = true;
+                _finished = true;
+
+                _currentData = nullptr;
+                _currentSize = 0;
+                _currentPosition = 0;
             }
 
-            free(iterator->data);
-            iterator->data = nullptr;
+            uint8_t* data = iterator->data;
 
-            _cache.erase(iterator);
+            _cachedSamples.erase(iterator);
+
+            xSemaphoreGive(_mutex);
+
+            free(data);
 
             return true;
         }
     }
 
+    xSemaphoreGive(_mutex);
+
     return false;
-}
-
-bool MAX98357ASounds::PlayCached(
-    const char* filename)
-{
-    if (!_initialised || filename == nullptr)
-    {
-        return false;
-    }
-
-    const CachedSample* sample =
-        FindCachedSample(filename);
-
-    if (sample == nullptr)
-    {
-        /*
-         * Deliberately fail rather than falling back to Play().
-         *
-         * PlayCached() must never perform filesystem I/O.
-         */
-        Serial.printf(
-            "MAX98357ASounds: sample not cached: %s\n",
-            filename);
-
-        return false;
-    }
-
-    Stop();
-
-    ReleaseUncachedSample();
-
-    _playbackData = sample->data;
-    _playbackSize = sample->size;
-    _playbackPosition = 0;
-
-    _stopRequested = false;
-    _waitingForFinalTransmit = false;
-    _transmitComplete = false;
-    _playing = true;
-    _finished = false;
-
-    return true;
 }
 
 void MAX98357ASounds::Stop()
 {
-    if (!_initialised)
+    if (!_initialised || _mutex == nullptr)
+    {
+        return;
+    }
+
+    if (xSemaphoreTake(
+            _mutex,
+            portMAX_DELAY) != pdTRUE)
     {
         return;
     }
@@ -330,20 +444,17 @@ void MAX98357ASounds::Stop()
     _playing = false;
     _finished = true;
 
-    _waitingForFinalTransmit = false;
-    _transmitComplete = false;
-
-    _playbackData = nullptr;
-    _playbackSize = 0;
-    _playbackPosition = 0;
+    _currentData = nullptr;
+    _currentSize = 0;
+    _currentPosition = 0;
 
     /*
-     * We intentionally do not call _i2s.end() here.
-     *
-     * The _i2s library owns the DMA/ring-buffer machinery.
-     * Stopping playback only prevents this class from submitting
-     * further PCM data.
+     * Only Play() owns _currentOwnedData. Cached samples remain
+     * in _cachedSamples.
      */
+    ReleaseCurrentSample();
+
+    xSemaphoreGive(_mutex);
 }
 
 bool MAX98357ASounds::HasFinished() const
@@ -354,17 +465,23 @@ bool MAX98357ASounds::HasFinished() const
 void MAX98357ASounds::SetVolume(
     float volume)
 {
-    _volume =
-        std::max(
-            0.0f,
-            std::min(
-                1.0f,
-                volume));
+    if (volume < 0.0f)
+    {
+        volume = 0.0f;
+    }
+    else if (volume > 1.0f)
+    {
+        volume = 1.0f;
+    }
+
+    _volume = volume;
 }
 
 void MAX98357ASounds::AudioTaskEntry(
     void* parameter)
 {
+
+    Serial.println("MAX98357ASounds: AudioTask started");
     auto* sounds =
         static_cast<MAX98357ASounds*>(parameter);
 
@@ -373,115 +490,135 @@ void MAX98357ASounds::AudioTaskEntry(
     vTaskDelete(nullptr);
 }
 
-void IRAM_ATTR MAX98357ASounds::OnTransmit()
-{
-    /*
-     * Keep the transmit callback deliberately tiny.
-     *
-     * No filesystem access, allocation, or significant processing
-     * is performed from the callback.
-     */
-    if (_instance != nullptr)
-    {
-        _instance->_transmitComplete = true;
-    }
-}
-
 void MAX98357ASounds::AudioTask()
 {
     /*
-     * This buffer is normal internal RAM.
-     *
-     * The complete sample is stored in PSRAM and this buffer feeds
-     * the _i2s library's DMA-backed transmit path.
+     * This buffer is in internal RAM. The complete sample is in
+     * PSRAM. 2048 bytes represents 64 ms of mono 16-bit audio at
+     * 16 kHz.
      */
-    uint8_t buffer[TransferBufferSize];
 
-    while (true)
+    for (;;)
     {
         if (!_playing)
-        {
-            vTaskDelay(pdMS_TO_TICKS(1));
-            continue;
-        }
-
-        if (_stopRequested)
-        {
-            _playing = false;
-            _finished = true;
-            _waitingForFinalTransmit = false;
-            continue;
-        }
-
-        const size_t remaining =
-            _playbackSize -
-            _playbackPosition;
-
-        if (remaining == 0)
-        {
-            /*
-             * All PCM has been submitted.  Wait for the _i2s
-             * transmit callback before reporting completion.
-             */
-            _waitingForFinalTransmit = true;
-
-            if (_transmitComplete)
-            {
-                _playing = false;
-                _finished = true;
-                _waitingForFinalTransmit = false;
-                _transmitComplete = false;
-
-                ReleaseUncachedSample();
-
-                _playbackData = nullptr;
-                _playbackSize = 0;
-                _playbackPosition = 0;
-            }
-            else
-            {
-                vTaskDelay(1);
-            }
-
-            continue;
-        }
-
-        const size_t bytesToWrite =
-            std::min(
-                remaining,
-                TransferBufferSize);
-
-        memcpy(
-            buffer,
-            _playbackData + _playbackPosition,
-            bytesToWrite);
-
-        ApplyVolume(
-            reinterpret_cast<int16_t*>(buffer),
-            bytesToWrite / sizeof(int16_t));
-
-        /*
-         * _i2s.write() feeds the library's DMA/ring-buffer path.
-         * The _i2s peripheral performs the actual timed transfer
-         * to the MAX98357A.
-         */
-        const size_t written =
-            _i2s.write(
-                buffer,
-                bytesToWrite);
-
-        if (written == 0)
         {
             vTaskDelay(1);
             continue;
         }
 
-        _playbackPosition += written;
-        _transmitComplete = false;
+        size_t bytesToWrite = 0;
+
+        if (xSemaphoreTake(
+                _mutex,
+                portMAX_DELAY) != pdTRUE)
+        {
+            continue;
+        }
+
+        if (_stopRequested || !_playing)
+        {
+            xSemaphoreGive(_mutex);
+            continue;
+        }
+
+        const size_t remaining =
+            _currentSize - _currentPosition;
+
+        if (remaining == 0)
+        {
+            /*
+             * The final block has been accepted by I2SClass::write().
+             * The ESP32 I2S peripheral/DMA is responsible for the
+             * subsequent hardware transfer.
+             */
+            _playing = false;
+            _finished = true;
+
+            _currentData = nullptr;
+            _currentSize = 0;
+            _currentPosition = 0;
+
+            ReleaseCurrentSample();
+
+            xSemaphoreGive(_mutex);
+            continue;
+        }
+
+        bytesToWrite =
+            (remaining < TRANSFER_BUFFER_SIZE)
+                ? remaining
+                : TRANSFER_BUFFER_SIZE;
+
+        /*
+         * Keep PCM samples whole.
+         */
+        bytesToWrite &= ~static_cast<size_t>(1);
+
+        if (bytesToWrite == 0)
+        {
+            _playing = false;
+            _finished = true;
+
+            _currentData = nullptr;
+            _currentSize = 0;
+            _currentPosition = 0;
+
+            ReleaseCurrentSample();
+
+            xSemaphoreGive(_mutex);
+            continue;
+        }
+
+        memcpy(
+            _transferBuffer,
+            _currentData + _currentPosition,
+            bytesToWrite);
+
+        _currentPosition += bytesToWrite;
+
+        xSemaphoreGive(_mutex);
+
+        /*
+         * Volume is applied to the temporary buffer so cached
+         * samples are never modified.
+         */
+        ApplyVolume(
+            reinterpret_cast<int16_t*>(_transferBuffer),
+            bytesToWrite / sizeof(int16_t));
+
+        /*
+         * I2SClass::write() feeds the ESP32 I2S TX channel.
+         * The actual serial transfer is performed by the I2S
+         * peripheral using its DMA/interrupt machinery.
+         */
+   const size_t written =
+    _i2s.write(
+        _transferBuffer,
+        bytesToWrite);
+
+Serial.printf(
+    "MAX98357ASounds: I2S write %u/%u\n",
+    static_cast<unsigned>(written),
+    static_cast<unsigned>(bytesToWrite));
+
+        if (written < bytesToWrite)
+        {
+            if (xSemaphoreTake(
+                    _mutex,
+                    portMAX_DELAY) == pdTRUE)
+            {
+                _currentPosition -=
+                    bytesToWrite - written;
+
+                xSemaphoreGive(_mutex);
+            }
+
+            vTaskDelay(1);
+        }
     }
 }
 
-bool MAX98357ASounds::LoadWavFile(
+bool MAX98357ASounds::LoadWav(
     const char* filename,
     uint8_t*& data,
     size_t& size)
@@ -497,45 +634,43 @@ bool MAX98357ASounds::LoadWavFile(
     if (!file)
     {
         Serial.printf(
-            "MAX98357ASounds: failed to open %s\n",
+            "MAX98357ASounds: unable to open %s\n",
             filename);
 
         return false;
     }
 
-    WavInfo info;
+    size_t dataOffset = 0;
+    size_t dataSize = 0;
 
-    if (!ReadWavInfo(file, info))
-    {
-        file.close();
-        return false;
-    }
-
-    if (info.dataSize == 0)
+    if (!ParseWav(
+            file,
+            dataOffset,
+            dataSize))
     {
         file.close();
         return false;
     }
 
     /*
-     * All PCM audio is stored in PSRAM.
+     * Complete PCM sample is stored in PSRAM.
      */
     data =
         static_cast<uint8_t*>(
-            ps_malloc(info.dataSize));
+            ps_malloc(dataSize));
 
     if (data == nullptr)
     {
         Serial.printf(
             "MAX98357ASounds: PSRAM allocation failed "
             "(%u bytes)\n",
-            static_cast<unsigned>(info.dataSize));
+            static_cast<unsigned>(dataSize));
 
         file.close();
         return false;
     }
 
-    if (!file.seek(info.dataOffset))
+    if (!file.seek(dataOffset))
     {
         free(data);
         data = nullptr;
@@ -546,41 +681,44 @@ bool MAX98357ASounds::LoadWavFile(
     const size_t bytesRead =
         file.read(
             data,
-            info.dataSize);
+            dataSize);
 
     file.close();
 
-    if (bytesRead != info.dataSize)
+    if (bytesRead != dataSize)
     {
         Serial.printf(
             "MAX98357ASounds: short WAV read "
             "(%u/%u bytes)\n",
             static_cast<unsigned>(bytesRead),
-            static_cast<unsigned>(info.dataSize));
+            static_cast<unsigned>(dataSize));
 
         free(data);
         data = nullptr;
         return false;
     }
 
-    size = info.dataSize;
+    size = dataSize;
 
     return true;
 }
 
-bool MAX98357ASounds::ReadWavInfo(
+bool MAX98357ASounds::ParseWav(
     File& file,
-    WavInfo& info)
+    size_t& dataOffset,
+    size_t& dataSize)
 {
     uint8_t header[12];
 
-    if (file.read(header, sizeof(header)) != sizeof(header))
+    if (file.read(
+            header,
+            sizeof(header)) != sizeof(header))
     {
         return false;
     }
 
-    if (ReadUInt32(header) != RiffId ||
-        ReadUInt32(header + 8) != WaveId)
+    if (ReadUInt32(header) != RIFF_ID ||
+        ReadUInt32(header + 8) != WAVE_ID)
     {
         Serial.println(
             "MAX98357ASounds: not a RIFF/WAVE file");
@@ -588,8 +726,8 @@ bool MAX98357ASounds::ReadWavInfo(
         return false;
     }
 
-    bool foundFormat = false;
-    bool foundData = false;
+    bool formatFound = false;
+    bool dataFound = false;
 
     while (file.available())
     {
@@ -597,8 +735,7 @@ bool MAX98357ASounds::ReadWavInfo(
 
         if (file.read(
                 chunkHeader,
-                sizeof(chunkHeader)) !=
-            sizeof(chunkHeader))
+                sizeof(chunkHeader)) != sizeof(chunkHeader))
         {
             break;
         }
@@ -609,10 +746,10 @@ bool MAX98357ASounds::ReadWavInfo(
         const uint32_t chunkSize =
             ReadUInt32(chunkHeader + 4);
 
-        const size_t chunkDataOffset =
+        const size_t chunkOffset =
             file.position();
 
-        if (chunkId == FmtId)
+        if (chunkId == FMT_ID)
         {
             if (chunkSize < 16)
             {
@@ -623,9 +760,9 @@ bool MAX98357ASounds::ReadWavInfo(
 
             if (file.read(
                     format,
-                    sizeof(format)) !=
-                sizeof(format))
+                    sizeof(format)) != sizeof(format))
             {
+                Serial.println("Chunk header error");
                 return false;
             }
 
@@ -641,21 +778,13 @@ bool MAX98357ASounds::ReadWavInfo(
             const uint16_t bitsPerSample =
                 ReadUInt16(format + 14);
 
-            /*
-             * Required game audio format:
-             *
-             *   PCM
-             *   22050 Hz
-             *   16-bit
-             *   mono
-             */
             if (audioFormat != 1 ||
-                channels != Channels ||
-                sampleRate != SampleRate ||
-                bitsPerSample != BitsPerSample)
+                channels != 1 ||
+                sampleRate != SAMPLE_RATE ||
+                bitsPerSample != BITS_PER_SAMPLE)
             {
                 Serial.printf(
-                    "MAX98357ASounds: unsupported WAV format "
+                    "MAX98357ASounds: unsupported WAV "
                     "(format=%u channels=%u rate=%u bits=%u)\n",
                     audioFormat,
                     channels,
@@ -665,17 +794,13 @@ bool MAX98357ASounds::ReadWavInfo(
                 return false;
             }
 
-            foundFormat = true;
+            formatFound = true;
         }
-
-        if (chunkId == DataId)
+        else if (chunkId == DATA_ID)
         {
-            info.dataOffset =
-                static_cast<uint32_t>(
-                    chunkDataOffset);
-
-            info.dataSize = chunkSize;
-            foundData = true;
+            dataOffset = chunkOffset;
+            dataSize = chunkSize;
+            dataFound = true;
             break;
         }
 
@@ -683,7 +808,7 @@ bool MAX98357ASounds::ReadWavInfo(
          * RIFF chunks are word aligned.
          */
         size_t nextOffset =
-            chunkDataOffset + chunkSize;
+            chunkOffset + chunkSize;
 
         if ((nextOffset & 1U) != 0)
         {
@@ -692,18 +817,30 @@ bool MAX98357ASounds::ReadWavInfo(
 
         if (!file.seek(nextOffset))
         {
+            Serial.println("WAV seek error");
             return false;
         }
     }
 
-    if (!foundFormat || !foundData)
+    if (!formatFound || !dataFound || dataSize == 0)
     {
         Serial.println(
-            "MAX98357ASounds: WAV missing fmt or data chunk");
+            "MAX98357ASounds: invalid WAV");
 
         return false;
     }
 
+    /*
+     * A PCM sample must contain complete 16-bit samples.
+     */
+    if ((dataSize & 1U) != 0)
+    {
+        Serial.println(
+            "MAX98357ASounds: WAV data is not 16-bit aligned");
+
+        return false;
+    }
+    Serial.println("WAV load OK");
     return true;
 }
 
@@ -738,13 +875,19 @@ void MAX98357ASounds::ApplyVolume(
                     samples[index]) *
                 volume);
 
-        samples[index] =
-            static_cast<int16_t>(
-                std::max(
-                    -32768,
-                    std::min(
-                        32767,
-                        value)));
+        if (value > 32767)
+        {
+            samples[index] = 32767;
+        }
+        else if (value < -32768)
+        {
+            samples[index] = -32768;
+        }
+        else
+        {
+            samples[index] =
+                static_cast<int16_t>(value);
+        }
     }
 }
 
@@ -752,7 +895,7 @@ MAX98357ASounds::CachedSample*
 MAX98357ASounds::FindCachedSample(
     const char* filename)
 {
-    for (CachedSample& sample : _cache)
+    for (CachedSample& sample : _cachedSamples)
     {
         if (sample.filename == filename)
         {
@@ -767,7 +910,8 @@ const MAX98357ASounds::CachedSample*
 MAX98357ASounds::FindCachedSample(
     const char* filename) const
 {
-    for (const CachedSample& sample : _cache)
+    for (const CachedSample& sample :
+         _cachedSamples)
     {
         if (sample.filename == filename)
         {
@@ -778,13 +922,11 @@ MAX98357ASounds::FindCachedSample(
     return nullptr;
 }
 
-void MAX98357ASounds::ReleaseUncachedSample()
+void MAX98357ASounds::ReleaseCurrentSample()
 {
-    if (_uncachedData != nullptr)
+    if (_currentOwnedData != nullptr)
     {
-        free(_uncachedData);
-
-        _uncachedData = nullptr;
-        _uncachedSize = 0;
+        free(_currentOwnedData);
+        _currentOwnedData = nullptr;
     }
 }

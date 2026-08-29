@@ -14,7 +14,7 @@
 #include "IDisplay.h"
 #include "TextureManager.h"
 #include "MapWidget.h"
-#include <SPIFFS.h>
+#include <LittleFS.h>
 #include "Ports.h"
 #include "SteppedZoom.h"
 #include "ZoomCommand.h"

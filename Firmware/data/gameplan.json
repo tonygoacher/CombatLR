@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "home": {
+    "latitude": 53.550838747948106,
+    "longitude": -1.9994258894046728
+  },
+  "zones": [
+    {
+      "eastMetres": 66.16961879912887,
+      "northMetres": 72.76179035050616,
+      "radiusMetres": 50,
+      "startTime": 0,
+      "lifespanSeconds": 100,
+      "pickups": [
+        {
+          "eastMetres": 89.58215148934376,
+          "northMetres": 84.62569104526096,
+          "type": 0,
+          "spawnTimeSeconds": 0,
+          "lifespanSeconds": 0,
+          "id": 3
+        },
+        {
+          "eastMetres": 62.29105299629476,
+          "northMetres": 73.47403464808075,
+          "type": 1,
+          "spawnTimeSeconds": 0,
+          "lifespanSeconds": 0,
+          "id": 4
+        },
+        {
+          "eastMetres": 40.66964518208365,
+          "northMetres": 69.93433560173978,
+          "type": 2,
+          "spawnTimeSeconds": 0,
+          "lifespanSeconds": 0,
+          "id": 5
+        }
+      ]
+    },
+    {
+      "eastMetres": 35.484645418942996,
+      "northMetres": -1.9727733779020382,
+      "radiusMetres": 50,
+      "startTime": 0,
+      "lifespanSeconds": 0,
+      "pickups": [
+        {
+          "eastMetres": 64.488844412708,
+          "northMetres": 10.863363817860892,
+          "type": 0,
+          "spawnTimeSeconds": 0,
+          "lifespanSeconds": 0,
+          "id": 0
+        },
+        {
+          "eastMetres": 48.22814073693489,
+          "northMetres": 4.364266318749947,
+          "type": 1,
+          "spawnTimeSeconds": 0,
+          "lifespanSeconds": 0,
+          "id": 1
+        },
+        {
+          "eastMetres": 24.477490268883162,
+          "northMetres": -3.2263233159712534,
+          "type": 2,
+          "spawnTimeSeconds": 0,
+          "lifespanSeconds": 0,
+          "id": 2
+        }
+      ]
+    }
+  ]
+}

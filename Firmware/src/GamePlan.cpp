@@ -1,7 +1,8 @@
 #include "GamePlan.h"
 
 #include <ArduinoJson.h>
-#include <SPIFFS.h>
+#include <LittleFS.h>
+
 
 bool GamePlan::Load(const char* filename)
 {
@@ -17,11 +18,11 @@ bool GamePlan::Load(const char* filename)
      * Use the application's filesystem. The gameplan is expected to
      * have been mounted before Load() is called.
      *
-     * This initial implementation uses SPIFFS. If CombatLR is using
+     * This initial implementation uses LittleFS. If CombatLR is using
      * another filesystem for its map assets, this can be switched
      * without changing the GamePlan interface.
      */
-    File file = SPIFFS.open(filename, FILE_READ);
+    File file = LittleFS.open(filename, FILE_READ);
 
     if (!file)
     {
