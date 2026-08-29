@@ -47,7 +47,6 @@ extern void PrintPSRAM(const char* label);
 ST7789VDisplay::ST7789VDisplay()
     :
     _widgets{},
-    _nextWidgetId(1),
     _tft(),
     _mapSprite(&_tft),
     _screenSprite(&_tft),
@@ -284,6 +283,22 @@ float ST7789VDisplay::GetRotation() const
     return _rotation;
 }
 
+void ST7789VDisplay::RemovedWidget(uint32_t widgetId)
+{
+    WidgetCollection::iterator widgetIterator = _widgets.find(widgetId);
+    Serial.printf("Display removing widget %d\n", widgetId);
+    if(widgetIterator != _widgets.end())
+    {
+        Serial.println("Found");
+        free(widgetIterator->second);
+        _widgets.erase(widgetIterator);
+    }
+    else
+    {
+        Serial.println("Not found");
+    }
+}
+
 
 /*
  * =============================================================
@@ -331,9 +346,8 @@ uint16_t ST7789VDisplay::AddWidget(
     uint16_t id = 0;
     if (widget != nullptr)
     {
-
-        id = ++_nextWidgetId;
-        _widgets.insert(std::pair<uint16_t , IWidget*>( _nextWidgetId, widget));
+        Serial.printf("Adding widget %lx Type %d to renderer", widget->GetId(), widget->GetType());
+        _widgets.insert(std::pair<uint16_t , IWidget*>( widget->GetId(), widget));
     }    
     return id;
 }
@@ -360,28 +374,6 @@ bool ST7789VDisplay::RemoveWidget(
 }
 
 
-/*
- * =============================================================
- * AllocateWidgetId
- * =============================================================
- */
-
-uint16_t ST7789VDisplay::AllocateWidgetId()
-{
-    uint16_t id = _nextWidgetId++;
-
-
-    /*
-     * Zero is reserved as an invalid ID.
-     */
-    if (id == 0)
-    {
-        id = _nextWidgetId++;
-    }
-
-
-    return id;
-}
 
 
 
@@ -1109,4 +1101,18 @@ bool ST7789VDisplay::ConfigureNavigationMap(
     _mapUpHeading);
 
     return _navMapConfigured; 
+}
+
+void ST7789VDisplay::SetWidgetColour(uint32_t widgetId, uint32_t colour)
+{
+    WidgetCollection::iterator widgetIterator = _widgets.find(widgetId);
+    Serial.printf("Display setting widget %lx to colour %d\n", widgetId, colour);
+    if(widgetIterator != _widgets.end())
+    {
+        widgetIterator->second->SetColour(colour);
+    }
+    else
+    {
+        Serial.println("Not found");
+    }
 }

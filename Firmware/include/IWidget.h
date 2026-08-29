@@ -63,6 +63,8 @@ public:
 
     virtual GameCoordinate GetGamePosition() const = 0;
 
+    void SetColour(uint32_t colour){_colour = colour;}
+
     bool GetVisible() { return _visible;}
     void SetVisible(bool visible){ _visible = visible;}
 
@@ -78,7 +80,7 @@ public:
     virtual void Render(
         IDisplayContext& context) = 0;
 
-            int GetId() const
+    int GetId() const
     {
         return _id;
     }
@@ -92,6 +94,7 @@ protected:
     const int _id;
     const WidgetType _type;    
     bool _visible;
+    uint32_t _colour;
 
 
 };

@@ -41,7 +41,9 @@ public:
 
     virtual float GetMapZoom() const = 0;
 
+    virtual void RemovedWidget(uint32_t widgetId) = 0;
 
+    virtual void SetWidgetColour(uint32_t widgetId, uint32_t colour) = 0;
     /*
      * Add/remove widgets.
      *

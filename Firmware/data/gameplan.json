@@ -42,8 +42,8 @@
       "eastMetres": 35.484645418942996,
       "northMetres": -1.9727733779020382,
       "radiusMetres": 50,
-      "startTime": 0,
-      "lifespanSeconds": 0,
+      "startTime": 80,
+      "lifespanSeconds": 100000,
       "pickups": [
         {
           "eastMetres": 64.488844412708,
