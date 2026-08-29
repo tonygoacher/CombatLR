@@ -1,6 +1,7 @@
 #include "ESP32LaserTag.h"
 
 
+
 /*
  * Timer instance.
  */
@@ -46,14 +47,11 @@ void ESP32LaserTag::Init()
      *     ledcAttachPin()
      *     ledcWrite(channel, duty)
      */
-    ledcSetup(
-        TX_LEDC_CHANNEL,
-        CARRIER_FREQUENCY,
-        PWM_RESOLUTION);
 
-    ledcAttachPin(
-        _transmitPin,
-        TX_LEDC_CHANNEL);
+
+    ledcAttachChannel(_transmitPin, CARRIER_FREQUENCY, PWM_RESOLUTION, TX_LEDC_CHANNEL);
+
+
 
     CarrierOff();
 
@@ -83,10 +81,8 @@ void ESP32LaserTag::Init()
      *
      *     1 timer tick = 1 microsecond
      */
-    _rxTimer = timerBegin(
-        0,
-        80,
-        true);
+    _rxTimer = timerBegin(1000000);
+
 
 
     if (_rxTimer == nullptr)
@@ -103,20 +99,9 @@ void ESP32LaserTag::Init()
 
     timerAttachInterrupt(
         _rxTimer,
-        RxTimeoutISR,
-        true);
+        RxTimeoutISR);
 
 
-    /*
-     * Configure the alarm but leave it disabled.
-     */
-    timerAlarmWrite(
-        _rxTimer,
-        RX_TIMEOUT_US,
-        false);
-
-    timerAlarmDisable(
-        _rxTimer);
 
 
     /*
@@ -211,7 +196,7 @@ void IRAM_ATTR ESP32LaserTag::RxTimeoutISR()
  * =============================================================
  */
 
-void IRAM_ATTR ESP32LaserTag::HandleRxTimeout()
+void ESP32LaserTag::HandleRxTimeout()
 {
     /*
      * We were waiting for another edge and it didn't arrive.
@@ -228,7 +213,7 @@ void IRAM_ATTR ESP32LaserTag::HandleRxTimeout()
  * =============================================================
  */
 
-void IRAM_ATTR ESP32LaserTag::ResetReceiver()
+void ESP32LaserTag::ResetReceiver()
 {
     _rxState = RxState::Idle;
 
@@ -237,16 +222,6 @@ void IRAM_ATTR ESP32LaserTag::ResetReceiver()
     _rxData = 0;
 
     _lastEdgeTime = 0;
-
-
-    /*
-     * Stop the one-shot timeout alarm.
-     */
-    if (_rxTimer != nullptr)
-    {
-        timerAlarmDisable(
-            _rxTimer);
-    }
 }
 
 
@@ -256,13 +231,12 @@ void IRAM_ATTR ESP32LaserTag::ResetReceiver()
  * =============================================================
  */
 
-void IRAM_ATTR ESP32LaserTag::ArmRxTimeout()
+void ESP32LaserTag::ArmRxTimeout()
 {
     if (_rxTimer == nullptr)
     {
         return;
     }
-
 
     /*
      * Reset timer counter.
@@ -271,24 +245,25 @@ void IRAM_ATTR ESP32LaserTag::ArmRxTimeout()
         _rxTimer,
         0);
 
-
     /*
-     * Configure a one-shot alarm.
+     * Configure and enable a one-shot alarm.
+     *
+     * Arduino-ESP32 3.x combines the old:
+     *
+     *     timerAlarmWrite()
+     *     timerAlarmEnable()
+     *
+     * into timerAlarm().
+     *
+     * The timer is running at 1 MHz, therefore one tick
+     * represents one microsecond.
      */
-    timerAlarmWrite(
+    timerAlarm(
         _rxTimer,
         RX_TIMEOUT_US,
-        false);
-
-
-    /*
-     * Start the alarm.
-     */
-    timerAlarmEnable(
-        _rxTimer);
+        false,
+        0);
 }
-
-
 /*
  * =============================================================
  * RECEIVE STATE MACHINE
@@ -309,7 +284,7 @@ void IRAM_ATTR ESP32LaserTag::ArmRxTimeout()
  * This is important because the MilesTag shot packet has no
  * checksum/error-detection field.
  */
-void IRAM_ATTR ESP32LaserTag::HandleRxEdge()
+void  ESP32LaserTag::HandleRxEdge()
 {
     const uint32_t now = micros();
 
@@ -478,7 +453,7 @@ void IRAM_ATTR ESP32LaserTag::HandleRxEdge()
             }
 
 
-            ++_rxBitCount;
+           _rxBitCount = _rxBitCount + 1;
 
 
             /*
@@ -606,9 +581,12 @@ void ESP32LaserTag::CarrierOn()
 {
     /*
      * 50% duty cycle.
+     *
+     * Arduino-ESP32 3.x uses the pin rather than the
+     * LEDC channel for ledcWrite().
      */
     ledcWrite(
-        TX_LEDC_CHANNEL,
+        _transmitPin,
         128);
 }
 
@@ -616,7 +594,7 @@ void ESP32LaserTag::CarrierOn()
 void ESP32LaserTag::CarrierOff()
 {
     ledcWrite(
-        TX_LEDC_CHANNEL,
+        _transmitPin,
         0);
 }
 

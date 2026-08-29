@@ -12,7 +12,7 @@ public:
         fs::FS& filesystem,
         const char* filename);
 
-    const uint16_t* GetData() const;
+    uint16_t* GetData();
 
     uint16_t GetWidth() const;
 
@@ -20,6 +20,7 @@ public:
 
     bool IsLoaded() const;
 
+    void Free() {_image.Free();};
 private:
     BMPImage _image;
 };

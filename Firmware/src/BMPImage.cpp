@@ -33,7 +33,7 @@ bool BMPImage::Load(
 {
     Free();
 
-    File file = filesystem.open(filename, FILE_READ);
+    File file = LittleFS.open(filename, FILE_READ);
 
     if (!file)
     {
@@ -426,7 +426,7 @@ void BMPImage::Free()
     _height = 0;
 }
 
-const uint16_t* BMPImage::GetData() const
+uint16_t* BMPImage::GetData() 
 {
     return _data;
 }

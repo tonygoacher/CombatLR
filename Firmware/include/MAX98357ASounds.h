@@ -4,7 +4,7 @@
 
 #include <Arduino.h>
 #include <FS.h>
-#include <I2S.h>
+#include <ESP_I2S.h>
 
 #include <string>
 #include <vector>
@@ -13,27 +13,24 @@ class MAX98357ASounds : public ISounds
 {
 public:
     /*
-     * ALL game sound effects must be:
+     * CombatLR audio format:
      *
-     *   - uncompressed PCM WAV
-     *   - 22050 Hz
-     *   - 16-bit
-     *   - mono
+     *   PCM WAV
+     *   16000 Hz
+     *   16-bit
+     *   mono
      *
-     * 22050 Hz / 16-bit / mono requires only 44100 bytes
-     * of PCM data per second.
+     * This is intentionally modest quality for a small mono
+     * speaker and keeps PSRAM use and I2S bandwidth low.
      */
-    static constexpr uint32_t SampleRate = 16000;
-    static constexpr uint16_t BitsPerSample = 16;
-    static constexpr uint16_t Channels = 1;
+    static constexpr uint32_t SAMPLE_RATE = 16000;
+    static constexpr uint16_t BITS_PER_SAMPLE = 16;
 
     /*
-     * Temporary internal-RAM transfer buffer.
-     *
-     * The complete cached sample is stored in PSRAM.
-     * I2S/DMA transfers data from this staging buffer.
+     * Temporary internal-RAM buffer used between PSRAM and I2S.
+     * The complete sample itself remains in PSRAM.
      */
-    static constexpr size_t TransferBufferSize = 4096;
+    static constexpr size_t TRANSFER_BUFFER_SIZE = 2048;
 
     MAX98357ASounds(
         fs::FS& filesystem,
@@ -46,88 +43,93 @@ public:
     bool Begin();
 
     bool Play(const char* filename) override;
+    bool PlayCached(const char* filename) override;
+
     bool CacheSample(const char* filename) override;
     bool UnCacheSample(const char* filename) override;
-    bool PlayCached(const char* filename) override;
 
     void Stop() override;
     bool HasFinished() const override;
     void SetVolume(float volume) override;
 
 private:
-    struct WavInfo
-    {
-        uint32_t dataOffset = 0;
-        uint32_t dataSize = 0;
-    };
 
+    uint8_t _transferBuffer[TRANSFER_BUFFER_SIZE];
+    
     struct CachedSample
     {
         std::string filename;
-        uint8_t* data = nullptr;
-        size_t size = 0;
+        uint8_t* data;
+        size_t size;
     };
 
-    static void AudioTaskEntry(void* parameter);
-    static void IRAM_ATTR OnTransmit();
-
-    void AudioTask();
-
-    bool LoadWavFile(
+    bool LoadWav(
         const char* filename,
         uint8_t*& data,
         size_t& size);
 
-    bool ReadWavInfo(
+    bool ParseWav(
         File& file,
-        WavInfo& info);
+        size_t& dataOffset,
+        size_t& dataSize);
+
+    void AudioTask();
+
+    static void AudioTaskEntry(void* parameter);
+
+    CachedSample* FindCachedSample(
+        const char* filename);
+
+    const CachedSample* FindCachedSample(
+        const char* filename) const;
+
+    void ReleaseCurrentSample();
 
     void ApplyVolume(
         int16_t* samples,
         size_t sampleCount);
 
-    CachedSample* FindCachedSample(const char* filename);
-    const CachedSample* FindCachedSample(const char* filename) const;
-
-    void ReleaseUncachedSample();
-
 private:
     fs::FS& _filesystem;
-    I2SClass _i2s;
 
-    int _bclkPin;
-    int _lrcPin;
-    int _dataPin;
-
-    TaskHandle_t _audioTask;
-
-    const uint8_t* _playbackData;
-    size_t _playbackSize;
-    size_t _playbackPosition;
-
-    uint8_t* _uncachedData;
-    size_t _uncachedSize;
-
-    volatile bool _playing;
-    volatile bool _finished;
-    volatile bool _stopRequested;
+    const int _bclkPin;
+    const int _lrcPin;
+    const int _dataPin;
 
     /*
-     * Set once the final block has been submitted.
-     * The I2S transmit callback is used to detect completion.
+     * Arduino-ESP32 3.x I2S implementation.
+     *
+     * There is deliberately no legacy I2S.h object and no
+     * onTransmit callback. I2SClass owns the hardware/DMA path.
      */
-    volatile bool _waitingForFinalTransmit;
-    volatile bool _transmitComplete;
+    I2SClass _i2s;
+
+    TaskHandle_t _audioTask;
+    SemaphoreHandle_t _mutex;
+
+    /*
+     * Explicitly cached samples. Every sample is allocated from
+     * PSRAM by CacheSample().
+     */
+    std::vector<CachedSample> _cachedSamples;
+
+    /*
+     * Current playback source.
+     *
+     * For Play(), _currentOwnedData owns the PSRAM allocation.
+     * For PlayCached(), _currentData points into _cachedSamples.
+     */
+    const uint8_t* _currentData;
+    size_t _currentSize;
+    size_t _currentPosition;
+
+    uint8_t* _currentOwnedData;
+
+    volatile bool _playing;
+    volatile bool _stopRequested;
+    volatile bool _finished;
 
     float _volume;
 
-    std::vector<CachedSample> _cache;
-
     bool _initialised;
-
-    /*
-     * The installed Arduino I2S library exposes a global I2SClass
-     * instance and internally uses the ESP-IDF I2S driver/DMA.
-     */
-    static MAX98357ASounds* _instance;
 };

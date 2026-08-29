@@ -39,7 +39,7 @@ static constexpr int16_t CANVAS_CY =
 
 
 
-
+extern void PrintPSRAM(const char* label);
 
 
 
@@ -214,6 +214,8 @@ bool ST7789VDisplay::AllocateSprites()
      * rotating it, preventing the physical 320x240 viewport from
      * exposing the corners of a clipped 320x240 source rectangle.
      */
+
+    
     if (_mapSprite.createSprite(
             CANVAS_WIDTH,
             CANVAS_HEIGHT) == nullptr)
@@ -1037,28 +1039,23 @@ void ST7789VDisplay::SetMapConfigData(const ConfigureMapCommand::MapConfigData& 
 
 
 
-bool ST7789VDisplay::SetBackground(
-    const uint16_t* image,
-    uint16_t width,
-    uint16_t height)
+bool ST7789VDisplay::SetBackground(const char* filename)
 {
-    if (image == nullptr ||
-        width == 0 ||
-        height == 0)
+    PrintPSRAM("SET BACKGROUND");
+ 
+    if(_mapImage != nullptr)
     {
-        return false;
+        free(_mapImage);
+        _mapImage = nullptr;
+    }
+    
+    _backgroundTexture.Free();
+    if(!_backgroundTexture.Load(LittleFS, filename))
+    {
+        Serial.printf("Failed to load background image %s", filename);
     }
 
-    const size_t imageBytes =
-        static_cast<size_t>(width) *
-        static_cast<size_t>(height) *
-        sizeof(uint16_t);
-
-    uint16_t* newImage =
-        static_cast<uint16_t*>(
-            ps_malloc(imageBytes));
-
-    if (newImage == nullptr)
+    if (_backgroundTexture.GetData() == nullptr)
     {
         Serial.println(
             "ST7789VDisplay: failed to allocate background");
@@ -1066,24 +1063,12 @@ bool ST7789VDisplay::SetBackground(
         return false;
     }
 
-    memcpy(
-        newImage,
-        image,
-        imageBytes);
 
-    /*
-     * The new background is now safely copied.
-     * We can release the previous one.
-     */
-    if (_mapImage != nullptr)
-    {
-        free(_mapImage);
-    }
 
-    _mapImage = newImage;
+    _mapImage = _backgroundTexture.GetData();
 
-    _mapWidth = width;
-    _mapHeight = height;
+    _mapWidth = _backgroundTexture.GetWidth();
+    _mapHeight = _backgroundTexture.GetHeight();
 
     /*
      * A new background starts in its neutral state.

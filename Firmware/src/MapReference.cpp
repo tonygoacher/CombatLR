@@ -3,7 +3,7 @@
 #include <ArduinoJson.h>
 #include <FS.h>
 #include <math.h>
-#include <SPIFFS.h>
+#include <LittleFS.h>
 
 #include "WorldConstants.h"
 
@@ -63,7 +63,7 @@ bool MapReference::Load(const char* filename)
     if (filename == nullptr)
         return false;
 
-    File file = SPIFFS.open(
+    File file = LittleFS.open(
         filename,
         FILE_READ);
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <FS.h>
+#include <LittleFS.h>
 #include <stdint.h>
 
 class BMPImage
@@ -29,7 +29,7 @@ public:
 
     void Free();
 
-    const uint16_t* GetData() const;
+    uint16_t* GetData();
 
     uint16_t GetWidth() const;
     uint16_t GetHeight() const;

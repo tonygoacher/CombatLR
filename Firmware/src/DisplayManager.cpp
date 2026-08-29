@@ -282,24 +282,8 @@ void DisplayManager::TurnMapToHeading(const TurnMapToHeadingCommand* command)
 void DisplayManager::DisplayBackground(
     const DisplayBackgroundCommand* command)
 {
-    const Texture* texture =
-        _textureManager.GetTexture(
-            command->GetFilename());
 
-    if (texture == nullptr ||
-        !texture->IsLoaded())
-    {
-        Serial.printf(
-            "DisplayManager: failed to load background %s\n",
-            command->GetFilename());
-
-        return;
-    }
-
-    if (!_display->SetBackground(
-            texture->GetData(),
-            texture->GetWidth(),
-            texture->GetHeight()))
+    if (!_display->SetBackground(command->GetFilename()))
     {
         Serial.printf(
             "DisplayManager: failed to set background %s\n",
@@ -316,10 +300,9 @@ void DisplayManager::DisplayBackground(
     _playerVisible = false;
 
     Serial.printf(
-        "DisplayManager: background %s %ux%u\n",
-        command->GetFilename(),
-        texture->GetWidth(),
-        texture->GetHeight());
+        "DisplayManager: background %s\n",
+        command->GetFilename());
+
 }
 
 void DisplayManager::ConfigureMap(const ConfigureMapCommand * command)

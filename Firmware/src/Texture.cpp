@@ -9,8 +9,8 @@ bool Texture::Load(
         filename);
 }
 
-const uint16_t*
-Texture::GetData() const
+uint16_t*
+Texture::GetData() 
 {
     return _image.GetData();
 }
