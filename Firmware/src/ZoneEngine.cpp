@@ -7,19 +7,15 @@
 #include "AddZoneCommand.h"
 #include "RemoveWidgetCommand.h"
 #include "SetWidgetColourCommand.h"
-
+#include "SetZoneGeometryCommand.h"
 
 namespace
 {
     constexpr uint32_t NO_LIFESPAN = 0;
-
-    /*
-     * Time before activation at which the zone imminent
-     * notification is generated.
-     */
     constexpr uint32_t ZONE_IMMINENT_SECONDS = 20;
+    constexpr uint32_t ZONE_TRANSITION_UPDATE_MS = 100;
+    constexpr uint32_t ZONE_TRANSITION_FLASH_MS = 250;
 }
-
 
 ZoneEngine::ZoneEngine(
     const GamePlan& gamePlan,
@@ -28,37 +24,42 @@ ZoneEngine::ZoneEngine(
     _pacer(true),
     _gamePlan(gamePlan),
     _displayManager(displayManager),
-    _elapsedSeconds(0)
+    _transitionPacer(true)
 {
     _pacer.SetPace(UpdateRate);
+    _transitionPacer.SetPace(
+        ZONE_TRANSITION_UPDATE_MS);
 }
-
-
-/*
- * =============================================================
- * Update
- * =============================================================
- */
 
 void ZoneEngine::Update(
     uint32_t gameTimeSeconds)
 {
-    if(_pacer.Pace())
-    {   
-    
-        _elapsedSeconds++;
-        Serial.print("ZoneEngine T="); Serial.println(_elapsedSeconds);
-        UpdateZones(_elapsedSeconds);
-        UpdatePickups(_elapsedSeconds);
+    /*
+     * Game state is evaluated only when the supplied game
+     * time moves to a new second.
+     */
+    if (gameTimeSeconds != _lastGameTimeSecond)
+    {
+        Serial.printf("ZoneEngine T:%d\n", gameTimeSeconds);
+        _lastGameTimeSecond =
+            gameTimeSeconds;
+
+        UpdateZones(
+            gameTimeSeconds);
+
+        UpdatePickups(
+            gameTimeSeconds);
+    }
+
+    /*
+     * Visual transition movement is independently paced.
+     */
+    if (_zoneTransitionActive &&
+        _transitionPacer.Pace())
+    {
+        UpdateZoneTransition();
     }
 }
-
-
-/*
- * =============================================================
- * UpdateZones
- * =============================================================
- */
 
 void ZoneEngine::UpdateZones(
     uint32_t gameTimeSeconds)
@@ -66,54 +67,107 @@ void ZoneEngine::UpdateZones(
     const std::vector<Zone>& zones =
         _gamePlan.GetZones();
 
-
-    int newestActiveZone = -1;
-
     /*
-     * Find the newest currently active zone.
+     * Find the newest zone whose start time has been
+     * reached. We deliberately do not use IsZoneActive()
+     * here because a zone which is currently in its
+     * transition/overlap period is still the current zone.
      */
+    int newestStartedZone = -1;
+
     for (size_t i = 0; i < zones.size(); ++i)
     {
-        if (IsZoneActive(
-                zones[i],
-                gameTimeSeconds))
+        if (gameTimeSeconds >= zones[i].startTime)
         {
-            newestActiveZone =
+            newestStartedZone =
                 static_cast<int>(i);
         }
     }
 
+    /*
+     * Initial activation.
+     */
+    if (_currentZoneIndex < 0 &&
+        newestStartedZone >= 0)
+    {
+        ActivateZone(
+            newestStartedZone);
+
+        _currentZoneIndex =
+            newestStartedZone;
+    }
 
     /*
-     * Handle zone activation.
+     * Start the visual transition before the new zone's
+     * start time. The duration is simply the difference
+     * between the two GamePlan start times.
+     *
+     * This is deliberately started by the imminent-zone
+     * mechanism, so the transition can last for the whole
+     * overlap period rather than merely the final 20s.
      */
-    for (size_t i = 0; i < zones.size(); ++i)
+    if (!_zoneTransitionActive &&
+        _currentZoneIndex >= 0 &&
+        _currentZoneIndex + 1 <
+            static_cast<int>(zones.size()))
     {
-        const Zone& zone = zones[i];
+        const Zone& fromZone =
+            zones[
+                static_cast<size_t>(
+                    _currentZoneIndex)];
 
-        if (!IsZoneActive(
-                zone,
-                gameTimeSeconds))
-        {
-            continue;
-        }
+        const Zone& toZone =
+            zones[
+                static_cast<size_t>(
+                    _currentZoneIndex + 1)];
 
-        if (FindActiveObject(zone.id) == nullptr)
+        const uint32_t fromEnd =
+            fromZone.startTime +
+            fromZone.lifespanSeconds;
+
+        if (fromZone.lifespanSeconds != NO_LIFESPAN &&
+            toZone.startTime < fromEnd)
         {
-            ActivateZone(
-                static_cast<int>(i));
+            const uint32_t overlapSeconds =
+                fromEnd - toZone.startTime;
+
+            const uint32_t transitionStartTime =
+                toZone.startTime - overlapSeconds;
+
+            if (gameTimeSeconds >= transitionStartTime &&
+                gameTimeSeconds < toZone.startTime)
+            {
+                StartZoneTransition(
+                    _currentZoneIndex,
+                    _currentZoneIndex + 1);
+            }
         }
     }
 
+    /*
+     * The new zone takes ownership exactly at its start
+     * time. The renderer does not perform this operation.
+     */
+    if (_zoneTransitionActive)
+    {
+        const Zone& toZone =
+            zones[
+                static_cast<size_t>(
+                    _zoneTransition.toZoneIndex)];
+
+        if (gameTimeSeconds >= toZone.startTime)
+        {
+            CompleteZoneTransition();
+        }
+    }
 
     /*
-     * Handle zone expiry.
-     *
-     * Work backwards because RemoveZoneObjects()
-     * modifies _activeObjects.
+     * Handle ordinary expiry for zones which are not
+     * involved in the transition hand-over.
      */
     for (int i =
-             static_cast<int>(_activeObjects.size()) - 1;
+             static_cast<int>(
+                 _activeObjects.size()) - 1;
          i >= 0;
          --i)
     {
@@ -121,7 +175,17 @@ void ZoneEngine::UpdateZones(
             _activeObjects[
                 static_cast<size_t>(i)];
 
-        if (object.type != WidgetType::Zone)
+        if (object.type !=
+            WidgetType::Zone)
+        {
+            continue;
+        }
+
+        if (_zoneTransitionActive &&
+            object.id ==
+                zones[
+                    static_cast<size_t>(
+                        _zoneTransition.fromZoneIndex)].id)
         {
             continue;
         }
@@ -144,27 +208,56 @@ void ZoneEngine::UpdateZones(
         }
 
         if (!IsZoneActive(
-                zones[zoneIndex],
+                zones[
+                    static_cast<size_t>(
+                        zoneIndex)],
                 gameTimeSeconds))
         {
-            DeactivateZone(zoneIndex);
+            DeactivateZone(
+                zoneIndex);
+
+            if (zoneIndex ==
+                _currentZoneIndex)
+            {
+                _currentZoneIndex = -1;
+            }
         }
     }
 
-
     /*
-     * The most recently active zone is green.
-     *
-     * If another zone is still active, it is yellow.
+     * The current zone is green. Older overlapping zones
+     * are yellow. The moving zone's flashing is handled
+     * separately by UpdateZoneTransition().
      */
+    int newestActiveZone = -1;
+
+    for (size_t i = 0; i < zones.size(); ++i)
+    {
+        if (IsZoneActive(
+                zones[i],
+                gameTimeSeconds))
+        {
+            newestActiveZone =
+                static_cast<int>(i);
+        }
+    }
+
     if (newestActiveZone >= 0)
     {
         for (size_t i = 0; i < zones.size(); ++i)
         {
             ActiveGameObject* object =
-                FindActiveObject(zones[i].id);
+                FindActiveObject(
+                    zones[i].id);
 
             if (object == nullptr)
+            {
+                continue;
+            }
+
+            if (_zoneTransitionActive &&
+                static_cast<int>(i) ==
+                    _zoneTransition.fromZoneIndex)
             {
                 continue;
             }
@@ -183,9 +276,11 @@ void ZoneEngine::UpdateZones(
         }
     }
 
-
     /*
      * Zone imminent notification.
+     *
+     * This is independent of transition start. It remains
+     * a one-shot notification for the configured threshold.
      */
     int imminentZone = -1;
 
@@ -213,7 +308,8 @@ void ZoneEngine::UpdateZones(
 
     if (imminentZone >= 0)
     {
-        if (_imminentZoneIndex != imminentZone)
+        if (_imminentZoneIndex !=
+            imminentZone)
         {
             const Zone& zone =
                 zones[
@@ -234,18 +330,7 @@ void ZoneEngine::UpdateZones(
     {
         _imminentZoneIndex = -1;
     }
-
-
-    _currentZoneIndex =
-        newestActiveZone;
 }
-
-
-/*
- * =============================================================
- * UpdatePickups
- * =============================================================
- */
 
 void ZoneEngine::UpdatePickups(
     uint32_t gameTimeSeconds)
@@ -254,11 +339,22 @@ void ZoneEngine::UpdatePickups(
         _gamePlan.GetZones();
 
     /*
-     * Add pickups that have become active.
+     * Only pickups belonging to the current zone are
+     * activated. During transition the old zone continues
+     * to own its pickups.
      */
-    for (const Zone& zone : zones)
+    if (_currentZoneIndex >= 0 &&
+        !_zoneTransitionActive &&
+        _currentZoneIndex <
+            static_cast<int>(zones.size()))
     {
-        for (const auto& pickupEntry : zone.pickups)
+        const Zone& zone =
+            zones[
+                static_cast<size_t>(
+                    _currentZoneIndex)];
+
+        for (const auto& pickupEntry :
+             zone.pickups)
         {
             const Pickup& pickup =
                 pickupEntry.second;
@@ -282,8 +378,8 @@ void ZoneEngine::UpdatePickups(
                 continue;
             }
 
-            if (FindActiveObject(pickup.id) ==
-                nullptr)
+            if (FindActiveObject(
+                    pickup.id) == nullptr)
             {
                 ActivatePickup(
                     zone,
@@ -292,12 +388,12 @@ void ZoneEngine::UpdatePickups(
         }
     }
 
-
     /*
      * Remove expired pickups.
      */
     for (int i =
-             static_cast<int>(_activeObjects.size()) - 1;
+             static_cast<int>(
+                 _activeObjects.size()) - 1;
          i >= 0;
          --i)
     {
@@ -305,7 +401,8 @@ void ZoneEngine::UpdatePickups(
             _activeObjects[
                 static_cast<size_t>(i)];
 
-        if (object.type != WidgetType::Pickup)
+        if (object.type !=
+            WidgetType::Pickup)
         {
             continue;
         }
@@ -313,9 +410,11 @@ void ZoneEngine::UpdatePickups(
         const Pickup* pickup = nullptr;
         const Zone* owningZone = nullptr;
 
-        for (const Zone& zone : zones)
+        for (const Zone& zone :
+             zones)
         {
-            for (const auto& pickupEntry : zone.pickups)
+            for (const auto& pickupEntry :
+                 zone.pickups)
             {
                 if (pickupEntry.second.id ==
                     object.id)
@@ -353,23 +452,253 @@ void ZoneEngine::UpdatePickups(
     }
 }
 
+void ZoneEngine::UpdateZoneTransition()
+{
+    if (!_zoneTransitionActive)
+    {
+        return;
+    }
 
-/*
- * =============================================================
- * IsZoneActive
- * =============================================================
- */
+    const std::vector<Zone>& zones =
+        _gamePlan.GetZones();
+
+    if (_zoneTransition.fromZoneIndex < 0 ||
+        _zoneTransition.toZoneIndex < 0 ||
+        _zoneTransition.fromZoneIndex >=
+            static_cast<int>(zones.size()) ||
+        _zoneTransition.toZoneIndex >=
+            static_cast<int>(zones.size()))
+    {
+        _zoneTransitionActive = false;
+        return;
+    }
+
+    const Zone& fromZone =
+        zones[
+            static_cast<size_t>(
+                _zoneTransition.fromZoneIndex)];
+
+    const Zone& toZone =
+        zones[
+            static_cast<size_t>(
+                _zoneTransition.toZoneIndex)];
+
+    const uint32_t elapsedMillis =
+        millis() -
+        _transitionStartMillis;
+
+    float progress = 1.0f;
+
+    if (_transitionDurationMillis != 0)
+    {
+        progress =
+            static_cast<float>(
+                elapsedMillis) /
+            static_cast<float>(
+                _transitionDurationMillis);
+
+        if (progress > 1.0f)
+        {
+            progress = 1.0f;
+        }
+    }
+
+    const double east =
+        fromZone.eastMetres +
+        (toZone.eastMetres -
+         fromZone.eastMetres) *
+        progress;
+
+    const double north =
+        fromZone.northMetres +
+        (toZone.northMetres -
+         fromZone.northMetres) *
+        progress;
+
+    const double radius =
+        fromZone.radiusMetres +
+        (toZone.radiusMetres -
+         fromZone.radiusMetres) *
+        progress;
+
+    _displayManager.Send(
+        std::unique_ptr<IDisplayCommand>(
+            new SetZoneGeometryCommand(
+                fromZone.id,
+                GameCoordinate(
+                    east,
+                    north),
+                radius)));
+
+    /*
+     * Flash while moving.
+     */
+    const uint32_t flashPhase =
+        (elapsedMillis /
+         ZONE_TRANSITION_FLASH_MS) & 1U;
+
+    const uint32_t colour =
+        flashPhase
+            ? TFT_YELLOW
+            : TFT_GREEN;
+
+    _displayManager.Send(
+        std::unique_ptr<IDisplayCommand>(
+            new SetWidgetColourCommand(
+                fromZone.id,
+                colour)));
+}
+
+void ZoneEngine::StartZoneTransition(
+    int fromZoneIndex,
+    int toZoneIndex)
+{
+    const std::vector<Zone>& zones =
+        _gamePlan.GetZones();
+
+    if (fromZoneIndex < 0 ||
+        toZoneIndex < 0 ||
+        fromZoneIndex >=
+            static_cast<int>(zones.size()) ||
+        toZoneIndex >=
+            static_cast<int>(zones.size()) ||
+        toZoneIndex <= fromZoneIndex)
+    {
+        return;
+    }
+
+    const Zone& fromZone =
+        zones[
+            static_cast<size_t>(
+                fromZoneIndex)];
+
+    const Zone& toZone =
+        zones[
+            static_cast<size_t>(
+                toZoneIndex)];
+
+    if (toZone.startTime <=
+        fromZone.startTime)
+    {
+        return;
+    }
+
+    const uint32_t fromEnd =
+        fromZone.startTime +
+        fromZone.lifespanSeconds;
+
+    if (fromZone.lifespanSeconds == NO_LIFESPAN ||
+        toZone.startTime >= fromEnd)
+    {
+        return;
+    }
+
+    _zoneTransition.fromZoneIndex =
+        fromZoneIndex;
+
+    _zoneTransition.toZoneIndex =
+        toZoneIndex;
+
+    _zoneTransitionActive =
+        true;
+
+    const uint32_t overlapSeconds =
+        fromEnd - toZone.startTime;
+
+    _transitionDurationMillis =
+        overlapSeconds * 1000UL;
+
+    /*
+     * The transition starts at:
+     *
+     *     next zone start - overlap
+     *
+     * and finishes exactly when the next zone starts.
+     */
+    _transitionStartMillis =
+        millis();
+
+    _transitionPacer.PacerReset();
+
+    /*
+     * Start at the old zone's exact geometry.
+     */
+    _displayManager.Send(
+        std::unique_ptr<IDisplayCommand>(
+            new SetZoneGeometryCommand(
+                fromZone.id,
+                GameCoordinate(
+                    fromZone.eastMetres,
+                    fromZone.northMetres),
+                fromZone.radiusMetres)));
+
+    _displayManager.Send(
+        std::unique_ptr<IDisplayCommand>(
+            new SetWidgetColourCommand(
+                fromZone.id,
+                TFT_YELLOW)));
+}
+
+void ZoneEngine::CompleteZoneTransition()
+{
+    if (!_zoneTransitionActive)
+    {
+        return;
+    }
+
+    const std::vector<Zone>& zones =
+        _gamePlan.GetZones();
+
+    const int oldZoneIndex =
+        _zoneTransition.fromZoneIndex;
+
+    const int newZoneIndex =
+        _zoneTransition.toZoneIndex;
+
+    if (oldZoneIndex < 0 ||
+        newZoneIndex < 0 ||
+        oldZoneIndex >=
+            static_cast<int>(zones.size()) ||
+        newZoneIndex >=
+            static_cast<int>(zones.size()))
+    {
+        _zoneTransitionActive = false;
+        return;
+    }
+
+    const Zone& oldZone =
+        zones[
+            static_cast<size_t>(
+                oldZoneIndex)];
+
+    RemoveZoneObjects(
+        oldZone.id);
+
+    _zoneTransitionActive =
+        false;
+
+    ActivateZone(
+        newZoneIndex);
+
+    _currentZoneIndex =
+        newZoneIndex;
+
+    NotifyZoneTransitionComplete(
+        newZoneIndex);
+}
 
 bool ZoneEngine::IsZoneActive(
     const Zone& zone,
     uint32_t gameTimeSeconds) const
 {
-    if (gameTimeSeconds < zone.startTime)
+    if (gameTimeSeconds <
+        zone.startTime)
     {
         return false;
     }
 
-    if (zone.lifespanSeconds == NO_LIFESPAN)
+    if (zone.lifespanSeconds ==
+        NO_LIFESPAN)
     {
         return true;
     }
@@ -380,13 +709,6 @@ bool ZoneEngine::IsZoneActive(
 
     return gameTimeSeconds < expiry;
 }
-
-
-/*
- * =============================================================
- * IsPickupActive
- * =============================================================
- */
 
 bool ZoneEngine::IsPickupActive(
     const Pickup& pickup,
@@ -411,13 +733,6 @@ bool ZoneEngine::IsPickupActive(
     return gameTimeSeconds < expiry;
 }
 
-
-/*
- * =============================================================
- * ActivateZone
- * =============================================================
- */
-
 void ZoneEngine::ActivateZone(
     int zoneIndex)
 {
@@ -433,7 +748,8 @@ void ZoneEngine::ActivateZone(
 
     const Zone& zone =
         zones[
-            static_cast<size_t>(zoneIndex)];
+            static_cast<size_t>(
+                zoneIndex)];
 
     AddZoneCommand* command =
         new AddZoneCommand(
@@ -465,9 +781,6 @@ void ZoneEngine::ActivateZone(
     object.type =
         WidgetType::Zone;
 
-    object.zoneId =
-        zone.id;
-
     object.claimed =
         false;
 
@@ -475,19 +788,12 @@ void ZoneEngine::ActivateZone(
         object);
 }
 
-
-/*
- * =============================================================
- * DeactivateZone
- * =============================================================
- */
-
 void ZoneEngine::DeactivateZone(
     int zoneIndex)
 {
     const std::vector<Zone>& zones =
         _gamePlan.GetZones();
-    Serial.printf("Deactivating zone %d\n", zoneIndex);
+
     if (zoneIndex < 0 ||
         zoneIndex >=
             static_cast<int>(zones.size()))
@@ -497,33 +803,25 @@ void ZoneEngine::DeactivateZone(
 
     const Zone& zone =
         zones[
-            static_cast<size_t>(zoneIndex)];
+            static_cast<size_t>(
+                zoneIndex)];
 
     NotifyZoneExpired(
         zone,
         zoneIndex);
 
-    /*
-     * Remove all pickups belonging to the zone
-     * as well as the zone itself.
-     */
     RemoveZoneObjects(
         zone.id);
 }
-
-
-/*
- * =============================================================
- * ActivatePickup
- * =============================================================
- */
 
 void ZoneEngine::ActivatePickup(
     const Zone& zone,
     const Pickup& pickup)
 {
+    (void)zone;
+
     const char* filename = nullptr;
-    Serial.printf("Activating pickup  %d\n", pickup.id);
+
     switch (pickup.type)
     {
         case PickupTypes::Health:
@@ -568,9 +866,6 @@ void ZoneEngine::ActivatePickup(
     object.type =
         WidgetType::Pickup;
 
-    object.zoneId =
-        zone.id;
-
     object.claimed =
         false;
 
@@ -581,19 +876,13 @@ void ZoneEngine::ActivatePickup(
         pickup.id);
 }
 
-
-/*
- * =============================================================
- * DeactivatePickup
- * =============================================================
- */
-
 void ZoneEngine::DeactivatePickup(
     uint32_t pickupId)
 {
     ActiveGameObject* object =
-        FindActiveObject(pickupId);
-    Serial.printf("Deactivating pickup  %d\n", pickupId);
+        FindActiveObject(
+            pickupId);
+
     if (object == nullptr)
     {
         return;
@@ -607,18 +896,9 @@ void ZoneEngine::DeactivatePickup(
     NotifyPickupDeactivated(
         pickupId);
 
-    _activeObjects.erase(
-        std::remove_if(
-            _activeObjects.begin(),
-            _activeObjects.end(),
-            [pickupId](
-                const ActiveGameObject& object)
-            {
-                return object.id == pickupId;
-            }),
-        _activeObjects.end());
+    RemoveActiveObject(
+        pickupId);
 }
-
 
 void ZoneEngine::RemoveActiveObject(
     uint32_t objectId)
@@ -630,26 +910,22 @@ void ZoneEngine::RemoveActiveObject(
             [objectId](
                 const ActiveGameObject& object)
             {
-                return object.id == objectId;
+                return object.id ==
+                    objectId;
             }),
         _activeObjects.end());
 }
 
-/*
- * =============================================================
- * RemoveZoneObjects
- * =============================================================
- */
 void ZoneEngine::RemoveZoneObjects(
     uint32_t zoneId)
 {
     const size_t zoneIndex =
-        zoneId & ~GamePlan::ZoneWidgetIdBase;
+        zoneId &
+        ~GamePlan::ZoneWidgetIdBase;
 
-    const auto& zones =
+    const std::vector<Zone>& zones =
         _gamePlan.GetZones();
 
-    Serial.printf("Removeing zone objects %d\n", zoneId);
     if (zoneIndex >= zones.size())
     {
         return;
@@ -663,9 +939,11 @@ void ZoneEngine::RemoveZoneObjects(
             new RemoveWidgetCommand(
                 zone.id)));
 
-    RemoveActiveObject(zone.id);
+    RemoveActiveObject(
+        zone.id);
 
-    for (const auto& pickupEntry : zone.pickups)
+    for (const auto& pickupEntry :
+         zone.pickups)
     {
         const Pickup& pickup =
             pickupEntry.second;
@@ -675,16 +953,10 @@ void ZoneEngine::RemoveZoneObjects(
                 new RemoveWidgetCommand(
                     pickup.id)));
 
-        RemoveActiveObject(pickup.id);
+        RemoveActiveObject(
+            pickup.id);
     }
 }
-
-
-/*
- * =============================================================
- * FindActiveObject
- * =============================================================
- */
 
 ZoneEngine::ActiveGameObject*
 ZoneEngine::FindActiveObject(
@@ -693,7 +965,8 @@ ZoneEngine::FindActiveObject(
     for (ActiveGameObject& object :
          _activeObjects)
     {
-        if (object.id == objectId)
+        if (object.id ==
+            objectId)
         {
             return &object;
         }
@@ -701,7 +974,6 @@ ZoneEngine::FindActiveObject(
 
     return nullptr;
 }
-
 
 const ZoneEngine::ActiveGameObject*
 ZoneEngine::FindActiveObject(
@@ -710,7 +982,8 @@ ZoneEngine::FindActiveObject(
     for (const ActiveGameObject& object :
          _activeObjects)
     {
-        if (object.id == objectId)
+        if (object.id ==
+            objectId)
         {
             return &object;
         }
@@ -718,13 +991,6 @@ ZoneEngine::FindActiveObject(
 
     return nullptr;
 }
-
-
-/*
- * =============================================================
- * GetPickupsWithin
- * =============================================================
- */
 
 size_t ZoneEngine::GetPickupsWithin(
     const GameCoordinate& playerPosition,
@@ -749,12 +1015,8 @@ size_t ZoneEngine::GetPickupsWithin(
          _activeObjects)
     {
         if (object.type !=
-            WidgetType::Pickup)
-        {
-            continue;
-        }
-
-        if (object.claimed)
+            WidgetType::Pickup ||
+            object.claimed)
         {
             continue;
         }
@@ -779,12 +1041,11 @@ size_t ZoneEngine::GetPickupsWithin(
             continue;
         }
 
-        /*
-         * Recover the Pickup type from GamePlan.
-         */
         for (const Zone& zone :
              _gamePlan.GetZones())
         {
+            bool found = false;
+
             for (const auto& entry :
                  zone.pickups)
             {
@@ -801,13 +1062,13 @@ size_t ZoneEngine::GetPickupsWithin(
                         entry.second.type;
 
                     ++resultCount;
+
+                    found = true;
                     break;
                 }
             }
 
-            if (resultCount > 0 &&
-                results[resultCount - 1].id ==
-                    object.id)
+            if (found)
             {
                 break;
             }
@@ -822,18 +1083,12 @@ size_t ZoneEngine::GetPickupsWithin(
     return resultCount;
 }
 
-
-/*
- * =============================================================
- * ClaimPickup
- * =============================================================
- */
-
 bool ZoneEngine::ClaimPickup(
     uint32_t pickupId)
 {
     ActiveGameObject* object =
-        FindActiveObject(pickupId);
+        FindActiveObject(
+            pickupId);
 
     if (object == nullptr ||
         object->type !=
@@ -850,26 +1105,11 @@ bool ZoneEngine::ClaimPickup(
             new RemoveWidgetCommand(
                 pickupId)));
 
-    _activeObjects.erase(
-        std::remove_if(
-            _activeObjects.begin(),
-            _activeObjects.end(),
-            [pickupId](
-                const ActiveGameObject& object)
-            {
-                return object.id == pickupId;
-            }),
-        _activeObjects.end());
+    RemoveActiveObject(
+        pickupId);
 
     return true;
 }
-
-
-/*
- * =============================================================
- * Listener management
- * =============================================================
- */
 
 void ZoneEngine::AddPickupEventListener(
     IPickupEvent* listener)
@@ -890,7 +1130,6 @@ void ZoneEngine::AddPickupEventListener(
     }
 }
 
-
 void ZoneEngine::RemovePickupEventListener(
     IPickupEvent* listener)
 {
@@ -901,7 +1140,6 @@ void ZoneEngine::RemovePickupEventListener(
             listener),
         _pickupEventListeners.end());
 }
-
 
 void ZoneEngine::AddZoneEventListener(
     IZoneEvent* listener)
@@ -922,7 +1160,6 @@ void ZoneEngine::AddZoneEventListener(
     }
 }
 
-
 void ZoneEngine::RemoveZoneEventListener(
     IZoneEvent* listener)
 {
@@ -934,17 +1171,9 @@ void ZoneEngine::RemoveZoneEventListener(
         _zoneEventListeners.end());
 }
 
-
-/*
- * =============================================================
- * Event notification
- * =============================================================
- */
-
 void ZoneEngine::NotifyPickupActivated(
     uint32_t pickupId)
 {
-    Serial.printf("Pickup activated: %d\n", pickupId);
     for (IPickupEvent* listener :
          _pickupEventListeners)
     {
@@ -956,11 +1185,9 @@ void ZoneEngine::NotifyPickupActivated(
     }
 }
 
-
 void ZoneEngine::NotifyPickupDeactivated(
     uint32_t pickupId)
 {
-    Serial.printf("Pickup deactivated: %d\n", pickupId);
     for (IPickupEvent* listener :
          _pickupEventListeners)
     {
@@ -972,7 +1199,6 @@ void ZoneEngine::NotifyPickupDeactivated(
     }
 }
 
-
 void ZoneEngine::NotifyZoneImminent(
     const Zone& zone,
     int zoneIndex,
@@ -981,7 +1207,7 @@ void ZoneEngine::NotifyZoneImminent(
     const GameCoordinate position(
         zone.eastMetres,
         zone.northMetres);
-    Serial.printf("Zone Imminent: %d\n", zone.id);
+
     for (IZoneEvent* listener :
          _zoneEventListeners)
     {
@@ -995,7 +1221,6 @@ void ZoneEngine::NotifyZoneImminent(
     }
 }
 
-
 void ZoneEngine::NotifyZoneExpired(
     const Zone& zone,
     int zoneIndex)
@@ -1003,7 +1228,7 @@ void ZoneEngine::NotifyZoneExpired(
     const GameCoordinate position(
         zone.eastMetres,
         zone.northMetres);
-    Serial.printf("Zone expired: %d\n", zone.id);
+
     for (IZoneEvent* listener :
          _zoneEventListeners)
     {
@@ -1016,7 +1241,44 @@ void ZoneEngine::NotifyZoneExpired(
     }
 }
 
+void ZoneEngine::NotifyZoneTransitionComplete(
+    int zoneIndex)
+{
+    for (IZoneEvent* listener :
+         _zoneEventListeners)
+    {
+        if (listener != nullptr)
+        {
+            listener->ZoneTransitionComplete(
+                zoneIndex);
+        }
+    }
+}
+
 void ZoneEngine::Reset()
 {
-    _elapsedSeconds = 0;
+    _lastGameTimeSecond =
+        UINT32_MAX;
+
+    _currentZoneIndex =
+        -1;
+
+    _imminentZoneIndex =
+        -1;
+
+    _zoneTransitionActive =
+        false;
+
+    _zoneTransition =
+        { -1, -1 };
+
+    _transitionStartMillis =
+        0;
+
+    _transitionDurationMillis =
+        0;
+
+    _transitionPacer.PacerReset();
+
+    _activeObjects.clear();
 }

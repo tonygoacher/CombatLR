@@ -44,6 +44,8 @@ public:
     virtual void RemovedWidget(uint32_t widgetId) = 0;
 
     virtual void SetWidgetColour(uint32_t widgetId, uint32_t colour) = 0;
+
+    virtual void SetZoneGeometry( uint32_t zoneId,  GameCoordinate newPos,  float radius) = 0;
     /*
      * Add/remove widgets.
      *

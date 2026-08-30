@@ -83,6 +83,8 @@ namespace
 };
 
   NavigationData data;
+  Pacer zoneUpdatePacer(true);
+  uint32_t gameTimeInSec=0;
   void UpdateNavigationDisplay(DisplayManager& displayManager)
 {  
    
@@ -126,7 +128,11 @@ namespace
                 zoom)));    
     }
 
-    zoneEngine->Update(0);
+    if(zoneUpdatePacer.Pace())
+    {
+        gameTimeInSec++;
+    }
+    zoneEngine->Update(gameTimeInSec);
 }
 
 void NavigationDisplayTestBegin(DisplayManager& displayManager)
@@ -142,6 +148,7 @@ void NavigationDisplayTestBegin(DisplayManager& displayManager)
         while(1)
         {};
     }
+    zoneUpdatePacer.SetPace(1000);
 
     displayManager.ConfigureNavigationMap(
     "/map.json",

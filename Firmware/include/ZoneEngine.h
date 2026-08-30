@@ -51,18 +51,27 @@ public:
         IZoneEvent* listener);
 
 private:
-    static const int UpdateRate = 1000; // Update every 1000ms
+
+    static const int UpdateRate = 1000;
+    static constexpr uint32_t ZoneTransitionUpdateMs = 100;
+
     struct ActiveGameObject
     {
         uint32_t id;
         GameCoordinate position;
         WidgetType type;
-        uint32_t zoneId;
         bool claimed;
     };
 
+    struct ZoneTransition
+    {
+        int fromZoneIndex;
+        int toZoneIndex;
+    };
+
     Pacer _pacer;
-    uint32_t _elapsedSeconds;
+
+    uint32_t _lastGameTimeSecond = UINT32_MAX;
 
     const GamePlan& _gamePlan;
     DisplayManager& _displayManager;
@@ -72,25 +81,24 @@ private:
     std::deque<IPickupEvent*> _pickupEventListeners;
     std::deque<IZoneEvent*> _zoneEventListeners;
 
-    /*
-     * Index of the most recently activated zone.
-     */
     int _currentZoneIndex = -1;
-
-    /*
-     * Used to ensure an imminent notification is only
-     * generated once for a particular zone/threshold.
-     *
-     * We currently have one threshold. This can be expanded
-     * when the second imminent notification is required.
-     */
     int _imminentZoneIndex = -1;
+
+    bool _zoneTransitionActive = false;
+    ZoneTransition _zoneTransition{ -1, -1 };
+
+    Pacer _transitionPacer;
+
+    uint32_t _transitionStartMillis = 0;
+    uint32_t _transitionDurationMillis = 0;
 
     void UpdateZones(
         uint32_t gameTimeSeconds);
 
     void UpdatePickups(
         uint32_t gameTimeSeconds);
+
+    void UpdateZoneTransition();
 
     bool IsZoneActive(
         const Zone& zone,
@@ -116,11 +124,20 @@ private:
     void RemoveZoneObjects(
         uint32_t zoneId);
 
+    void RemoveActiveObject(
+        uint32_t objectId);
+
     ActiveGameObject* FindActiveObject(
         uint32_t objectId);
 
     const ActiveGameObject* FindActiveObject(
         uint32_t objectId) const;
+
+    void StartZoneTransition(
+        int fromZoneIndex,
+        int toZoneIndex);
+
+    void CompleteZoneTransition();
 
     void NotifyPickupActivated(
         uint32_t pickupId);
@@ -137,8 +154,8 @@ private:
         const Zone& zone,
         int zoneIndex);
 
-    void RemoveActiveObject(
-    uint32_t objectId);
+    void NotifyZoneTransitionComplete(
+        int zoneIndex);
 
-    void Reset();        
+    void Reset();
 };
