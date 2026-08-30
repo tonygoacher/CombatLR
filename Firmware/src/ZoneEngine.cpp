@@ -154,6 +154,8 @@ void ZoneEngine::UpdateZones(
             zones[
                 static_cast<size_t>(
                     _zoneTransition.toZoneIndex)];
+        
+       
 
         if (gameTimeSeconds >= toZone.startTime)
         {
@@ -262,17 +264,6 @@ void ZoneEngine::UpdateZones(
                 continue;
             }
 
-            const uint32_t colour =
-                (static_cast<int>(i) ==
-                 newestActiveZone)
-                    ? TFT_GREEN
-                    : TFT_YELLOW;
-
-            _displayManager.Send(
-                std::unique_ptr<IDisplayCommand>(
-                    new SetWidgetColourCommand(
-                        object->id,
-                        colour)));
         }
     }
 
@@ -530,18 +521,17 @@ void ZoneEngine::UpdateZoneTransition()
                     north),
                 radius)));
 
-    /*
-     * Flash while moving.
-     */
-    const uint32_t flashPhase =
-        (elapsedMillis /
-         ZONE_TRANSITION_FLASH_MS) & 1U;
 
-    const uint32_t colour =
-        flashPhase
-            ? TFT_YELLOW
-            : TFT_GREEN;
 
+    _redshift+=2;
+    if(_redshift > 0x1f)
+    {
+        _redshift = RedshiftMin;
+    }
+    uint32_t colour = _redshift << 11;
+
+
+    Serial.printf("New colour is %d\n", colour);
     _displayManager.Send(
         std::unique_ptr<IDisplayCommand>(
             new SetWidgetColourCommand(
