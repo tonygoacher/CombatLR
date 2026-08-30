@@ -16,6 +16,9 @@ public:
 
     GameCoordinate GetGamePosition() const override;
 
+    void  SetGamePosition(GameCoordinate newPos)override { _position = newPos;}  
+    void  SetRadius(uint16_t newRadius) override { _radius = newRadius;}  
+
     void Render(
         IDisplayContext& context) override;
 

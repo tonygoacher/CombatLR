@@ -2,6 +2,7 @@
 #include "MapCoordinate.h"
 #include "MapReference.h"
 
+
 #include <math.h>
 #include <string.h>
 
@@ -1106,7 +1107,6 @@ bool ST7789VDisplay::ConfigureNavigationMap(
 void ST7789VDisplay::SetWidgetColour(uint32_t widgetId, uint32_t colour)
 {
     WidgetCollection::iterator widgetIterator = _widgets.find(widgetId);
-    Serial.printf("Display setting widget %lx to colour %d\n", widgetId, colour);
     if(widgetIterator != _widgets.end())
     {
         widgetIterator->second->SetColour(colour);
@@ -1115,4 +1115,18 @@ void ST7789VDisplay::SetWidgetColour(uint32_t widgetId, uint32_t colour)
     {
         Serial.println("Not found");
     }
+}
+
+void ST7789VDisplay::SetZoneGeometry(uint32_t zoneId, GameCoordinate newPos, float radius)
+{
+      WidgetCollection::iterator widgetIterator = _widgets.find(zoneId);
+      if(widgetIterator != _widgets.end())
+      {
+           widgetIterator->second->SetGamePosition(newPos);
+           widgetIterator->second->SetRadius(radius);
+      } 
+      else
+      {
+        Serial.printf("SetZoneZeometry could not find zone %lx\n", zoneId);
+      }  
 }

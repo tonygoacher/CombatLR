@@ -11,6 +11,7 @@
 #include "AddZoneCommand.h"
 #include "RemoveWidgetCommand.h"
 #include "SetWidgetColourCommand.h"
+#include "SetZoneGeometryCommand.h"
 
 DisplayManager::DisplayManager(
     TextureManager& textureManager)
@@ -286,6 +287,17 @@ void DisplayManager::ProcessCommand(const IDisplayCommand* command)
         }
         break;
 
+        case DisplayCommandType::SetZoneGeometry:
+        {
+            SetZoneGeometry(
+                static_cast<
+                    const SetZoneGeometryCommand*>(
+                        command));
+
+
+        }
+        break;        
+
         default:
             Serial.printf("Unknown display command %d\n", command->GetType());
             break;
@@ -385,7 +397,6 @@ void DisplayManager::RemoveWidget(const RemoveWidgetCommand* command)
 {
        if (command == nullptr)
         return;
-    Serial.printf("Display mamager remove widget ID %d\n",command->GetWidgetId());
     _display->RemovedWidget(command->GetWidgetId()); 
 }
 
@@ -394,11 +405,18 @@ void DisplayManager::SetWidgetColour(const SetWidgetColourCommand* command)
     if (command == nullptr)
         return;
 
-    Serial.printf("Display mamager set widget colour ID %lx %d\n",command->GetWidgetId(), command->GetColour());
     _display->SetWidgetColour(command->GetWidgetId(), command->GetColour());        
 }
 
 
+
+void DisplayManager::SetZoneGeometry(const SetZoneGeometryCommand* command)
+{
+    if(command == nullptr)
+        return;
+
+    _display->SetZoneGeometry(command->GetId(), command->GetCoordinate() , command->GetRadius());
+}
 
 void DisplayManager::ConfigureNavigationMap(
     const char* mapFilename,

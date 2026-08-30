@@ -68,6 +68,9 @@ public:
     bool GetVisible() { return _visible;}
     void SetVisible(bool visible){ _visible = visible;}
 
+    virtual void  SetGamePosition(GameCoordinate newPos) { };
+    virtual void  SetRadius(uint16_t newRadius) { };
+
 
     /*
      * Render the widget.

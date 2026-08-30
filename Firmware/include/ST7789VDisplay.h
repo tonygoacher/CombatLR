@@ -65,6 +65,8 @@ public:
 
     void SetWidgetColour(uint32_t widgetId, uint32_t colour) override;
 
+     void SetZoneGeometry(uint32_t zoneId, GameCoordinate newPos, float radius) override;
+
 
 private:
 

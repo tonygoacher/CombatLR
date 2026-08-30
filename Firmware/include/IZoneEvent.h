@@ -8,4 +8,5 @@ class IZoneEvent
 public:
     virtual void ZoneImminent(GameCoordinate newZonePos, int zoneIndexInGamePlan, uint32_t timeToActivation) =0;
     virtual void ZoneExpired(GameCoordinate newZonePos, int zoneIndexInGamePlan) = 0;
+    virtual void ZoneTransitionComplete(uint32_t zoneIndex) =0;
 };
