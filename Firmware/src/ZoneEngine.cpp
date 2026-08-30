@@ -273,27 +273,96 @@ void ZoneEngine::UpdateZones(
      * This is independent of transition start. It remains
      * a one-shot notification for the configured threshold.
      */
+
+
     int imminentZone = -1;
 
     for (size_t i = 0; i < zones.size(); ++i)
     {
         const Zone& zone = zones[i];
 
-        if (gameTimeSeconds >= zone.startTime)
+        if (i == 0)
         {
             continue;
         }
 
-        const uint32_t timeToActivation =
-            zone.startTime -
-            gameTimeSeconds;
+        const Zone& previousZone =
+            zones[i - 1];
 
-        if (timeToActivation <=
-            ZONE_IMMINENT_SECONDS)
+        if (previousZone.lifespanSeconds ==
+            NO_LIFESPAN)
         {
-            imminentZone =
-                static_cast<int>(i);
-            break;
+            continue;
+        }
+
+        const uint32_t previousZoneEnd =
+            previousZone.startTime +
+            previousZone.lifespanSeconds;
+
+        if (zone.startTime >= previousZoneEnd)
+        {
+            continue;
+        }
+
+        const uint32_t overlapSeconds =
+            previousZoneEnd -
+            zone.startTime;
+
+        const uint32_t transitionStartTime =
+            zone.startTime -
+            overlapSeconds;
+
+        if (gameTimeSeconds < transitionStartTime)
+        {
+            const uint32_t timeToTransition =
+                transitionStartTime -
+                gameTimeSeconds;
+
+            if (timeToTransition <=
+                ZONE_IMMINENT_SECONDS)
+            {
+                imminentZone =
+                    static_cast<int>(i);
+                break;
+            }
+        }
+    }
+
+    if (imminentZone >= 0)
+    {
+        if (_imminentZoneIndex !=
+            imminentZone)
+        {
+            const Zone& zone =
+                zones[
+                    static_cast<size_t>(
+                        imminentZone)];
+
+            const Zone& previousZone =
+                zones[
+                    static_cast<size_t>(
+                        imminentZone - 1)];
+
+            const uint32_t previousZoneEnd =
+                previousZone.startTime +
+                previousZone.lifespanSeconds;
+
+            const uint32_t overlapSeconds =
+                previousZoneEnd -
+                zone.startTime;
+
+            const uint32_t transitionStartTime =
+                zone.startTime -
+                overlapSeconds;
+
+            NotifyZoneImminent(
+                zone,
+                imminentZone,
+                transitionStartTime -
+                    gameTimeSeconds);
+
+            _imminentZoneIndex =
+                imminentZone;
         }
     }
 
@@ -531,7 +600,6 @@ void ZoneEngine::UpdateZoneTransition()
     uint32_t colour = _redshift << 11;
 
 
-    Serial.printf("New colour is %d\n", colour);
     _displayManager.Send(
         std::unique_ptr<IDisplayCommand>(
             new SetWidgetColourCommand(
@@ -543,6 +611,7 @@ void ZoneEngine::StartZoneTransition(
     int fromZoneIndex,
     int toZoneIndex)
 {
+    Serial.println("Zone moving");
     const std::vector<Zone>& zones =
         _gamePlan.GetZones();
 
@@ -1164,6 +1233,7 @@ void ZoneEngine::RemoveZoneEventListener(
 void ZoneEngine::NotifyPickupActivated(
     uint32_t pickupId)
 {
+    Serial.println("Pickup activated event");
     for (IPickupEvent* listener :
          _pickupEventListeners)
     {
@@ -1178,6 +1248,7 @@ void ZoneEngine::NotifyPickupActivated(
 void ZoneEngine::NotifyPickupDeactivated(
     uint32_t pickupId)
 {
+    Serial.println("Pickup deactivated event");
     for (IPickupEvent* listener :
          _pickupEventListeners)
     {
@@ -1194,6 +1265,7 @@ void ZoneEngine::NotifyZoneImminent(
     int zoneIndex,
     uint32_t timeToActivation)
 {
+    Serial.println("Zone imminent");
     const GameCoordinate position(
         zone.eastMetres,
         zone.northMetres);
@@ -1215,6 +1287,8 @@ void ZoneEngine::NotifyZoneExpired(
     const Zone& zone,
     int zoneIndex)
 {
+
+    Serial.println("Zone expired event");
     const GameCoordinate position(
         zone.eastMetres,
         zone.northMetres);
@@ -1234,6 +1308,7 @@ void ZoneEngine::NotifyZoneExpired(
 void ZoneEngine::NotifyZoneTransitionComplete(
     int zoneIndex)
 {
+    Serial.println("Transition complete event");
     for (IZoneEvent* listener :
          _zoneEventListeners)
     {
