@@ -10,7 +10,7 @@
       "northMetres": 72.76179035050616,
       "radiusMetres": 50,
       "startTime": 0,
-      "lifespanSeconds": 20,
+      "lifespanSeconds": 120,
       "pickups": [
         {
           "eastMetres": 89.58215148934376,
@@ -42,7 +42,7 @@
       "eastMetres": 35.484645418942996,
       "northMetres": -1.9727733779020382,
       "radiusMetres": 20,
-      "startTime":10,
+      "startTime":100,
       "lifespanSeconds": 100000,
       "pickups": [
         {
