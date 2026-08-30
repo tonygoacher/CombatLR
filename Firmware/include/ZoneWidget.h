@@ -28,6 +28,5 @@ public:
 
 private:
     GameCoordinate _position;
-    uint32_t _colour;
     uint16_t _radius;
 };

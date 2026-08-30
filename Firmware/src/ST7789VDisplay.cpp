@@ -1109,6 +1109,7 @@ void ST7789VDisplay::SetWidgetColour(uint32_t widgetId, uint32_t colour)
     WidgetCollection::iterator widgetIterator = _widgets.find(widgetId);
     if(widgetIterator != _widgets.end())
     {
+        Serial.printf("Setting widget %lx colour to %x\n",widgetId, colour);
         widgetIterator->second->SetColour(colour);
     }
     else

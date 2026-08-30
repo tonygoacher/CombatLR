@@ -13,9 +13,9 @@ ZoneWidget::ZoneWidget(
     :
     IWidget(id, WidgetType::Zone),
     _radius(radius),
-    _position(position),
-    _colour(colour)
+    _position(position)
 {
+    _colour = colour;
 }
 
 WidgetPosition ZoneWidget::GetPosition() const

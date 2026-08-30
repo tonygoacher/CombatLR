@@ -92,6 +92,10 @@ private:
     uint32_t _transitionStartMillis = 0;
     uint32_t _transitionDurationMillis = 0;
 
+    static const uint8_t RedshiftMin = 7;
+
+    uint8_t _redshift = RedshiftMin;
+
     void UpdateZones(
         uint32_t gameTimeSeconds);
 
