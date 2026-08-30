@@ -10,6 +10,7 @@
 #include "IZoneEvent.h"
 #include "IWidget.h"
 #include "Pacer.h"
+#include "ActiveGameObject.h"
 
 class ZoneEngine
 {
@@ -29,11 +30,10 @@ public:
     void Update(
         uint32_t gameTimeSeconds);
 
-    size_t GetPickupsWithin(
+    bool GetPickupsWithin(
         const GameCoordinate& playerPosition,
         float radiusMetres,
-        PickupInfo* results,
-        size_t maxResults) const;
+        std::vector<PickupInfo>& results) const;
 
     bool ClaimPickup(
         uint32_t pickupId);
@@ -55,13 +55,7 @@ private:
     static const int UpdateRate = 1000;
     static constexpr uint32_t ZoneTransitionUpdateMs = 100;
 
-    struct ActiveGameObject
-    {
-        uint32_t id;
-        GameCoordinate position;
-        WidgetType type;
-        bool claimed;
-    };
+
 
     struct ZoneTransition
     {

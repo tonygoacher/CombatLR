@@ -114,7 +114,14 @@ namespace
                     data.heading)));
 
 
-                
+        std::vector<ZoneEngine::PickupInfo> pickups;
+       if(zoneEngine->GetPickupsWithin(playerPosition, 4.0f, pickups))
+       {
+            for(int i = 0 ; i < pickups.size() ; i++)
+            {
+                Serial.printf("PickId: %d PickType :%d\n",pickups[i].id, pickups[i].type);
+            }
+       }
                 
     }       
     
@@ -131,7 +138,10 @@ namespace
     if(zoneUpdatePacer.Pace())
     {
         gameTimeInSec++;
+
+        
     }
+
     zoneEngine->Update(gameTimeInSec);
 }
 
