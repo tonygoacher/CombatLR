@@ -8,6 +8,7 @@
 #include "RemoveWidgetCommand.h"
 #include "SetWidgetColourCommand.h"
 #include "SetZoneGeometryCommand.h"
+#include "ActiveGameObject.h"
 
 namespace
 {
@@ -928,6 +929,9 @@ void ZoneEngine::ActivatePickup(
     object.claimed =
         false;
 
+    object.pickupType =
+        pickup.type;
+
     _activeObjects.push_back(
         object);
 
@@ -1017,7 +1021,7 @@ void ZoneEngine::RemoveZoneObjects(
     }
 }
 
-ZoneEngine::ActiveGameObject*
+ActiveGameObject*
 ZoneEngine::FindActiveObject(
     uint32_t objectId)
 {
@@ -1034,7 +1038,7 @@ ZoneEngine::FindActiveObject(
     return nullptr;
 }
 
-const ZoneEngine::ActiveGameObject*
+const ActiveGameObject*
 ZoneEngine::FindActiveObject(
     uint32_t objectId) const
 {
@@ -1051,24 +1055,21 @@ ZoneEngine::FindActiveObject(
     return nullptr;
 }
 
-size_t ZoneEngine::GetPickupsWithin(
+bool  ZoneEngine::GetPickupsWithin(
     const GameCoordinate& playerPosition,
     float radiusMetres,
-    PickupInfo* results,
-    size_t maxResults) const
+    std::vector<PickupInfo>& results) const
 {
-    if (results == nullptr ||
-        maxResults == 0 ||
-        radiusMetres < 0.0f)
+    results.clear();
+
+    if (radiusMetres < 0.0f)
     {
-        return 0;
+        return false;
     }
 
     const float radiusSquared =
         radiusMetres *
         radiusMetres;
-
-    size_t resultCount = 0;
 
     for (const ActiveGameObject& object :
          _activeObjects)
@@ -1100,46 +1101,20 @@ size_t ZoneEngine::GetPickupsWithin(
             continue;
         }
 
-        for (const Zone& zone :
-             _gamePlan.GetZones())
-        {
-            bool found = false;
+        PickupInfo info;
 
-            for (const auto& entry :
-                 zone.pickups)
-            {
-                if (entry.second.id ==
-                    object.id)
-                {
-                    results[resultCount].id =
-                        object.id;
+        info.id =
+            object.id;
 
-                    results[resultCount].position =
-                        object.position;
+        info.position =
+            object.position;
 
-                    results[resultCount].type =
-                        entry.second.type;
+        info.type =
+            object.pickupType;
 
-                    ++resultCount;
-
-                    found = true;
-                    break;
-                }
-            }
-
-            if (found)
-            {
-                break;
-            }
-        }
-
-        if (resultCount >= maxResults)
-        {
-            break;
-        }
+        results.push_back(info);
     }
-
-    return resultCount;
+    return results.size() != 0;
 }
 
 bool ZoneEngine::ClaimPickup(
