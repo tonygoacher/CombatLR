@@ -3,15 +3,13 @@
 #include "statemachine/SystemStates.h"
 
 #include "statemachine/PowerUpState.h"
+#include "statemachine/GameInitState.h"
 #include <Arduino.h>
 
 
 
-CombatLRStateMachine::CombatLRStateMachine(DisplayManager& display, ISounds& sounds, ZoneEngine& zoneEngine, INavigation& navigation)
-:   _display(display),
-    _sounds(sounds),
-    _zoneEngine(zoneEngine),
-    _navigation(navigation)
+CombatLRStateMachine::CombatLRStateMachine(StateData& stateData)
+:   _stateData(stateData)
 {
     
 }
@@ -36,5 +34,6 @@ void CombatLRStateMachine::Start()
 
 void CombatLRStateMachine::Init()
 {
-    _states.insert(StateMapEntry(SystemStates::PowerUp, *new PowerUpState(_display,_navigation)));
+    _states.insert(StateMapEntry(SystemStates::PowerUp, *new PowerUpState(_stateData.displayManager,_stateData.navigation)));
+    _states.insert(StateMapEntry(SystemStates::GameInit,*new GameInitState(5000, _stateData)));
 }

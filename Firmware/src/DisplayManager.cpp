@@ -178,13 +178,13 @@ void DisplayManager::DisplayTask()
             ProcessCommand(command.get());
     
         }
-        uint32_t m = millis();
+
         _display->Update(
             _playerPosition,
             _heading,
             _zoom,
             _playerVisible);
-        Serial.printf("Render: %d\n", millis()-m);
+
         vTaskDelay(
             pdMS_TO_TICKS(10));
     }
@@ -325,9 +325,10 @@ void DisplayManager::TurnMapToHeading(const TurnMapToHeadingCommand* command)
 void DisplayManager::DisplayBackground(
     const DisplayBackgroundCommand* command)
 {
-
+     Serial.printf("Setting background %s\n", command->GetFilename());
     if (!_display->SetBackground(command->GetFilename()))
     {
+   
         Serial.printf(
             "DisplayManager: failed to set background %s\n",
             command->GetFilename());

@@ -9,15 +9,15 @@
 #include "PBSwitch.h"
 
 
-PBSwitch::PBSwitch()
+PBSwitch::PBSwitch(bool oneShot)
+: m_oneShot(oneShot)
 {
-
 
 
 }
 
-PBSwitch::PBSwitch(uint8_t port)
-: m_Port(port)
+PBSwitch::PBSwitch(uint8_t port, bool oneShot)
+: m_Port(port), m_oneShot(oneShot)
 {
 
 	pinMode(port, INPUT_PULLUP);
@@ -71,6 +71,10 @@ bool PBSwitch::Pressed()
 			{
 				m_SwitchState = PBSwitch::OFF_HOLD;
 				SetTimer();
+				if(!m_oneShot)
+				{
+					pressed = true;
+				}
 			}
 		}
 		break;

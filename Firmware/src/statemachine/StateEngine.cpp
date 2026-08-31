@@ -31,6 +31,10 @@ void StateEngine::Run()
                 Serial.printf("Entering state %d", nextState);
                 _currentState->second.Entry();
             }
+            else
+            {
+                Serial.printf("No state %d defined\n", nextState);
+            }
         }
     }
     else

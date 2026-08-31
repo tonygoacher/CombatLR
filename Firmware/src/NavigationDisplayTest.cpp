@@ -29,6 +29,7 @@
 #include "statemachine/PowerUpState.h"
 #include "MAX98357ASounds.h"
 #include "statemachine/CombatLRStateMachine.h"
+#include "statemachine/StateData.h"
 
 
 
@@ -81,7 +82,7 @@ namespace
 
     GamePlan gamePlan;
  
-    IZoom* zoomDevice = nullptr;
+    SteppedZoom zoom(ZOOMSWITCHPORT);
 
     TextureManager textureManager(LittleFS);
     DisplayManager displayManager(textureManager);
@@ -91,14 +92,15 @@ namespace
     NavigationData data;
     Pacer zoneUpdatePacer(true);
     uint32_t gameTimeInSec=0;
-    CombatLRStateMachine stateMachine(displayManager, sounds, zoneEngine, navigation);
+    StateData stateData{displayManager, navigation, zoneEngine, sounds, zoom, geoReference};
+    CombatLRStateMachine stateMachine(stateData);
 
 };
 
 
   void UpdateNavigationDisplay()
 {  
-     stateMachine.Run();
+    stateMachine.Run();
     return;
    
     if(navigation.Update())
@@ -138,6 +140,7 @@ namespace
                 
     }       
     
+    /*
     float zoom = 1.0f;
     if(zoomDevice->GetZoom(zoom))
     {
@@ -147,6 +150,7 @@ namespace
             new ZoomCommand(
                 zoom)));    
     }
+                */
 
     if(zoneUpdatePacer.Pace())
     {
@@ -196,7 +200,7 @@ void NavigationDisplayTestBegin()
 
     navigation.Begin();
 
-    zoomDevice = new SteppedZoom(ZOOMSWITCHPORT);
+
 
     /*
     const Zone& z = gamePlan.GetZones()[0];

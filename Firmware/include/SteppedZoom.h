@@ -9,6 +9,7 @@ class SteppedZoom : public IZoom
 public:
     SteppedZoom(int port);
     bool GetZoom(float & zoom) override;
+     void Reset() override;
 
 private:
     int _port;

@@ -24,7 +24,8 @@ enum class WidgetType
 {
     Pickup,
     Zone,
-    GPS
+    GPS,
+    Text,
 };
 
 
@@ -38,7 +39,8 @@ public:
         :
         _id(id),
         _visible(true),
-        _type(type)
+        _type(type),
+        _colour(TFT_WHITE)
     {
     }
 
