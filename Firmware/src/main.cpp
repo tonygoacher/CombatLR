@@ -19,10 +19,8 @@
 #include "LittleFS.h"
 
 
-BMPImage mapdata;
 
-TextureManager textureManager(LittleFS);
-DisplayManager displayManager(textureManager);
+
 
 void fatal()
 {
@@ -53,30 +51,17 @@ void setup()
   }
   PrintPSRAM("After LITTLEFS");
 
-        
-    if (!mapdata.Load(
-            LittleFS,
-            "/map.bmp"))
-    {
-        Serial.println("Map load failed");
-        
-        fatal();
-    }
-
+ 
     PrintPSRAM("After mapdata.load");
 
 
+  
 
-    displayManager.Begin();
-     PrintPSRAM("After displaymanager.begin");
 
-    displayManager.Send(
-    std::unique_ptr<IDisplayCommand>(
-        new DisplayBackgroundCommand(
-            "/map.bmp")));
+
 
     PrintPSRAM("Before NavigationDisplayTestBegin");
-    NavigationDisplayTestBegin(displayManager);
+    NavigationDisplayTestBegin();
     PrintPSRAM("After NavigationDisplayTestBegin");
 
 }
@@ -88,7 +73,7 @@ float zoomDir = 0.0f;
 void loop()
 {
 
-    UpdateNavigationDisplay(displayManager);
+    UpdateNavigationDisplay();
 
   
 }

@@ -682,6 +682,7 @@ const float scaleY =
     const float mapRotation = _rotation;
 
         // DEBUG
+        Serial.printf("Zoom  is %.3f", _mapZoom);
 if (_playerVisible)
 {
   
@@ -987,11 +988,13 @@ void ST7789VDisplay::Update(
     _playerPosition = playerPosition;
     _playerVisible = playerVisible;
 
-    _rotation =
-        _mapUpHeading -
-        heading;
+    if(_playerVisible)
+    {
+        _rotation =  _mapUpHeading - heading;
+        _mapZoom = zoom;
+    }        
 
-    _mapZoom = zoom;
+
 
     RenderMap();
     RenderWidgets();
@@ -1067,7 +1070,7 @@ bool ST7789VDisplay::SetBackground(const char* filename)
      * A new background starts in its neutral state.
      */
     _rotation = 0.0f;
-    _mapZoom = 1.0f;
+    _mapZoom = 0.8f;
 
     return true;
 }
