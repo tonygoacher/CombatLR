@@ -26,6 +26,10 @@
 #include "AddZoneCommand.h"
 #include "PickupTypes.h"
 #include "ZoneEngine.h"
+#include "statemachine/PowerUpState.h"
+#include "MAX98357ASounds.h"
+#include "statemachine/CombatLRStateMachine.h"
+
 
 
 /*
@@ -79,14 +83,23 @@ namespace
  
     IZoom* zoomDevice = nullptr;
 
-    ZoneEngine* zoneEngine;
+    TextureManager textureManager(LittleFS);
+    DisplayManager displayManager(textureManager);
+
+    ZoneEngine zoneEngine(gamePlan, displayManager);
+    MAX98357ASounds sounds(LittleFS,BCLK,LRC,DATA);
+    NavigationData data;
+    Pacer zoneUpdatePacer(true);
+    uint32_t gameTimeInSec=0;
+    CombatLRStateMachine stateMachine(displayManager, sounds, zoneEngine, navigation);
+
 };
 
-  NavigationData data;
-  Pacer zoneUpdatePacer(true);
-  uint32_t gameTimeInSec=0;
-  void UpdateNavigationDisplay(DisplayManager& displayManager)
+
+  void UpdateNavigationDisplay()
 {  
+     stateMachine.Run();
+    return;
    
     if(navigation.Update())
     {
@@ -115,7 +128,7 @@ namespace
 
 
         std::vector<ZoneEngine::PickupInfo> pickups;
-       if(zoneEngine->GetPickupsWithin(playerPosition, 4.0f, pickups))
+       if(zoneEngine.GetPickupsWithin(playerPosition, 4.0f, pickups))
        {
             for(int i = 0 ; i < pickups.size() ; i++)
             {
@@ -142,15 +155,19 @@ namespace
         
     }
 
-    zoneEngine->Update(gameTimeInSec);
+    zoneEngine.Update(gameTimeInSec);
+
 }
 
-void NavigationDisplayTestBegin(DisplayManager& displayManager)
+void NavigationDisplayTestBegin()
 {
     Serial.println();
     Serial.println(F("===================================="));
     Serial.println(F("Navigation display integration test"));
     Serial.println(F("===================================="));
+
+    displayManager.Begin();
+    sounds.Begin();
    
     if(!gamePlan.Load("/gameplan.json"))
     {
@@ -224,8 +241,9 @@ void NavigationDisplayTestBegin(DisplayManager& displayManager)
          
     }
         */
-    zoneEngine = new ZoneEngine(gamePlan, displayManager);
-  
+    stateMachine.Init();
+    stateMachine.Start();
+
 }
 
 
