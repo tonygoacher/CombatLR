@@ -1,6 +1,6 @@
 #pragma once
 #include "GameCoordinate.h"
-#include "IWidget.h"
+#include "widgets/Widget.h"
 #include "PickupTypes.h"
 
 struct ActiveGameObject

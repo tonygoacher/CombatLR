@@ -2,7 +2,8 @@
 
 #include <stdint.h>
 
-#include <TFT_eSPI.h>
+
+#include "Texture.h"
 
 
 struct WidgetRenderPosition
@@ -34,4 +35,8 @@ public:
     virtual float GetMapScale() const = 0;
 
      virtual float GetMapPixelsPerMetre() const = 0;
+
+     virtual void DrawTexture(
+            const Texture& texture,
+            uint16_t transparentColour) = 0;
 };

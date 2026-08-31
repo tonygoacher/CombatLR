@@ -342,13 +342,13 @@ float ST7789VDisplay::GetMapZoom() const
  */
 
 uint16_t ST7789VDisplay::AddWidget(
-    IWidget* widget)
+    Widget* widget)
 {
     uint16_t id = 0;
     if (widget != nullptr)
     {
         Serial.printf("Adding widget %lx Type %d to renderer", widget->GetId(), widget->GetType());
-        _widgets.insert(std::pair<uint16_t , IWidget*>( widget->GetId(), widget));
+        _widgets.insert(std::pair<uint16_t , Widget*>( widget->GetId(), widget));
     }    
     return id;
 }
@@ -364,7 +364,7 @@ bool ST7789VDisplay::RemoveWidget(
     uint16_t widgetId)
 {
     bool result = false;
-    std::map<uint16_t, IWidget*>::iterator widgetIter = _widgets.find(widgetId);
+    std::map<uint16_t, Widget*>::iterator widgetIter = _widgets.find(widgetId);
     if(widgetIter != _widgets.end())
     {
         _widgets.erase(widgetIter);
@@ -397,7 +397,7 @@ bool ST7789VDisplay::RemoveWidget(
  * The widget itself is never rotated.
  */
 WidgetRenderPosition ST7789VDisplay::TransformWidgetPosition(
-    const IWidget& widget)
+    const Widget& widget)
 {
     WidgetRenderPosition result;
 
@@ -681,48 +681,46 @@ const float scaleY =
 
     const float mapRotation = _rotation;
 
-        // DEBUG
-        Serial.printf("Zoom  is %.3f", _mapZoom);
-if (_playerVisible)
-{
-  
-    if (havePreviousPlayerPosition)
+
+    if (_playerVisible)
     {
-         
-        const double deltaEast =
-            _playerPosition.east -
-            previousPlayerPosition.east;
-
-        const double deltaNorth =
-            _playerPosition.north -
-            previousPlayerPosition.north;
-
-        const double distance =
-            sqrt(
-                deltaEast * deltaEast +
-                deltaNorth * deltaNorth);
-        if (distance > 0.01)
+    
+        if (havePreviousPlayerPosition)
         {
-            double movementBearing =
-                atan2(
-                    deltaEast,
-                    deltaNorth) *
-                180.0 /
-                M_PI;
+            
+            const double deltaEast =
+                _playerPosition.east -
+                previousPlayerPosition.east;
 
-            if (movementBearing < 0.0)
-                movementBearing += 360.0;
+            const double deltaNorth =
+                _playerPosition.north -
+                previousPlayerPosition.north;
 
+            const double distance =
+                sqrt(
+                    deltaEast * deltaEast +
+                    deltaNorth * deltaNorth);
+            if (distance > 0.01)
+            {
+                double movementBearing =
+                    atan2(
+                        deltaEast,
+                        deltaNorth) *
+                    180.0 /
+                    M_PI;
+
+                if (movementBearing < 0.0)
+                    movementBearing += 360.0;
+
+            }
         }
+
+        previousPlayerPosition =
+            _playerPosition;
+
+        havePreviousPlayerPosition = true;
     }
 
-    previousPlayerPosition =
-        _playerPosition;
-
-    havePreviousPlayerPosition = true;
-}
-
-      //      __DEBUG
 
   
 
@@ -936,6 +934,54 @@ void ST7789VDisplay::RenderWidgets()
             float GetMapPixelsPerMetre() const override
             {
                 return _mapPixelsPerMetre;
+            }
+
+            void DrawTexture(
+                const Texture& texture,
+                uint16_t transparentColour) override
+            {
+                 const uint16_t* pixel =
+                     texture.GetData();
+
+                if (pixel == nullptr)
+                {
+                    return;
+                }
+
+                const int width =
+                    texture.GetWidth();
+
+                const int height =
+                    texture.GetHeight();
+
+                int x = 0;
+                int y = 0;
+
+                const int pixelCount =
+                    width * height;
+
+                for (int i = 0;
+                    i < pixelCount;
+                    ++i, ++pixel)
+                {
+                    if (*pixel != transparentColour)
+                    {
+                        _canvas.drawPixel(
+                            static_cast<int16_t>(
+                                _position.x + x),
+                            static_cast<int16_t>(
+                                _position.y + y),
+                            *pixel);
+                    }
+
+                    ++x;
+
+                    if (x == width)
+                    {
+                        x = 0;
+                        ++y;
+                    }
+                }
             }
 
         private:

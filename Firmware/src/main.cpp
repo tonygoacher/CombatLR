@@ -12,7 +12,6 @@
 #include "BMPImage.h"
 #include "IDisplay.h"
 #include "ST7789VDisplay.h"
-#include "TestWidget.h"
 #include "DisplayManager.h"
 #include "ZoomCommand.h"
 #include "DisplayBackgroundCommand.h"

@@ -29,7 +29,7 @@ public:
 
     void Free();
 
-    uint16_t* GetData();
+    uint16_t* GetData() const;
 
     uint16_t GetWidth() const;
     uint16_t GetHeight() const;

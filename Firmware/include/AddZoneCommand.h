@@ -3,7 +3,7 @@
 
 #include <string>
 #include "IDisplayCommand.h"
-#include "IWidget.h"
+#include "widgets/Widget.h"
 #include "GameCoordinate.h"
 
 class AddZoneCommand final

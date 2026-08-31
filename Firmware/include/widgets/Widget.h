@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "GeoReference.h"
+#include "TFT_eSPI.h"
 
 class IDisplayContext;
 
@@ -27,11 +28,11 @@ enum class WidgetType
 };
 
 
-class IWidget
+class Widget
 {
 public:
 
-    IWidget(
+    Widget(
         int id,
         WidgetType type)
         :
@@ -41,7 +42,7 @@ public:
     {
     }
 
-    virtual ~IWidget() = default;
+    virtual ~Widget() = default;
 
 
     /*
@@ -99,6 +100,12 @@ protected:
     const WidgetType _type;    
     bool _visible;
     uint32_t _colour;
+
+    bool LoadSprite(
+    TFT_eSprite& sprite,
+    const uint16_t* pixels,
+    int width,
+    int height);
 
 
 };

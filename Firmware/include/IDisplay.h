@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "GameCoordinate.h"
 
-class IWidget;
+class Widget;
 
 
 class IDisplay
@@ -52,7 +52,7 @@ public:
      * Display does not take ownership of the widget.
      */
     virtual uint16_t AddWidget(
-        IWidget* widget) = 0;
+        Widget* widget) = 0;
 
     virtual bool RemoveWidget(
         uint16_t widgetId) = 0;

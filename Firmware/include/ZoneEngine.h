@@ -8,7 +8,7 @@
 #include "DisplayManager.h"
 #include "IPickupEvent.h"
 #include "IZoneEvent.h"
-#include "IWidget.h"
+#include "widgets/Widget.h"
 #include "Pacer.h"
 #include "ActiveGameObject.h"
 

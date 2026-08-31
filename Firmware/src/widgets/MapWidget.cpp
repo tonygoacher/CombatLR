@@ -1,4 +1,4 @@
-#include "MapWidget.h"
+#include "widgets/MapWidget.h"
 #include "TFT_eSPI.h"
 #include "IDisplayContext.h"
 
@@ -8,7 +8,7 @@
     const GameCoordinate& position,
     const char* filename)
     :
-    IWidget(id, WidgetType::Pickup),
+    Widget(id, WidgetType::Pickup),
     _position(position),
     _texture(
         textureManager.GetTexture(filename))

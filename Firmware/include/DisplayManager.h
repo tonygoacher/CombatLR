@@ -39,6 +39,8 @@ public:
     bool Send(
     std::unique_ptr<IDisplayCommand> command);
 
+    TextureManager& GetTextureManager(){return _textureManager;}
+
 private:
     static void DisplayTaskEntry(
         void* parameter);
