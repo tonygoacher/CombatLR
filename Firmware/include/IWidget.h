@@ -22,7 +22,8 @@ struct WidgetPosition
 enum class WidgetType
 {
     Pickup,
-    Zone
+    Zone,
+    GPS
 };
 
 
