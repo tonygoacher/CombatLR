@@ -6,13 +6,13 @@ class Texture
 {
 public:
     Texture() = default;
-    ~Texture() = default;
+    ~Texture();
 
     bool Load(
         fs::FS& filesystem,
         const char* filename);
 
-    uint16_t* GetData();
+    uint16_t* GetData() const;
 
     uint16_t GetWidth() const;
 

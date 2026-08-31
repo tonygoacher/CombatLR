@@ -17,6 +17,8 @@ public:
     Texture* GetTexture(
         const char* filename);
 
+    void FreeTexture(const char* filename);        
+
 private:
 
     TextureManager(

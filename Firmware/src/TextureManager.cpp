@@ -42,3 +42,19 @@ TextureManager::GetTexture(
 
     return texture;
 }
+
+void TextureManager::FreeTexture(const char* filename)
+{
+    if (filename == nullptr)
+        return;
+
+    std::map<std::string, Texture*>::iterator
+        textureIterator =
+            _textures.find(filename);
+
+    if (textureIterator != _textures.end())
+    {
+        delete(textureIterator->second);
+        _textures.erase(textureIterator);
+    }
+}

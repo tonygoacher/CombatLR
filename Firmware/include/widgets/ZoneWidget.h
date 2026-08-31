@@ -1,7 +1,7 @@
 #pragma once
 
-#include "IWidget.h"
-class ZoneWidget : public IWidget
+#include "Widget.h"
+class ZoneWidget : public Widget
 {
 public:
     ZoneWidget(

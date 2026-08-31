@@ -1,10 +1,10 @@
 #pragma once
 
-#include "IWidget.h"
+#include "Widget.h"
 #include "Texture.h"
 #include "TextureManager.h"
 
-class MapWidget : public IWidget
+class MapWidget : public Widget
 {
 public:
 

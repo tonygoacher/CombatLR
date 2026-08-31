@@ -426,7 +426,7 @@ void BMPImage::Free()
     _height = 0;
 }
 
-uint16_t* BMPImage::GetData() 
+uint16_t* BMPImage::GetData() const
 {
     return _data;
 }

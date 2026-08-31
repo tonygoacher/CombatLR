@@ -5,7 +5,7 @@
 #include <map>
 
 #include "IDisplay.h"
-#include "IWidget.h"
+#include "widgets/Widget.h"
 #include "IDisplayContext.h"
 #include "ConfigureMapCommand.h"
 #include "MapReference.h"
@@ -40,7 +40,7 @@ public:
 
 
     uint16_t AddWidget(
-        IWidget* widget) override;
+        Widget* widget) override;
 
 
     bool RemoveWidget(
@@ -70,8 +70,8 @@ public:
 
 private:
 
-    typedef std::pair<uint16_t, IWidget*>  WidgetEntry;
-    typedef  std::map<uint16_t , IWidget*>WidgetCollection;
+    typedef std::pair<uint16_t, Widget*>  WidgetEntry;
+    typedef  std::map<uint16_t , Widget*>WidgetCollection;
     WidgetCollection _widgets;
 
 
@@ -172,7 +172,7 @@ private:
 
     WidgetRenderPosition
     TransformWidgetPosition(
-        const IWidget& widget);
+        const Widget& widget);
 
 
     void TestSprites();

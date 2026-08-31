@@ -6,8 +6,8 @@
 #include "DisplayBackgroundCommand.h"
 #include "ConfigureMapCommand.h"
 #include "AddWidgetCommand.h"
-#include "MapWidget.h"
-#include "ZoneWidget.h"
+#include "widgets/MapWidget.h"
+#include "widgets/ZoneWidget.h"
 #include "AddZoneCommand.h"
 #include "RemoveWidgetCommand.h"
 #include "SetWidgetColourCommand.h"
@@ -178,13 +178,13 @@ void DisplayManager::DisplayTask()
             ProcessCommand(command.get());
     
         }
-
+        uint32_t m = millis();
         _display->Update(
             _playerPosition,
             _heading,
             _zoom,
             _playerVisible);
-
+        Serial.printf("Render: %d\n", millis()-m);
         vTaskDelay(
             pdMS_TO_TICKS(10));
     }
@@ -357,7 +357,14 @@ void DisplayManager::AddWidget(const AddWidgetCommand* command)
 {
     if (command == nullptr)
         return;
+        
 
+    if(command->GetWidget() != nullptr )
+    {
+        _display->AddWidget(command->GetWidget());
+        return;
+    }    
+       
     switch (command->GetWidgetType())
     {
         case WidgetType::Pickup:
@@ -373,7 +380,6 @@ void DisplayManager::AddWidget(const AddWidgetCommand* command)
 
             break;
         }
-
     }
 }
 

@@ -10,7 +10,7 @@ bool Texture::Load(
 }
 
 uint16_t*
-Texture::GetData() 
+Texture::GetData()  const
 {
     return _image.GetData();
 }
@@ -31,4 +31,8 @@ bool
 Texture::IsLoaded() const
 {
     return _image.IsLoaded();
+}
+Texture::~Texture()
+{
+    Free();
 }

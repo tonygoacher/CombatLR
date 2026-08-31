@@ -1,4 +1,4 @@
-#include "ZoneWidget.h"
+#include "widgets/ZoneWidget.h"
 #include <TFT_eSPI.h>
 #include "IDisplayContext.h"
 #include "MapReference.h"
@@ -11,7 +11,7 @@ ZoneWidget::ZoneWidget(
     const uint16_t radius,
     uint32_t colour)
     :
-    IWidget(id, WidgetType::Zone),
+    Widget(id, WidgetType::Zone),
     _radius(radius),
     _position(position)
 {

@@ -19,6 +19,7 @@ enum class DisplayCommandType
 class IDisplayCommand
 {
 public:
+    IDisplayCommand(){};
     virtual ~IDisplayCommand() = default;
 
     DisplayCommandType GetType() const

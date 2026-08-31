@@ -10,10 +10,10 @@
 #include "MapReference.h"
 #include "MillisGameTime.h"
 #include "GameController.h"
-#include "ZoneWidget.h"
+#include "widgets/ZoneWidget.h"
 #include "IDisplay.h"
 #include "TextureManager.h"
-#include "MapWidget.h"
+#include "widgets/MapWidget.h"
 #include <LittleFS.h>
 #include "Ports.h"
 #include "SteppedZoom.h"
