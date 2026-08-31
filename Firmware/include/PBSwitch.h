@@ -3,13 +3,14 @@
 class PBSwitch
 {
 public:
-	PBSwitch();
-	PBSwitch(uint8_t port);
+	PBSwitch(bool oneShot);
+	PBSwitch(uint8_t port, bool oneShot);
 	void Init(uint8_t port);
 	bool Pressed();
 private:
 	unsigned long m_Timer;
 	uint8_t m_Port;
+	bool m_oneShot;
 	static const unsigned long sm_DebounceTime = 40;
 	enum SwitchState
 	{

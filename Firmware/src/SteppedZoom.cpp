@@ -43,3 +43,9 @@ bool SteppedZoom::GetZoom(float& newZoom)
     }
     return result;
 }
+
+void SteppedZoom::Reset()
+{
+    _current=0;
+}
+

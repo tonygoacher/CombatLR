@@ -12,19 +12,27 @@
 
 PowerUpState::PowerUpState(DisplayManager& displayManager, INavigation& navigation)
 : _display(displayManager),
- _navigation(navigation)
+ _navigation(navigation), _pacer(true)
 {  
+
 }
 
 uint16_t PowerUpState::Run()
 {
     _navigation.Update();
+    if(_pacer.Pace())
+    {
+        Serial.println("Exiting PowerUpState::Run()");
+        return SystemStates::GameInit;
+    }
     return SystemStates::PowerUp;
 }
 
 void PowerUpState::Entry()
 {
-     Serial.println("CCCCCCCCCCCCCC");
+    _pacer.SetPace(5000);
+
+
     _display.Send(
     std::unique_ptr<IDisplayCommand>(
         new DisplayBackgroundCommand(
@@ -37,10 +45,8 @@ void PowerUpState::Entry()
     AddWidgetCommand* command =
     new AddWidgetCommand(statusWidget);
 
-     Serial.println("DDDDDDDDDDDDDDDDDDD");
     _display.Send(std::unique_ptr<IDisplayCommand>(command));
 
-     Serial.println("EEEEEEEEEEEEEEEEEEEE");
 }
 void PowerUpState::Exit()
 {

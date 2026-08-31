@@ -6,7 +6,7 @@ enum SystemStates
 {
     PowerUp,
     AwaitingStart,
-    GameInit,
+    GameInit,       // Time t to get in position around the map
     GameRunning,
     OutOfGame,
 };

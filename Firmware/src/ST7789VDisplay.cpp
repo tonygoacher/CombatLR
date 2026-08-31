@@ -1084,13 +1084,8 @@ void ST7789VDisplay::SetMapConfigData(const ConfigureMapCommand::MapConfigData& 
 bool ST7789VDisplay::SetBackground(const char* filename)
 {
     PrintPSRAM("SET BACKGROUND");
- 
-    if(_mapImage != nullptr)
-    {
-        free(_mapImage);
-        _mapImage = nullptr;
-    }
     
+   
     _backgroundTexture.Free();
     if(!_backgroundTexture.Load(LittleFS, filename))
     {
