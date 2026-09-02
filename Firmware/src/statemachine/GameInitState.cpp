@@ -13,16 +13,19 @@
 #include "AddWidgetCommand.h"
 #include "RemoveWidgetCommand.h"
 #include "memory.h"
-
+#include "SetTextCommand.h"
+#include "EnableWidgetCommand.h"
+#include <format>
 
 
 
 
 GameInitState::GameInitState(uint32_t timeToGameStart,StateData& stateData)
 :
- _stateData(stateData), _timeToGameStart(timeToGameStart), _pacer(false)
+ _stateData(stateData), _timeToGameStart(timeToGameStart), _pacer(false), _textPacer(true)
 {
     Serial.println("GameInitState::GameInitState");
+    _textPacer.SetPace(1000);
 }
 
 
@@ -38,17 +41,21 @@ void GameInitState::Entry()
     _stateData.zoom.Reset();
      Serial.println("!!GameInitState::Entry");
 
-     _textWidget  = new TextWidget(UIWidgetIds::CountdownTimer, "Test");
-     
-     _textWidget->SetColour(TFT_RED);
- 
 
-     WidgetPosition textPos={160,200};
+     WidgetPosition textPos={280,10};
+     _textWidget  = new TextWidget(UIWidgetIds::CountdownTimer, "Test", textPos,2,MC_DATUM, TFT_RED, TFT_BLACK, 2);
+     
+
+
+     
      _textWidget->SetPosition(textPos);
     _stateData.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new AddWidgetCommand(
                     _textWidget)));
+
+    _textPacer.SetPace(1000);   
+             
 }
 
 
@@ -56,6 +63,23 @@ void GameInitState::Entry()
 
 uint16_t GameInitState::Run()
 {
+    static int a=300;
+    if(_textPacer.Pace())
+    {
+        if(a != 0)
+        {
+            a--;
+        }
+
+        char newText[64];
+        sprintf(newText,"%02d:%02d", a/60 , a%60);
+
+        _stateData.displayManager.Send(std::unique_ptr<IDisplayCommand>(new SetTextCommand(UIWidgetIds::CountdownTimer,newText)));
+
+
+    }
+
+
     if(_stateData.navigation.Update())
     {
         

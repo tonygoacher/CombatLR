@@ -59,7 +59,6 @@ bool PBSwitch::Pressed()
 			{
 				pressed = true;
 				m_SwitchState = PBSwitch::PRESSED_HOLD;
-				Serial.println("AAAA");
 				SetTimer();
 			}
 		}

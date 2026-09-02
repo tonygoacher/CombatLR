@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "GameCoordinate.h"
+#include <string>
 
 class Widget;
 
@@ -46,6 +47,10 @@ public:
     virtual void SetWidgetColour(uint32_t widgetId, uint32_t colour) = 0;
 
     virtual void SetZoneGeometry( uint32_t zoneId,  GameCoordinate newPos,  float radius) = 0;
+
+    virtual void SetText( uint32_t widgetId, const std::string& newText) = 0;
+    
+    virtual void EnableWidget(uint32_t widgetId, bool enable) = 0;
     /*
      * Add/remove widgets.
      *

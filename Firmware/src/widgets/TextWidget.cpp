@@ -4,11 +4,30 @@
 
 void TextWidget::Render(IDisplayContext& context)
 {
-TFT_eSprite& canvas = context.GetCanvas();
+    if (!_visible)
+        return;
 
-canvas.fillRect(150, 190, 100, 30, TFT_RED);
 
-canvas.setTextColor(TFT_WHITE);
-canvas.setTextFont(2);
-canvas.drawString("HELLO", 160, 200);
+    TFT_eSprite& canvas =
+        context.GetCanvas();
+
+    const WidgetRenderPosition& position =
+        context.GetPosition();
+
+  
+    canvas.setTextColor(
+        _textColour,
+        _backgroundColour);
+
+    canvas.setTextDatum(
+        _datum);
+
+    canvas.setTextSize(_size);
+
+    canvas.drawString(
+        _text,
+        static_cast<int16_t>(position.x),
+        static_cast<int16_t>(position.y),
+        _font);
+
 }
