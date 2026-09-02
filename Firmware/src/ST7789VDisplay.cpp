@@ -1,6 +1,7 @@
 #include "ST7789VDisplay.h"
 #include "MapCoordinate.h"
 #include "MapReference.h"
+#include "widgets/TextWidget.h"
 
 
 #include <math.h>
@@ -885,129 +886,131 @@ void ST7789VDisplay::RenderWidgets()
          * This is where the display applies map rotation
          * and zoom.
          */
-        
-        const WidgetRenderPosition position =
-            TransformWidgetPosition(
-                *(widgetIterator->second));
-
-
-        /*
-         * Create a rendering context containing the final
-         * position.
-         */
-        class DisplayContext final
-            : public IDisplayContext
+        if(widgetIterator->second->GetVisible())
         {
-        public:
+            
+            const WidgetRenderPosition position =
+                TransformWidgetPosition(
+                    *(widgetIterator->second));
 
-            DisplayContext(
-                TFT_eSprite& canvas,
-                const WidgetRenderPosition& position,
-                float mapPixelsPerMetre)
-                :
-                _canvas(canvas),
-                _position(position),
-                _mapPixelsPerMetre(mapPixelsPerMetre)
+
+            /*
+            * Create a rendering context containing the final
+            * position.
+            */
+            class DisplayContext final
+                : public IDisplayContext
             {
-            }
+            public:
 
-
-            TFT_eSprite& GetCanvas() override
-            {
-                return _canvas;
-            }
-
-
-            const WidgetRenderPosition&
-                GetPosition() const override
-            {
-                return _position;
-            }
-
-
-            float GetMapScale() const override
-            {
-                return _position.scale;
-            }
-
-
-            float GetMapPixelsPerMetre() const override
-            {
-                return _mapPixelsPerMetre;
-            }
-
-            void DrawTexture(
-                const Texture& texture,
-                uint16_t transparentColour) override
-            {
-                 const uint16_t* pixel =
-                     texture.GetData();
-
-                if (pixel == nullptr)
+                DisplayContext(
+                    TFT_eSprite& canvas,
+                    const WidgetRenderPosition& position,
+                    float mapPixelsPerMetre)
+                    :
+                    _canvas(canvas),
+                    _position(position),
+                    _mapPixelsPerMetre(mapPixelsPerMetre)
                 {
-                    return;
                 }
 
-                const int width =
-                    texture.GetWidth();
 
-                const int height =
-                    texture.GetHeight();
-
-                int x = 0;
-                int y = 0;
-
-                const int pixelCount =
-                    width * height;
-
-                for (int i = 0;
-                    i < pixelCount;
-                    ++i, ++pixel)
+                TFT_eSprite& GetCanvas() override
                 {
-                    if (*pixel != transparentColour)
+                    return _canvas;
+                }
+
+
+                const WidgetRenderPosition&
+                    GetPosition() const override
+                {
+                    return _position;
+                }
+
+
+                float GetMapScale() const override
+                {
+                    return _position.scale;
+                }
+
+
+                float GetMapPixelsPerMetre() const override
+                {
+                    return _mapPixelsPerMetre;
+                }
+
+                void DrawTexture(
+                    const Texture& texture,
+                    uint16_t transparentColour) override
+                {
+                    const uint16_t* pixel =
+                        texture.GetData();
+
+                    if (pixel == nullptr)
                     {
-                        _canvas.drawPixel(
-                            static_cast<int16_t>(
-                                _position.x + x),
-                            static_cast<int16_t>(
-                                _position.y + y),
-                            *pixel);
+                        return;
                     }
 
-                    ++x;
+                    const int width =
+                        texture.GetWidth();
 
-                    if (x == width)
+                    const int height =
+                        texture.GetHeight();
+
+                    int x = 0;
+                    int y = 0;
+
+                    const int pixelCount =
+                        width * height;
+
+                    for (int i = 0;
+                        i < pixelCount;
+                        ++i, ++pixel)
                     {
-                        x = 0;
-                        ++y;
+                        if (*pixel != transparentColour)
+                        {
+                            _canvas.drawPixel(
+                                static_cast<int16_t>(
+                                    _position.x + x),
+                                static_cast<int16_t>(
+                                    _position.y + y),
+                                *pixel);
+                        }
+
+                        ++x;
+
+                        if (x == width)
+                        {
+                            x = 0;
+                            ++y;
+                        }
                     }
                 }
-            }
 
-        private:
+            private:
 
-            TFT_eSprite& _canvas;
+                TFT_eSprite& _canvas;
 
-            const WidgetRenderPosition& _position;
+                const WidgetRenderPosition& _position;
 
-            float _mapPixelsPerMetre;
-        };
-
-
-    DisplayContext context(
-        _screenSprite,
-        position,
-        _navigationMap.GetPixelsPerMetre());
+                float _mapPixelsPerMetre;
+            };
 
 
-        /*
-         * The widget draws itself normally.
-         *
-         * It knows nothing about rotation.
-         */
-        widgetIterator->second->Render(
-            context);
+        DisplayContext context(
+            _screenSprite,
+            position,
+            _navigationMap.GetPixelsPerMetre());
 
+
+            /*
+            * The widget draws itself normally.
+            *
+            * It knows nothing about rotation.
+            */
+            widgetIterator->second->Render(
+                context);
+        }
         widgetIterator++;
     }
 }
@@ -1174,3 +1177,37 @@ void ST7789VDisplay::SetZoneGeometry(uint32_t zoneId, GameCoordinate newPos, flo
         Serial.printf("SetZoneZeometry could not find zone %lx\n", zoneId);
       }  
 }
+
+void ST7789VDisplay::SetText(uint32_t widgetId,  const std::string& newText)
+{
+        WidgetCollection::iterator widgetIterator = _widgets.find(widgetId);
+      if(widgetIterator != _widgets.end())
+      {           
+            if(widgetIterator->second->GetType() == WidgetType::Text)
+            {
+                 TextWidget* textWidget = static_cast<TextWidget*> (widgetIterator->second);
+                 textWidget->SetText(newText.c_str());
+            }
+            else
+            {
+                Serial.printf("Widget 0x%lx is not a TextWidget\n", widgetId);
+            }
+      } 
+      else
+      {
+        Serial.printf("SetText could not find textWidget %lx\n", widgetId);
+      }  
+    
+}
+
+
+void ST7789VDisplay::EnableWidget(uint32_t widgetId, bool enable)
+{
+    WidgetCollection::iterator widgetIterator = _widgets.find(widgetId);
+    if(widgetIterator != _widgets.end())
+    {
+        widgetIterator->second->SetVisible(enable);
+    }
+
+}
+

@@ -15,27 +15,30 @@ public:
 
     TextWidget(
         int id,
-        const char* text = "")
+        const char* text ,
+        WidgetPosition position,
+        int font,
+        uint8_t datum,
+        uint16_t textColour,
+        uint16_t backgroundColour,
+        uint8_t size)
         :
         Widget(id, WidgetType::Text),
-        _position{ 0.0f, 0.0f },
-        _font(2),
-        _datum(TL_DATUM),
-        _backgroundColour(TFT_BLACK),
-        _textMutex(nullptr)
-    {
-        _textMutex = xSemaphoreCreateMutex();
+        _position{ position },
+        _font(font),
+        _datum(datum),
+        _textColour(textColour),
+        _backgroundColour(backgroundColour),
+        _size(size)
 
+    {
         SetText(text);
     }
 
 
     ~TextWidget() override
     {
-        if (_textMutex != nullptr)
-        {
-            vSemaphoreDelete(_textMutex);
-        }
+
     }
 
 
@@ -65,11 +68,6 @@ public:
 
     void SetText(const char* text)
     {
-        if (_textMutex == nullptr)
-            return;
-
-        if (xSemaphoreTake(_textMutex, portMAX_DELAY) != pdTRUE)
-            return;
 
         if (text == nullptr)
         {
@@ -85,14 +83,9 @@ public:
             _text[sizeof(_text) - 1] = '\0';
         }
 
-        xSemaphoreGive(_textMutex);
     }
 
 
-    void SetFont(uint8_t font)
-    {
-        _font = font;
-    }
 
 
     void SetDatum(uint8_t datum)
@@ -119,7 +112,7 @@ private:
     uint8_t _font;
     uint8_t _datum;
 
-    uint32_t _backgroundColour;
-
-    SemaphoreHandle_t _textMutex;
+    uint16_t _backgroundColour;
+    uint16_t _textColour;
+    uint8_t _size;
 };

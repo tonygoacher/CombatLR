@@ -14,6 +14,8 @@ enum class DisplayCommandType
     ConfigureMap,
     SetWidgetColour,
     SetZoneGeometry,
+    SetTextCommand,
+    EnableWidgetCommand
 };
 
 class IDisplayCommand

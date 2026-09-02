@@ -65,7 +65,12 @@ public:
 
     void SetWidgetColour(uint32_t widgetId, uint32_t colour) override;
 
-     void SetZoneGeometry(uint32_t zoneId, GameCoordinate newPos, float radius) override;
+    void SetZoneGeometry(uint32_t zoneId, GameCoordinate newPos, float radius) override;
+
+     
+    void SetText( uint32_t widgetId,  const std::string& newText) override;
+
+    void EnableWidget(uint32_t widgetId, bool enable) override;
 
 
 private:

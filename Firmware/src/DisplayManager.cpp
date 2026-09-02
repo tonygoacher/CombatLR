@@ -12,6 +12,8 @@
 #include "RemoveWidgetCommand.h"
 #include "SetWidgetColourCommand.h"
 #include "SetZoneGeometryCommand.h"
+#include "SetTextCommand.h"
+#include "EnableWidgetCommand.h"
 
 DisplayManager::DisplayManager(
     TextureManager& textureManager)
@@ -298,6 +300,27 @@ void DisplayManager::ProcessCommand(const IDisplayCommand* command)
         }
         break;        
 
+        case DisplayCommandType::SetTextCommand:
+        {
+            SetText(
+                static_cast<
+                    const SetTextCommand*>(
+                        command));
+
+
+        }
+        break;   
+
+        
+        case DisplayCommandType::EnableWidgetCommand:
+        {
+            EnableWidget(
+                static_cast<
+                    const EnableWidgetCommand*>(
+                        command));
+        }
+        break;   
+
         default:
             Serial.printf("Unknown display command %d\n", command->GetType());
             break;
@@ -433,3 +456,16 @@ void DisplayManager::ConfigureNavigationMap(
 
         _display->ConfigureNavigationMap(mapFilename, homeLatitude, homeLongitude);
     }
+
+
+void DisplayManager::SetText(const SetTextCommand* command)
+{
+    _display->SetText(command->GetWidgetId(), command->GetText());
+}
+
+
+
+void DisplayManager::EnableWidget(const EnableWidgetCommand* command)
+{
+    _display->EnableWidget(command->GetWidgetId(), command->Enabled());
+}

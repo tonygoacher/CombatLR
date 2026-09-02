@@ -23,6 +23,7 @@ public:
 private:    
     StateData& _stateData;
     Pacer _pacer;
+    Pacer _textPacer;
 
     uint32_t _timeToGameStart;
     GameCoordinate _playerPosition;

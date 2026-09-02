@@ -5,23 +5,32 @@
 Pacer::Pacer(bool autoReset)
 {
     m_autoReset = autoReset;
-    m_timeup = !autoReset;
+    m_timeup = false;
     m_paceTime = 100;
 }
 
 bool Pacer::Pace()
 {
     bool timeUp = m_timeup;
-    if(!timeUp && millis() >= m_nextTime)
+    if(!timeUp)
     {
-        timeUp = true;
-        m_timeup = true;
-        if(m_autoReset)
+        if( millis() >= m_nextTime)
         {
-            PacerReset();    
-        }
-
+            timeUp = true;
+            m_timeup = true;
+            if(m_autoReset)
+            {
+                PacerReset();    
+            }
+        }            
     }   
+    else
+    {
+        if( millis() >= m_nextTime)
+        {
+            return false;   // This ensures a one shot return of true if not autoReset
+        }
+    }
     return timeUp;
 }
 
