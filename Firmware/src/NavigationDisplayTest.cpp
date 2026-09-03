@@ -31,6 +31,7 @@
 #include "statemachine/CombatLRStateMachine.h"
 #include "statemachine/StateData.h"
 #include "PacerTime.h"
+#include "IRLaserTag.h"
 
 
 
@@ -39,7 +40,19 @@
  *
  * These are free functions implemented by ST7789VDisplay.cpp.
  */
+class MockLaserTag : public IRLaserTag
+{
+public:
+    void Init() override{};
 
+    bool LaserTagDataAvailable() override { return false;}
+
+    bool GetLasertagData(
+        LaserTagData& data)  override { return false;}
+
+    void SendLasertagData(
+        LaserTagData& dataToSend) override {};
+};
 
 void SetNavigationPlayerPosition(
     const GameCoordinate& position,
@@ -82,6 +95,7 @@ namespace
 
     GamePlan gamePlan;
  
+    MockLaserTag  laserTag;        
 
 
     TextureManager textureManager(LittleFS);
@@ -91,7 +105,7 @@ namespace
     MAX98357ASounds sounds(LittleFS,BCLK,LRC,DATA);
     NavigationData data;
     Pacer zoneUpdatePacer(true);
-    PBSwitch triggerSwitch(Ports::TRIGGER, true);
+    PBSwitch triggerSwitch(Ports::TRIGGER, false);
     PBSwitch reloadSwitch(Ports::RELOAD, true);
     PBSwitch leftSwitch(Ports::LEFT, true);
     PBSwitch zoomSwitch(Ports::ZOOM, true);
@@ -99,9 +113,8 @@ namespace
     SteppedZoom zoom(zoomSwitch);
 
     PacerTime gameTime;
-    StateData stateData{displayManager, navigation, zoneEngine, sounds, zoom, geoReference, gameTime, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch};
+    StateData stateData{displayManager, navigation, zoneEngine, sounds, zoom, geoReference, laserTag, gameTime, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch};
     CombatLRStateMachine stateMachine(stateData);
-
 
 };
 

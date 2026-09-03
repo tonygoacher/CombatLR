@@ -98,3 +98,10 @@ bool PBSwitch::Pressed()
 
 	return pressed;
 }
+
+
+
+bool PBSwitch::RawRead()
+{
+	return digitalRead(m_Port) == LOW;
+}

@@ -9,6 +9,7 @@ class IZoom;
 class GeoReference;
 class ISystemTime;
 class PBSwitch;
+class IRLaserTag;
 
 struct StateData
 {
@@ -19,6 +20,7 @@ struct StateData
     ISounds& sounds;
     IZoom& zoom;
     GeoReference& geoReference;
+    IRLaserTag& laserTag;
     ISystemTime& systemTime;
     PBSwitch&   triggerSwitch;
     PBSwitch&   reloadSwitch;

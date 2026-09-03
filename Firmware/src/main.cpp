@@ -65,14 +65,15 @@ void setup()
 
 }
 
-int rot = 0;
-float zoom =1.0f;
-float zoomDir = 0.0f;
+
+
 
 void loop()
 {
 
+
     UpdateNavigationDisplay();
 
-  
+
+                      
 }
