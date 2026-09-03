@@ -34,7 +34,7 @@ public:
     WeaponType GetWeaponType();
     virtual void AddAmmo(uint16_t addAmmo);
 
-    void Weapon::CompleteReload()
+    void Weapon::CompleteReload()       // This is the final act of moving the ammo into the mag
     {
         uint16_t required = _magCapacity - _magAmmo;
 

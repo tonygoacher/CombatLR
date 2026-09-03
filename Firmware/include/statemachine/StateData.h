@@ -7,6 +7,8 @@ class ZoneEngine;
 class ISounds;
 class IZoom;
 class GeoReference;
+class ISystemTime;
+class PBSwitch;
 
 struct StateData
 {
@@ -17,4 +19,10 @@ struct StateData
     ISounds& sounds;
     IZoom& zoom;
     GeoReference& geoReference;
+    ISystemTime& systemTime;
+    PBSwitch&   triggerSwitch;
+    PBSwitch&   reloadSwitch;
+    PBSwitch&   leftSwitch;
+    PBSwitch&   zoomSwitch;     
+    PBSwitch&   rightSwitch;
 };

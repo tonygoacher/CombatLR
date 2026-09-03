@@ -30,7 +30,7 @@ uint16_t PowerUpState::Run()
 
 void PowerUpState::Entry()
 {
-    _pacer.SetPace(5000);
+    _pacer.SetPace(2000);
 
 
     _display.Send(

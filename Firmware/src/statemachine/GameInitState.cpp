@@ -15,6 +15,7 @@
 #include "memory.h"
 #include "SetTextCommand.h"
 #include "EnableWidgetCommand.h"
+#include "ISounds.h"
 #include <format>
 
 
@@ -22,7 +23,7 @@
 
 GameInitState::GameInitState(uint32_t timeToGameStart,StateData& stateData)
 :
- _stateData(stateData), _timeToGameStart(timeToGameStart), _pacer(false), _textPacer(true)
+ _stateData(stateData), _timeToGameStart(timeToGameStart),  _textPacer(true)
 {
     Serial.println("GameInitState::GameInitState");
     _textPacer.SetPace(1000);
@@ -37,13 +38,13 @@ void GameInitState::Entry()
     std::unique_ptr<IDisplayCommand>(
         new DisplayBackgroundCommand(
             "/map.bmp")));
-    _pacer.SetPace(_timeToGameStart * 1000);         
+     
     _stateData.zoom.Reset();
      Serial.println("!!GameInitState::Entry");
 
 
-     WidgetPosition textPos={280,10};
-     _textWidget  = new TextWidget(UIWidgetIds::CountdownTimer, "Test", textPos,2,MC_DATUM, TFT_RED, TFT_BLACK, 2);
+     WidgetPosition textPos={TextX,TextY};
+     _textWidget  = new TextWidget(UIWidgetIds::CountdownTimer, "", textPos,TextFont,MC_DATUM, TFT_RED, TFT_BLACK, TextZoom);
      
 
 
@@ -63,19 +64,43 @@ void GameInitState::Entry()
 
 uint16_t GameInitState::Run()
 {
-    static int a=300;
+
     if(_textPacer.Pace())
     {
-        if(a != 0)
+
+        if(_timeToGameStart == 0)
         {
-            a--;
+            return SystemStates::GameRunning;
         }
 
         char newText[64];
-        sprintf(newText,"%02d:%02d", a/60 , a%60);
+
+        sprintf(newText,"%02d:%02d", _timeToGameStart/60 , _timeToGameStart%60);
 
         _stateData.displayManager.Send(std::unique_ptr<IDisplayCommand>(new SetTextCommand(UIWidgetIds::CountdownTimer,newText)));
+        
+            
+        if(_timeToGameStart == 60)
+        {
+            Serial.println("T60");
+            _stateData.sounds.Play("/sounds/t60.wav");
+        }
 
+        if(_timeToGameStart == 10)
+        {
+            Serial.println("T10");
+            _stateData.sounds.Play("/sounds/t10.wav");
+        }
+
+        if(_timeToGameStart <= 5 && _timeToGameStart)
+        {
+            _stateData.sounds.Play("/sounds/countd.wav");
+        }
+
+        if(_timeToGameStart)
+        {
+            _timeToGameStart--;
+        }  
 
     }
 
@@ -116,16 +141,11 @@ uint16_t GameInitState::Run()
             std::unique_ptr<IDisplayCommand>(
                 new ZoomCommand(
                     zoom)));    
-        }
-
-                
+        }       
     }       
 
     _stateData.zoneEngine.Update(0);
-    
-  
-
-                
+                    
 
     return SystemStates::GameInit;  
 }

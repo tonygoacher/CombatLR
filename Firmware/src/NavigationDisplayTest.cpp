@@ -30,6 +30,7 @@
 #include "MAX98357ASounds.h"
 #include "statemachine/CombatLRStateMachine.h"
 #include "statemachine/StateData.h"
+#include "PacerTime.h"
 
 
 
@@ -47,10 +48,9 @@ void SetNavigationPlayerPosition(
 namespace
 {
     //SpoofNavigation navigation;
-    NavigationNMEA  navigation(9,46);
+    NavigationNMEA  navigation(Ports::GPS_RX,Ports::GPS_TX);
     GeoReference geoReference;
    
-    MillisGameTime gameTime;
     IDisplay* theDisplay;
 
     constexpr double HOME_LATITUDE  = 53.593000;
@@ -82,7 +82,7 @@ namespace
 
     GamePlan gamePlan;
  
-    SteppedZoom zoom(ZOOMSWITCHPORT);
+
 
     TextureManager textureManager(LittleFS);
     DisplayManager displayManager(textureManager);
@@ -91,9 +91,17 @@ namespace
     MAX98357ASounds sounds(LittleFS,BCLK,LRC,DATA);
     NavigationData data;
     Pacer zoneUpdatePacer(true);
-    uint32_t gameTimeInSec=0;
-    StateData stateData{displayManager, navigation, zoneEngine, sounds, zoom, geoReference};
+    PBSwitch triggerSwitch(Ports::TRIGGER, true);
+    PBSwitch reloadSwitch(Ports::RELOAD, true);
+    PBSwitch leftSwitch(Ports::LEFT, true);
+    PBSwitch zoomSwitch(Ports::ZOOM, true);
+    PBSwitch rightSwitch(Ports::RIGHT, true);
+    SteppedZoom zoom(zoomSwitch);
+
+    PacerTime gameTime;
+    StateData stateData{displayManager, navigation, zoneEngine, sounds, zoom, geoReference, gameTime, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch};
     CombatLRStateMachine stateMachine(stateData);
+
 
 };
 
@@ -152,14 +160,8 @@ namespace
     }
                 */
 
-    if(zoneUpdatePacer.Pace())
-    {
-        gameTimeInSec++;
 
-        
-    }
-
-    zoneEngine.Update(gameTimeInSec);
+    zoneEngine.Update(gameTime.GetGameTime());
 
 }
 
@@ -172,6 +174,7 @@ void NavigationDisplayTestBegin()
 
     displayManager.Begin();
     sounds.Begin();
+    gameTime.Reset();
    
     if(!gamePlan.Load("/gameplan.json"))
     {
@@ -194,9 +197,6 @@ void NavigationDisplayTestBegin()
     gamePlan.GetHomeLongitude());
 
 
-    GameController::Instance().Initialise(gamePlan, gameTime);
-
-    GameController::Instance().ShowZoneInfo();
 
     navigation.Begin();
 

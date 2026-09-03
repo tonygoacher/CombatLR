@@ -66,15 +66,23 @@ bool PBSwitch::Pressed()
 
 		case PBSwitch::PRESSED_HOLD:
 		{
-			if (!ReadPort() && Elapsed() > sm_DebounceTime)
+			if(Elapsed() < sm_DebounceTime)
 			{
-				m_SwitchState = PBSwitch::OFF_HOLD;
-				SetTimer();
-				if(!m_oneShot)
+				pressed = !m_oneShot;		// If not in one shot mode, keep the switch returning pressed during the debounce.
+			}
+			else
+			{
+				if(ReadPort())
 				{
-					pressed = true;
+					pressed = (!m_oneShot);			// Now out of debounce, if switch is still down, report it as such if not in oneShot
+				}
+				else
+				{
+					m_SwitchState = PBSwitch::OFF_HOLD;	// Switch is no longer down, go to up debounce
+					SetTimer();
 				}
 			}
+			
 		}
 		break;
 

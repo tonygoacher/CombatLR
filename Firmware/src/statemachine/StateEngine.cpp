@@ -20,26 +20,25 @@ void StateEngine::Run()
         uint16_t nextState = _currentState->second.Run();
         if(nextState != _currentState->first)
         {
-            Serial.printf("Exiting state %d\n", _currentState->first);
-            _currentState->second.Exit();
 
             StateMap::iterator iterNextState = _states.find(nextState);
+            if(iterNextState == _states.end())
+            {
+                Serial.printf("FATAL: StateEngine no state %d found\n", nextState);
+                while(1){};
+            }
+
+            Serial.printf("Exiting state %d\n", _currentState->first);
+            _currentState->second.Exit();
  
-            if(iterNextState != _states.end())
-            {
-                _currentState = iterNextState;
-                Serial.printf("Entering state %d", nextState);
-                _currentState->second.Entry();
-            }
-            else
-            {
-                Serial.printf("No state %d defined\n", nextState);
-            }
+
+            _currentState = iterNextState;
+            Serial.printf("Entering state %d\n", nextState);
+            _currentState->second.Entry();
         }
     }
     else
     {
         Serial.println("StateEngine::Run Current is invalid");
     }
-
 }
