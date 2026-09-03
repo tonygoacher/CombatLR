@@ -7,11 +7,12 @@ public:
 	PBSwitch(uint8_t port, bool oneShot);
 	void Init(uint8_t port);
 	bool Pressed();
+	bool RawRead();
 private:
 	unsigned long m_Timer;
 	uint8_t m_Port;
 	bool m_oneShot;
-	static const unsigned long sm_DebounceTime = 40;
+	static const unsigned long sm_DebounceTime = 30;
 	enum SwitchState
 	{
 		OFF,

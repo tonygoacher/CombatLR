@@ -10,7 +10,7 @@
 #include "GameCoordinate.h"
 #include "widgets/TextWidget.h"
 #include "statemachine/StateData.h"
-
+#include "weapons/AssaultRifle.h"
 
 class GameRunningState : public State
 {
@@ -25,5 +25,6 @@ private:
     uint16_t    _gameTime;
     StateData& _stateData;
     GameCoordinate _playerPosition;
+    AssaultRifle _ar;
     
 };

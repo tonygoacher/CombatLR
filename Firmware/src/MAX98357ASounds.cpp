@@ -119,6 +119,12 @@ bool MAX98357ASounds::Begin()
         _lrcPin,
         _dataPin);
 
+     _i2s.setPins(
+        _bclkPin,
+        _lrcPin,
+        _dataPin);
+
+
     /*
      * Standard Philips I2S, 16 kHz, 16-bit, mono.
      *
@@ -294,6 +300,12 @@ bool MAX98357ASounds::PlayCached(
     _finished = false;
 
     xSemaphoreGive(_mutex);
+
+    // Instantly wake the audio task so it begins writing to I2S
+    if (_audioTask != nullptr) 
+    {
+        xTaskNotifyGive(_audioTask);
+    }
 
     return true;
 }
@@ -502,7 +514,9 @@ void MAX98357ASounds::AudioTask()
     {
         if (!_playing)
         {
-            vTaskDelay(1);
+            // Block and wait for a notification from PlayCached, 
+            // checking at least every 10ms just in case.
+            ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10));
             continue;
         }
 
@@ -544,10 +558,12 @@ void MAX98357ASounds::AudioTask()
             continue;
         }
 
+    // Force a much smaller software chunk to reduce blocking time
+        const size_t maxChunk = 256; 
         bytesToWrite =
-            (remaining < TRANSFER_BUFFER_SIZE)
+            (remaining < maxChunk)
                 ? remaining
-                : TRANSFER_BUFFER_SIZE;
+                : maxChunk;
 
         /*
          * Keep PCM samples whole.
@@ -595,11 +611,6 @@ void MAX98357ASounds::AudioTask()
     _i2s.write(
         _transferBuffer,
         bytesToWrite);
-
-Serial.printf(
-    "MAX98357ASounds: I2S write %u/%u\n",
-    static_cast<unsigned>(written),
-    static_cast<unsigned>(bytesToWrite));
 
         if (written < bytesToWrite)
         {

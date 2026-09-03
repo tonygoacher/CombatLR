@@ -12,14 +12,15 @@
 #include "IZoom.h"
 #include "PBSwitch.h"
 
-
+#include "weapons/AssaultRifle.h"
 
 
 
 GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, StateData& stateData)
-: _stateData(stateData), _gameTime(gameTime), _playerPosition(0,0)
+: _stateData(stateData), _gameTime(gameTime), _playerPosition(0,0),
+_ar( 1000, 1000, stateData.laserTag, stateData.triggerSwitch, stateData.reloadSwitch, stateData.sounds)
 {
-
+    _ar.Start();
 }
 
 
@@ -32,8 +33,6 @@ uint16_t GameRunningState::Run()
     {
         
         NavigationData data = _stateData.navigation.GetData();
-
-
 
         /*
         * Convert the known C GPS position into the local
@@ -71,31 +70,8 @@ uint16_t GameRunningState::Run()
 
     _stateData.zoneEngine.Update(0);
 
-    if(_stateData.triggerSwitch.Pressed())
-    {
-        Serial.println("Trigger pressed");
-    }
-
-    if(_stateData.reloadSwitch.Pressed())
-    {
-        Serial.println("Reload pressed");
-    }
-
-
-    if(_stateData.leftSwitch.Pressed())
-    {
-        Serial.println("Left pressed");
-    }
-
-        if(_stateData.zoomSwitch.Pressed())
-    {
-        Serial.println("Zoom pressed");
-    }
-
-        if(_stateData.rightSwitch.Pressed())
-    {
-        Serial.println("Right pressed");
-    }
+ 
+    _ar.Run();
                     
 
     return SystemStates::GameRunning;  
