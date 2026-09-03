@@ -22,10 +22,15 @@ public:
 
 private:    
     StateData& _stateData;
-    Pacer _pacer;
+
     Pacer _textPacer;
 
-    uint32_t _timeToGameStart;
+    static const int TextX = 280;
+    static const int TextY=10;
+    static const int TextZoom = 2;
+    static const int TextFont = 2;      // Must include appropriate -D LOAD_FONT2  if this changes
+
+    uint16_t _timeToGameStart;
     GameCoordinate _playerPosition;
     TextWidget* _textWidget;
 

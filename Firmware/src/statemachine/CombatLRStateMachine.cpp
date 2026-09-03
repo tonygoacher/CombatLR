@@ -4,6 +4,7 @@
 
 #include "statemachine/PowerUpState.h"
 #include "statemachine/GameInitState.h"
+#include "statemachine/GameRunningState.h"
 #include <Arduino.h>
 
 
@@ -35,5 +36,6 @@ void CombatLRStateMachine::Start()
 void CombatLRStateMachine::Init()
 {
     _states.insert(StateMapEntry(SystemStates::PowerUp, *new PowerUpState(_stateData.displayManager,_stateData.navigation)));
-    _states.insert(StateMapEntry(SystemStates::GameInit,*new GameInitState(5000, _stateData)));
+    _states.insert(StateMapEntry(SystemStates::GameInit,*new GameInitState(5, _stateData)));
+    _states.insert(StateMapEntry(SystemStates::GameRunning,*new GameRunningState(120000, _stateData)));
 }

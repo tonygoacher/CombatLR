@@ -6,18 +6,17 @@
 
 #include <LittleFS.h>
 
-#include "Ports.h"
 
 
-SteppedZoom::SteppedZoom(int port)
-: _switch(port),
+SteppedZoom::SteppedZoom(PBSwitch& zoomSwitch)
+:  _switch(zoomSwitch),
 _current(0),
 _last(-1)
 {
 
-
-  
 }
+
+
 
 bool SteppedZoom::GetZoom(float& newZoom)
 {
