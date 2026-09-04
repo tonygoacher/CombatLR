@@ -365,11 +365,13 @@ bool ST7789VDisplay::RemoveWidget(
     uint16_t widgetId)
 {
     bool result = false;
+    Serial.printf("Removeing widget %d\n", widgetId);
     std::map<uint16_t, Widget*>::iterator widgetIter = _widgets.find(widgetId);
     if(widgetIter != _widgets.end())
     {
         delete (widgetIter->second);
         _widgets.erase(widgetIter);
+        Serial.println("Removed");
         result = true;
     }
 

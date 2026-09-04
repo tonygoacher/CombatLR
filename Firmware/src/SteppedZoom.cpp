@@ -21,7 +21,7 @@ _last(-1)
 bool SteppedZoom::GetZoom(float& newZoom)
 {
     bool result = false;
-    static const float zooms[]= {0.8f, 1.5f, 2.0f, 2.8f, 3.3f, 4.0f};
+    static const float zooms[]= {0.6f, 1.0f, 1.5f, 2.0f, 2.5f, 3.0f};
     if(_switch.Pressed())
     {
     
@@ -30,8 +30,7 @@ bool SteppedZoom::GetZoom(float& newZoom)
         {
             _current = 0;
         }
-        Serial.printf("Zoom is ");Serial.println(_current);
-        Serial.println(countof(zooms));
+        
     }
 
     if(_current != _last)

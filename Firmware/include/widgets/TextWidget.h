@@ -36,10 +36,8 @@ public:
     }
 
 
-    ~TextWidget() override
-    {
+    ~TextWidget();
 
-    }
 
 
     WidgetCoordinateSpace GetCoordinateSpace() const override
