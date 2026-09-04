@@ -515,8 +515,15 @@ void MAX98357ASounds::AudioTask()
         if (!_playing)
         {
             // Block and wait for a notification from PlayCached, 
-            // checking at least every 10ms just in case.
-            ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10));
+            // checking at least every so often just in case.
+            ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(5));
+            if(!_playing)
+            {
+                // If no sample requested, pump the I2S bus with zeros to prevent the 98357 shutting down.
+                // This is required to precent slight delay if no samples have been played for a while
+                _i2s.write(_silence, 256);  
+            }
+  
             continue;
         }
 

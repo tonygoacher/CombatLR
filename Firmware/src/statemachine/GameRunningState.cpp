@@ -18,7 +18,7 @@
 
 GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, StateData& stateData)
 : _stateData(stateData), _gameTime(gameTime), _playerPosition(0,0),
-_ar( 1000, 1000, stateData.laserTag, stateData.triggerSwitch, stateData.reloadSwitch, stateData.sounds)
+_ar( 1000, 30, stateData.laserTag, stateData.triggerSwitch, stateData.reloadSwitch, stateData.sounds)
 {
     _ar.Start();
 }

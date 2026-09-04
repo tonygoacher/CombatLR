@@ -9,14 +9,17 @@
 namespace ARSamples
 {
     static const char * const Shot = "/sounds/milshot.wav";
+    static const char * const Empty = "/sounds/empty.wav";
+    static const char * const InsertClip = "/sounds/insclip.wav";
+    static const char * const Reload = "/sounds/reload.wav";
 
 };
 
 
-AssaultRifle::AssaultRifle( uint16_t ammo, uint16_t magSize, IRLaserTag& laserTag, PBSwitch& trigger, PBSwitch& reload, ISounds& sounds)
-: Weapon(ammo, magSize, laserTag, trigger, reload, sounds),
+AssaultRifle::AssaultRifle( uint16_t reserve, uint16_t magSize, IRLaserTag& laserTag, PBSwitch& trigger, PBSwitch& reload, ISounds& sounds)
+: Weapon(reserve, magSize, laserTag, trigger, reload, sounds),
 _rpmPacer(true),
-_reloadPacer(false),
+_reloadPacer(true),
 _state(ARState::Idle)
 {
     _rpmPacer.SetPace(150);
@@ -24,8 +27,6 @@ _state(ARState::Idle)
 }
 
 
-struct timespec start_time, end_time;
-double interval_ms;
 void AssaultRifle::Run()
 {
     switch(_state)
@@ -35,11 +36,6 @@ void AssaultRifle::Run()
             if(_trigger.RawRead())
             {                 
 
-                clock_gettime(CLOCK_MONOTONIC, &end_time);
-                 interval_ms = (end_time.tv_sec - start_time.tv_sec) * 1000.0 +
-                      (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
-
-                Serial.printf("Interval %0.2f\n", interval_ms);   
                 if(_magAmmo)
                 {
                     _sounds.PlayCached(ARSamples::Shot);
@@ -50,9 +46,20 @@ void AssaultRifle::Run()
                 }
                 else
                 {
-                    Serial.println("Assault rifle empty");
+                    _sounds.Play(ARSamples::Empty);
+                    _rpmPacer.PacerReset();    
+                    _state = ARState::Empty;             // USe the rpm pacer to debounce the raw trigger       
                 }
-                clock_gettime(CLOCK_MONOTONIC, &start_time);
+
+            }
+            else
+            {
+                if(_reload.Pressed())
+                {
+                    _state = ARState::MagInsert;
+                    _reloadPacer.SetPace(3000);
+                    _sounds.Play(ARSamples::InsertClip);
+                }
             }
         }
         break;
@@ -62,6 +69,36 @@ void AssaultRifle::Run()
             if(_rpmPacer.Pace())
             {
                 _state = ARState::Idle;
+            }
+        }
+        break;
+
+        case ARState::Empty:
+        {
+            if(!_trigger.RawRead() && _rpmPacer.Pace())
+            {
+                _state = ARState::Idle;
+            }
+        }
+        break;
+
+
+        case ARState::MagInsert:
+        {
+            if(_reloadPacer.Pace())
+            {
+                _sounds.Play(ARSamples::Reload);
+                _state = ARState::Cocking;
+            }
+        }
+        break;
+
+        case ARState::Cocking:
+        {
+            if(_sounds.HasFinished())
+            {
+                _state = ARState::Idle;
+                CompleteReload();
             }
         }
         break;
@@ -86,6 +123,7 @@ void AssaultRifle::AddAmmo(uint16_t addAmmo)
 void AssaultRifle::Start()
 {
     _sounds.CacheSample(ARSamples::Shot);
+    _texture 
 }
 
 void AssaultRifle::Stop()
