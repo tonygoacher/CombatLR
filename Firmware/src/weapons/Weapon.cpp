@@ -5,7 +5,7 @@
 
 
 Weapon::Weapon( uint16_t ammo, uint16_t magSize, CombatLRServices& services)
-:   _reserveAmmo(ammo), _magCapacity(magSize), _services(services)
+:   _reserveAmmo(ammo), _magCapacity(magSize), _services(services), _magAmmo(0)
 {
     CompleteReload();
 };

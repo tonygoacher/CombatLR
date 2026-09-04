@@ -12,6 +12,7 @@ class CombatLRServices;
 enum class WeaponType
 {
     AssaultRifle,
+    AssaultRifleFullAuto,
 };
 
 class Weapon
@@ -33,6 +34,7 @@ public:
 
     uint16_t  GetReserve() { return _reserveAmmo;}
     uint16_t  GetMax() { return _magAmmo;}
+    virtual void Equip() = 0;
     void CompleteReload()       // This is the final act of moving the ammo into the mag
     {
         uint16_t required = _magCapacity - _magAmmo;

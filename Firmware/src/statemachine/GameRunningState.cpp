@@ -75,8 +75,6 @@ uint16_t GameRunningState::Run()
    _weaponManager.Run();
 
 
-    Serial.printf("Running %d\n", a++);
-
     return SystemStates::GameRunning;  
 
 }
@@ -89,6 +87,7 @@ void GameRunningState::Entry()
     _stateData.systemTime.Reset();
     Serial.println("Adding weapon");
     _weaponManager.AddWeapon(WeaponType::AssaultRifle, 120);
+    _weaponManager.AddWeapon(WeaponType::AssaultRifleFullAuto, 120);
     Serial.println("Added");
 }
 
