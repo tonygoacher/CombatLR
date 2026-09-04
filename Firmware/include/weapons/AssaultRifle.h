@@ -28,6 +28,7 @@ private:
     {
         Idle,
         Shooting,
+        Empty,
         MagInsert,
         Cocking
     };

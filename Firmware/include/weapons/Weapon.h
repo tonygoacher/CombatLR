@@ -16,11 +16,7 @@ enum class WeaponType
 class Weapon
 {
 public:
-    Weapon( uint16_t ammo, uint16_t magSize, IRLaserTag& laserTag, PBSwitch& trigger, PBSwitch& reload, ISounds& sounds)
-    :  _laserTag(laserTag), _reserveAmmo(ammo), _magCapacity(magSize), _trigger(trigger), _reload(reload), _sounds(sounds)
-    {
-        CompleteReload();
-    };
+    Weapon( uint16_t ammo, uint16_t magSize, IRLaserTag& laserTag, PBSwitch& trigger, PBSwitch& reload, ISounds& sounds);
 
     ~Weapon() = default;
 
@@ -34,10 +30,14 @@ public:
     virtual void Start() = 0;   // Called when the when is activated (slung)
     virtual void Stop() = 0;    // Called when the weapon is deativated (unslung)
 
+    uint16_t  GetReserve() { return _reserveAmmo;}
+    uint16_t  GetMax() { return _magAmmo;}
     void CompleteReload()       // This is the final act of moving the ammo into the mag
     {
         uint16_t required = _magCapacity - _magAmmo;
 
+        Serial.println("Complete reload");
+        Serial.printf("Res: %d Req: %d \n", _reserveAmmo, required);
         if (_reserveAmmo >= required)
         {
             _magAmmo += required;
@@ -48,10 +48,13 @@ public:
             _magAmmo += _reserveAmmo;
             _reserveAmmo = 0;
         }
+        Serial.printf("Mag: %d\n", _magAmmo);
     }
 
 
 protected:
+    static const int MaxFileName =128;
+    virtual const char * const GetFilename() = 0;
     uint16_t    _reserveAmmo;
     uint16_t    _magAmmo;
     uint16_t    _magCapacity;    

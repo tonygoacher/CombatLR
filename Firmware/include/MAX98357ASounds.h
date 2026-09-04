@@ -132,4 +132,6 @@ private:
     float _volume;
 
     bool _initialised;
+
+    uint8_t _silence[256]={0};
 };
