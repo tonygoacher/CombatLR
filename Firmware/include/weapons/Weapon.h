@@ -7,6 +7,7 @@ class PBSwitch;
 class IRLaserTag;
 class DisplayManager;
 class ISounds;
+class CombatLRServices;
 
 enum class WeaponType
 {
@@ -16,15 +17,15 @@ enum class WeaponType
 class Weapon
 {
 public:
-    Weapon( uint16_t ammo, uint16_t magSize, IRLaserTag& laserTag, PBSwitch& trigger, PBSwitch& reload, ISounds& sounds);
+    Weapon( uint16_t ammo, uint16_t magSize, CombatLRServices& services);
 
-    ~Weapon() = default;
+    virtual ~Weapon() = default;
 
     Texture& GetTexture();
     uint16_t GetRemainingAmmo(){ return _reserveAmmo;}
     uint16_t GetMagAmmo() {return _magAmmo;}
-
-    virtual void Run()=0;
+  
+    virtual bool Run()=0;
     virtual WeaponType GetWeaponType() =0;
     virtual void AddAmmo(uint16_t addAmmo) = 0;
     virtual void Start() = 0;   // Called when the when is activated (slung)
@@ -51,16 +52,13 @@ public:
         Serial.printf("Mag: %d\n", _magAmmo);
     }
 
-
+    virtual const char * const GetFilename() = 0;
 protected:
     static const int MaxFileName =128;
-    virtual const char * const GetFilename() = 0;
+
     uint16_t    _reserveAmmo;
     uint16_t    _magAmmo;
     uint16_t    _magCapacity;    
-    PBSwitch&   _trigger;
-    PBSwitch&   _reload;
-    IRLaserTag&  _laserTag;
-    Texture     _texture;
-    ISounds&     _sounds;
+    CombatLRServices& _services;
+    Texture*     _texture;
 };

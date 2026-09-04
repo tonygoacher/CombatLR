@@ -5,7 +5,7 @@
 #include "stdint.h"
 #include "Pacer.h"
 
-#include "StateData.h"
+#include "stateMachine/Services.h"
 #include "Navigation.h"
 #include "GameCoordinate.h"
 #include "widgets/TextWidget.h"
@@ -15,13 +15,13 @@ class GameInitState : public State
 {
 public:
        
-    GameInitState(uint32_t timeToGameStart /*secs*/, StateData& stateData);
+    GameInitState(uint32_t timeToGameStart /*secs*/, CombatLRServices& stateData);
     uint16_t Run() override;
     void Entry() override;
     void Exit() override;
 
 private:    
-    StateData& _stateData;
+    CombatLRServices& _stateData;
 
     Pacer _textPacer;
 

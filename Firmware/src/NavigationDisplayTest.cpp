@@ -29,9 +29,10 @@
 #include "statemachine/PowerUpState.h"
 #include "MAX98357ASounds.h"
 #include "statemachine/CombatLRStateMachine.h"
-#include "statemachine/StateData.h"
+#include "stateMachine/Services.h"
 #include "PacerTime.h"
 #include "IRLaserTag.h"
+#include "weapons/WeaponManager.h"
 
 
 
@@ -113,8 +114,10 @@ namespace
     SteppedZoom zoom(zoomSwitch);
 
     PacerTime gameTime;
-    StateData stateData{displayManager, navigation, zoneEngine, sounds, zoom, geoReference, laserTag, gameTime, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch};
-    CombatLRStateMachine stateMachine(stateData);
+
+    CombatLRServices stateData{displayManager, navigation, zoneEngine, sounds, zoom, geoReference, laserTag, gameTime, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch};
+    WeaponManager weaponManager(stateData);
+    CombatLRStateMachine stateMachine(stateData,weaponManager);
 
 };
 

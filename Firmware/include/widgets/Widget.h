@@ -25,6 +25,7 @@ enum class WidgetType
     Pickup,
     Zone,
     GPS,
+    UI,
     Text,
 };
 

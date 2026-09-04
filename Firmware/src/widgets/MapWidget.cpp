@@ -10,9 +10,10 @@
     :
     Widget(id, WidgetType::Pickup),
     _position(position),
-    _texture(
-        textureManager.GetTexture(filename))
+    _textureManager(textureManager)
 {
+    strcpy(_filename, filename);
+    _texture = textureManager.GetTexture(filename); // Map widgets are used a lok so use cached data if possible.
 }
 
 WidgetCoordinateSpace
@@ -160,4 +161,9 @@ for (int16_t screenY = top;
     static_cast<int16_t>(scaledWidth * 0.7 )+4,
     0,360,
     TFT_RED, TFT_BLACK);
+}
+
+
+MapWidget::~MapWidget()
+{
 }

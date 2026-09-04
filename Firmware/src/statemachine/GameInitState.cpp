@@ -21,7 +21,7 @@
 
 
 
-GameInitState::GameInitState(uint32_t timeToGameStart,StateData& stateData)
+GameInitState::GameInitState(uint32_t timeToGameStart,CombatLRServices& stateData)
 :
  _stateData(stateData), _timeToGameStart(timeToGameStart),  _textPacer(true)
 {

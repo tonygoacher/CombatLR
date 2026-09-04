@@ -368,6 +368,7 @@ bool ST7789VDisplay::RemoveWidget(
     std::map<uint16_t, Widget*>::iterator widgetIter = _widgets.find(widgetId);
     if(widgetIter != _widgets.end())
     {
+        delete (widgetIter->second);
         _widgets.erase(widgetIter);
         result = true;
     }

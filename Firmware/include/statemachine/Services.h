@@ -11,7 +11,7 @@ class ISystemTime;
 class PBSwitch;
 class IRLaserTag;
 
-struct StateData
+struct CombatLRServices
 {
 
     DisplayManager& displayManager;

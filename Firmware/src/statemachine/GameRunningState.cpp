@@ -13,14 +13,13 @@
 #include "PBSwitch.h"
 
 #include "weapons/AssaultRifle.h"
+#include "weapons/WeaponManager.h"
 
 
 
-GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, StateData& stateData)
-: _stateData(stateData), _gameTime(gameTime), _playerPosition(0,0),
-_ar( 1000, 30, stateData.laserTag, stateData.triggerSwitch, stateData.reloadSwitch, stateData.sounds)
+GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, CombatLRServices& stateData, WeaponManager& weaponManager)
+: _stateData(stateData), _gameTime(gameTime), _playerPosition(0,0), _weaponManager(weaponManager)
 {
-    _ar.Start();
 }
 
 
@@ -70,8 +69,8 @@ uint16_t GameRunningState::Run()
 
     _stateData.zoneEngine.Update(0);
 
- 
-    _ar.Run();
+
+    _weaponManager.Run();
                     
 
     return SystemStates::GameRunning;  
@@ -83,6 +82,9 @@ uint16_t GameRunningState::Run()
 void GameRunningState::Entry()
 {
     _stateData.systemTime.Reset();
+    Serial.println("Adding weapon");
+    _weaponManager.AddWeapon(WeaponType::AssaultRifle, 120);
+    Serial.println("Added");
 
 }
 

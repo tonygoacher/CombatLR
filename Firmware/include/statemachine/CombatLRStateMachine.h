@@ -3,21 +3,22 @@
 
 
 #include "StateEngine.h"
-#include "StateData.h"
+#include "statemachine/Services.h"
 
 
 
-
+class WeaponManager;
 
 class CombatLRStateMachine : public StateEngine
 {
 public:
-    CombatLRStateMachine(StateData& stateData);
+    CombatLRStateMachine(CombatLRServices& stateData, WeaponManager& weaponManager);
     void Init() ;
     void Start() override;
 
 private:
-    StateData& _stateData;
+    CombatLRServices& _stateData;
+    WeaponManager& _weaponManager;
 };
 
 
