@@ -30,17 +30,16 @@ WeaponManager::WeaponManager(CombatLRServices & stateData)
 
 void WeaponManager::Run()
 {
-    
     if(_state == WMStates::Normal)
     {
         if(_currentWeapon != _weapons.end())
         {
-            if(_currentWeapon->second.Run())
+            if(_currentWeapon->second->Run())
             {
                 ShowLoadout(_currentWeapon);
             }
         }
-
+        return;
         // Left or right button pressed and at least one weapon, move to show mode
         if(_stateData.leftSwitch.Pressed() || _stateData.rightSwitch.Pressed() && _weapons.size())
         {
@@ -61,7 +60,7 @@ void WeaponManager::Run()
 
 void WeaponManager::Init()
 {
-    TextWidget* loadout =  new TextWidget(UIWidgetIds::AmmoDisplay, "00/00", WidgetPosition(TextX, TextY),TextFont,MC_DATUM, TFT_RED, TFT_BLACK, TextZoom);
+    TextWidget* loadout =  new TextWidget(UIWidgetIds::AmmoDisplay, "00 :00", WidgetPosition(TextX, TextY),TextFont,MC_DATUM, TFT_WHITE, TFT_BLACK, TextZoom);
      _stateData.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new AddWidgetCommand(
@@ -70,12 +69,12 @@ void WeaponManager::Init()
 }
 
 
-void WeaponManager::ShowLoadout(std::map<WeaponType, Weapon&>::iterator& weapon)
+void WeaponManager::ShowLoadout(WeaponMap::iterator& weapon)
 {
-    uint16_t allAmmo = weapon->second.GetRemainingAmmo();
-    uint16_t magAmmo = weapon->second.GetMagAmmo();
+    uint16_t allAmmo = weapon->second->GetRemainingAmmo();
+    uint16_t magAmmo = weapon->second->GetMagAmmo();
     char data[16];
-    sprintf(data, "%d:%d", magAmmo, allAmmo);
+    sprintf(data, "%d :%d", magAmmo, allAmmo);
 
     _stateData.displayManager.Send(std::unique_ptr<IDisplayCommand>(
         new SetTextCommand(UIWidgetIds::AmmoDisplay, data)));
@@ -88,7 +87,7 @@ void WeaponManager::ShowSelectWeapon()
     _stateData.displayManager.Send(std::unique_ptr<IDisplayCommand>(
         new RemoveWidgetCommand(UIWidgetIds::SelectWeapon)));   
     
-    UIWidget* gun = new UIWidget(UIWidgetIds::SelectWeapon, _displayWeapon->second.GetFilename(), WidgetPosition(64,100));  
+    UIWidget* gun = new UIWidget(UIWidgetIds::SelectWeapon, _displayWeapon->second->GetFilename(), WidgetPosition(64,100));  
     
     _stateData.displayManager.Send(std::unique_ptr<IDisplayCommand>(
             new AddWidgetCommand(gun)));
@@ -115,19 +114,24 @@ void WeaponManager::AddWeapon(WeaponType type, uint16_t initialAmmo)
     {
         case WeaponType::AssaultRifle:
         {   
-             std::map<WeaponType, Weapon&>::iterator w =_weapons.find(type);
+            WeaponMap::iterator w =_weapons.find(type);
             if(w != _weapons.end())    
             {
-                w->second.AddAmmo(initialAmmo);
+                w->second->AddAmmo(initialAmmo);
             }
             else
             {
-                AssaultRifle ar(initialAmmo, 30, _stateData);
-                std::pair<std::map<WeaponType, Weapon&>::iterator, bool> result;
-                result = _weapons.insert(std::pair<WeaponType, Weapon&>(type,ar));
+                std::pair<WeaponMap::iterator, bool> result;
+
+                result = _weapons.emplace(type, std::make_shared<AssaultRifle>(300, 30, _stateData));
+   
                 if(result.second)
                 {
+
                     _currentWeapon = result.first;
+                    _currentWeapon->second->Start();
+                    ShowLoadout(_currentWeapon);
+                    
                 }
                 else
                 {

@@ -26,7 +26,7 @@ public:
     uint16_t GetMagAmmo() {return _magAmmo;}
   
     virtual bool Run()=0;
-    virtual WeaponType GetWeaponType() =0;
+    virtual WeaponType GetWeaponType() = 0;
     virtual void AddAmmo(uint16_t addAmmo) = 0;
     virtual void Start() = 0;   // Called when the when is activated (slung)
     virtual void Stop() = 0;    // Called when the weapon is deativated (unslung)

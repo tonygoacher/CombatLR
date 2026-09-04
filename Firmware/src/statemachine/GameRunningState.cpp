@@ -11,6 +11,7 @@
 #include "stateMachine/SystemStates.h"
 #include "IZoom.h"
 #include "PBSwitch.h"
+#include "ISounds.h"
 
 #include "weapons/AssaultRifle.h"
 #include "weapons/WeaponManager.h"
@@ -22,7 +23,7 @@ GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, CombatLRServices&
 {
 }
 
-
+int a=0;
 
 uint16_t GameRunningState::Run()
 {
@@ -57,7 +58,8 @@ uint16_t GameRunningState::Run()
         float zoom = 1.0f;
         if(_stateData.zoom.GetZoom(zoom))
         {
-            Serial.println(zoom);
+            Serial.println("Zoom");
+            _stateData.sounds.Play("/sounds/zoom.wav");
             _stateData.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new ZoomCommand(
@@ -70,8 +72,10 @@ uint16_t GameRunningState::Run()
     _stateData.zoneEngine.Update(0);
 
 
-    _weaponManager.Run();
-                    
+   _weaponManager.Run();
+
+
+    Serial.printf("Running %d\n", a++);
 
     return SystemStates::GameRunning;  
 
@@ -81,11 +85,11 @@ uint16_t GameRunningState::Run()
 
 void GameRunningState::Entry()
 {
+    _weaponManager.Init();
     _stateData.systemTime.Reset();
     Serial.println("Adding weapon");
     _weaponManager.AddWeapon(WeaponType::AssaultRifle, 120);
     Serial.println("Added");
-
 }
 
 

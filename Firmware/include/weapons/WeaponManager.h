@@ -33,19 +33,21 @@ private:
         Select,
     };
 
-    std::map<WeaponType, Weapon&> _weapons;
-    std::map<WeaponType, Weapon&>::iterator _currentWeapon;
-    std::map<WeaponType, Weapon&>::iterator _displayWeapon;
+    typedef std::map<WeaponType, std::shared_ptr<Weapon>> WeaponMap;
+    typedef std::pair<WeaponType, std::shared_ptr<Weapon>> WeaponPair;
+    WeaponMap _weapons;
+    WeaponMap::iterator _currentWeapon;
+    WeaponMap::iterator _displayWeapon;
 
     CombatLRServices& _stateData;
     WMStates    _state;
 
     void ShowSelectWeapon();
-    void ShowLoadout (std::map<WeaponType, Weapon&>::iterator& weapon);
+    void ShowLoadout (WeaponMap::iterator& weapon);
 
 
-    static const int TextX = 280;
-    static const int TextY=10;
+    static const int TextX = 270;
+    static const int TextY=220;
     static const int TextZoom = 2;
     static const int TextFont = 2; 
 
