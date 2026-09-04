@@ -3,21 +3,24 @@
 #include "PBSwitch.h"
 #include "Texture.h"
 #include "ISounds.h"
+#include "stateMachine/Services.h"
+#include "DisplayManager.h"
 
 
 
-namespace ARSamples
+namespace ARStrings
 {
     static const char * const Shot = "/sounds/milshot.wav";
     static const char * const Empty = "/sounds/empty.wav";
     static const char * const InsertClip = "/sounds/insclip.wav";
     static const char * const Reload = "/sounds/reload.wav";
+    static const char * const ARImage = "/weapons/assault.bmp";
 
 };
 
 
-AssaultRifle::AssaultRifle( uint16_t reserve, uint16_t magSize, IRLaserTag& laserTag, PBSwitch& trigger, PBSwitch& reload, ISounds& sounds)
-: Weapon(reserve, magSize, laserTag, trigger, reload, sounds),
+AssaultRifle::AssaultRifle( uint16_t reserve, uint16_t magSize, CombatLRServices& services)
+: Weapon(reserve, magSize, services),
 _rpmPacer(true),
 _reloadPacer(true),
 _state(ARState::Idle)
@@ -27,26 +30,28 @@ _state(ARState::Idle)
 }
 
 
-void AssaultRifle::Run()
+bool AssaultRifle::Run()
 {
+    bool actionTaken = false;
     switch(_state)
     {
         case ARState::Idle:
         {
-            if(_trigger.RawRead())
+            if(_services.triggerSwitch.RawRead())
             {                 
 
                 if(_magAmmo)
                 {
-                    _sounds.PlayCached(ARSamples::Shot);
+                    _services.sounds.PlayCached(ARStrings::Shot);
                     _magAmmo--;
                    
                     _state = ARState::Shooting;
                     _rpmPacer.PacerReset();
+                    actionTaken = true;
                 }
                 else
                 {
-                    _sounds.Play(ARSamples::Empty);
+                    _services.sounds.Play(ARStrings::Empty);
                     _rpmPacer.PacerReset();    
                     _state = ARState::Empty;             // USe the rpm pacer to debounce the raw trigger       
                 }
@@ -54,11 +59,11 @@ void AssaultRifle::Run()
             }
             else
             {
-                if(_reload.Pressed())
+                if(_services.reloadSwitch.Pressed())
                 {
                     _state = ARState::MagInsert;
                     _reloadPacer.SetPace(3000);
-                    _sounds.Play(ARSamples::InsertClip);
+                    _services.sounds.Play(ARStrings::InsertClip);
                 }
             }
         }
@@ -75,7 +80,7 @@ void AssaultRifle::Run()
 
         case ARState::Empty:
         {
-            if(!_trigger.RawRead() && _rpmPacer.Pace())
+            if(!_services.triggerSwitch.RawRead() && _rpmPacer.Pace())
             {
                 _state = ARState::Idle;
             }
@@ -87,7 +92,7 @@ void AssaultRifle::Run()
         {
             if(_reloadPacer.Pace())
             {
-                _sounds.Play(ARSamples::Reload);
+                _services.sounds.Play(ARStrings::Reload);
                 _state = ARState::Cocking;
             }
         }
@@ -95,9 +100,10 @@ void AssaultRifle::Run()
 
         case ARState::Cocking:
         {
-            if(_sounds.HasFinished())
+            if(_services.sounds.HasFinished())
             {
                 _state = ARState::Idle;
+                actionTaken = true;
                 CompleteReload();
             }
         }
@@ -109,7 +115,7 @@ void AssaultRifle::Run()
         }   
     }
 
-    
+    return actionTaken;  
 }
 
 
@@ -122,11 +128,18 @@ void AssaultRifle::AddAmmo(uint16_t addAmmo)
 
 void AssaultRifle::Start()
 {
-    _sounds.CacheSample(ARSamples::Shot);
-    _texture 
+    _services.sounds.CacheSample(ARStrings::Shot);
+
 }
 
 void AssaultRifle::Stop()
 {
-    _sounds.UnCacheSample(ARSamples::Shot);
+    _services.sounds.UnCacheSample(ARStrings::Shot);
+}
+
+
+
+const char * const AssaultRifle::GetFilename() 
+{
+    return ARStrings::ARImage;
 }

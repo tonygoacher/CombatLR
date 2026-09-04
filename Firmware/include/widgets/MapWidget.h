@@ -14,6 +14,8 @@ public:
         const GameCoordinate& position,
         const char* filename);
 
+    ~MapWidget();        
+
     WidgetCoordinateSpace
         GetCoordinateSpace() const override;
 
@@ -31,4 +33,6 @@ private:
     GameCoordinate _position;
 
     Texture* _texture;
+    TextureManager& _textureManager;
+    char    _filename[128];
 };
