@@ -1,107 +1,67 @@
-#include <Arduino.h>
-
-#define	SWITCH0	2
-
-
-
-#include <Arduino.h>
-
 #include "PBSwitch.h"
 
-
-PBSwitch::PBSwitch(bool oneShot)
-: m_oneShot(oneShot)
-{
-
-
+// Constructor without port initialization
+PBSwitch::PBSwitch(bool oneShot) {
+    _oneShot = oneShot;
+    _port = 255; // Indicates uninitialized
+    _debouncedState = false;
+    _lastDebouncedState = false;
+    _lastDebounceTime = 0;
 }
 
-PBSwitch::PBSwitch(uint8_t port, bool oneShot)
-: m_Port(port), m_oneShot(oneShot)
-{
-
-	pinMode(port, INPUT_PULLUP);
-	m_SwitchState = PBSwitch::OFF;
+// Constructor with port initialization
+PBSwitch::PBSwitch(uint8_t port, bool oneShot) : PBSwitch(oneShot) {
+    Init(port);
 }
 
-unsigned long PBSwitch::Elapsed()
-{
-	return millis() - m_Timer;
+void PBSwitch::Init(uint8_t port) {
+    _port = port;
+    pinMode(_port, INPUT_PULLUP);
+    
+    // Initialize state based on current pin status
+    _debouncedState = (digitalRead(_port) == LOW);
+    _lastDebouncedState = _debouncedState;
 }
 
-void PBSwitch::Init(uint8_t port)
-{
-	m_Port = port;
-	pinMode(port, INPUT_PULLUP);
-	m_SwitchState = PBSwitch::OFF;
+bool PBSwitch::RawRead() {
+    if (_port == 255) return false;
+    
+    // Assumes INPUT_PULLUP (LOW means the button is pressed down)
+    return (digitalRead(_port) == LOW); 
 }
 
-bool PBSwitch::ReadPort()
-{
-	int value = digitalRead(m_Port);
+bool PBSwitch::Pressed() {
+    if (_port == 255) return false;
 
-	return value == LOW;
-}
+    // Read the current physical state of the pin (LOW = pressed)
+    bool currentRawPressed = (digitalRead(_port) == LOW);
 
-void PBSwitch::SetTimer()
-{
-	m_Timer = millis();
-}
+    if (currentRawPressed) {
+        // IMMEDIATE ON: Register as pressed immediately and reset the debounce timer
+        _lastDebounceTime = millis();
+        _debouncedState = true;
+    } else {
+        // DEBOUNCED OFF: Only register as released if it has been physically 
+        // unpressed for longer than the debounce delay
+        if ((millis() - _lastDebounceTime) > _debounceDelay) {
+            _debouncedState = false;
+        }
+    }
 
-bool PBSwitch::Pressed()
-{
-	bool pressed = false;
-	switch (m_SwitchState)
-	{
-		case PBSwitch::OFF:
-		{
-			if (ReadPort())
-			{
-				pressed = true;
-				m_SwitchState = PBSwitch::PRESSED_HOLD;
-				SetTimer();
-			}
-		}
-		break;
+    bool isPressed = false;
 
-		case PBSwitch::PRESSED_HOLD:
-		{
-			if(Elapsed() < sm_DebounceTime)
-			{
-				pressed = !m_oneShot;		// If not in one shot mode, keep the switch returning pressed during the debounce.
-			}
-			else
-			{
-				if(ReadPort())
-				{
-					pressed = (!m_oneShot);			// Now out of debounce, if switch is still down, report it as such if not in oneShot
-				}
-				else
-				{
-					m_SwitchState = PBSwitch::OFF_HOLD;	// Switch is no longer down, go to up debounce
-					SetTimer();
-				}
-			}
-			
-		}
-		break;
+    if (_oneShot) {
+        // Return true ONLY on the exact transition from unpressed to pressed
+        if (_debouncedState && !_lastDebouncedState) {
+            isPressed = true;
+        }
+    } else {
+        // Return true continuously as long as it is considered held down
+        isPressed = _debouncedState;
+    }
 
-		case PBSwitch::OFF_HOLD:
-		{
-			if (!ReadPort() && Elapsed() > sm_DebounceTime)	
-			{
-				m_SwitchState = PBSwitch::OFF;
-			}
-		}
-		break;
-	}
+    // Save the debounced state for the next cycle's edge detection
+    _lastDebouncedState = _debouncedState;
 
-	return pressed;
-}
-
-
-
-bool PBSwitch::RawRead()
-{
-	return digitalRead(m_Port) == LOW;
+    return isPressed;
 }

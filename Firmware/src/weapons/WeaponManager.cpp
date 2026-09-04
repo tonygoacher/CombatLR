@@ -39,19 +39,65 @@ void WeaponManager::Run()
                 ShowLoadout(_currentWeapon);
             }
         }
-        return;
+
         // Left or right button pressed and at least one weapon, move to show mode
-        if(_stateData.leftSwitch.Pressed() || _stateData.rightSwitch.Pressed() && _weapons.size())
+        if(_stateData.leftSwitch.Pressed() || _stateData.rightSwitch.Pressed() && _weapons.size() > 1)
         {
             _state = WMStates::Select;
             _displayWeapon = _currentWeapon;
             ShowSelectWeapon();
         }
     }
-    else
-    {
 
-    }      
+    
+    if(_state == WMStates::Select && _weapons.size() > 1)
+    {
+        bool actionTaken = false;
+        if(_stateData.leftSwitch.Pressed())
+        {
+            actionTaken = true;
+            if(_displayWeapon == _weapons.begin())
+            {
+                _displayWeapon = std::prev(_weapons.end());
+            }
+            else
+            {
+                _displayWeapon = std::prev(_displayWeapon);
+            }
+        }
+
+        if(_stateData.rightSwitch.Pressed())
+        {
+            actionTaken = true;
+            if(std::next(_displayWeapon) == _weapons.end())
+            {
+                _displayWeapon = _weapons.begin();
+            }
+            else
+            {
+                _displayWeapon = std::next(_displayWeapon);
+            }
+        }
+
+        if(actionTaken)
+        {
+            ShowSelectWeapon();
+        }
+
+        if(_stateData.triggerSwitch.Pressed())
+        {
+            _stateData.displayManager.Send(std::unique_ptr<IDisplayCommand>(new RemoveWidgetCommand(UIWidgetIds::SelectWeapon))); 
+            if(_currentWeapon->first != _displayWeapon->first)
+            {
+                _currentWeapon = _displayWeapon;
+              
+                _currentWeapon->second->Equip();
+            }                
+            ShowLoadout(_currentWeapon);
+            _state = WMStates::Normal;
+
+        }
+    }
 
 }
 
@@ -87,7 +133,7 @@ void WeaponManager::ShowSelectWeapon()
     _stateData.displayManager.Send(std::unique_ptr<IDisplayCommand>(
         new RemoveWidgetCommand(UIWidgetIds::SelectWeapon)));   
     
-    UIWidget* gun = new UIWidget(UIWidgetIds::SelectWeapon, _displayWeapon->second->GetFilename(), WidgetPosition(64,100));  
+    UIWidget* gun = new UIWidget(UIWidgetIds::SelectWeapon, _displayWeapon->second->GetFilename(), WidgetPosition(160-64,120-32));  
     
     _stateData.displayManager.Send(std::unique_ptr<IDisplayCommand>(
             new AddWidgetCommand(gun)));
@@ -107,6 +153,42 @@ void WeaponManager::Reset()
 
 
 
+
+
+bool WeaponManager::AddExistingWeaponAmmo(WeaponType type, uint16_t newAmmo)
+{
+    bool result = false;    // Weapon not found
+    WeaponMap::iterator w =_weapons.find(type);
+    if(w != _weapons.end())
+    {
+        w->second->AddAmmo(newAmmo);
+        result = true;
+    }
+    return result;
+}
+
+
+bool WeaponManager::InsertWeapon(std::pair<WeaponMap::iterator, bool>& insertResult)
+{
+        bool result = false;
+        if(insertResult.second)
+        {
+            _currentWeapon = insertResult.first;
+            _currentWeapon->second->Start();
+            ShowLoadout(_currentWeapon);
+            result = true;
+            
+        }
+        else
+        {
+            Serial.println("Weapon insert failed");
+        }
+        return result;
+}
+
+
+
+
 void WeaponManager::AddWeapon(WeaponType type, uint16_t initialAmmo)
 {
     Serial.print("Adding weapon type "); Serial.println(static_cast<int>(type));
@@ -114,29 +196,24 @@ void WeaponManager::AddWeapon(WeaponType type, uint16_t initialAmmo)
     {
         case WeaponType::AssaultRifle:
         {   
-            WeaponMap::iterator w =_weapons.find(type);
-            if(w != _weapons.end())    
-            {
-                w->second->AddAmmo(initialAmmo);
-            }
-            else
+
+            if(!AddExistingWeaponAmmo(type,initialAmmo))
             {
                 std::pair<WeaponMap::iterator, bool> result;
+                result = _weapons.emplace(type, std::make_shared<AssaultRifle>(300, 30, _stateData, 3));    
+                InsertWeapon(result);
+            }
+        }
+        break;
 
-                result = _weapons.emplace(type, std::make_shared<AssaultRifle>(300, 30, _stateData));
-   
-                if(result.second)
-                {
+        case WeaponType::AssaultRifleFullAuto:
+        {   
 
-                    _currentWeapon = result.first;
-                    _currentWeapon->second->Start();
-                    ShowLoadout(_currentWeapon);
-                    
-                }
-                else
-                {
-                    Serial.printf("Failed to insert weapon %d\n", type);
-                }
+            if(!AddExistingWeaponAmmo(type,initialAmmo))
+            {
+                std::pair<WeaponMap::iterator, bool> result;
+                result = _weapons.emplace(type, std::make_shared<AssaultRifle>(300, 30, _stateData, -1));    
+                InsertWeapon(result);
             }
         }
         break;

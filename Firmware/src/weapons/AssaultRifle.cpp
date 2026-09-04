@@ -14,16 +14,19 @@ namespace ARStrings
     static const char * const Empty = "/sounds/empty.wav";
     static const char * const InsertClip = "/sounds/insclip.wav";
     static const char * const Reload = "/sounds/reload.wav";
-    static const char * const ARImage = "/weapons/assault.bmp";
+    static const char * const ARImageFullAuto = "/weapons/assault.bmp";
+    static const char * const ARImage = "/weapons/sa80.bmp";
 
 };
 
 
-AssaultRifle::AssaultRifle( uint16_t reserve, uint16_t magSize, CombatLRServices& services)
+AssaultRifle::AssaultRifle( uint16_t reserve, uint16_t magSize, CombatLRServices& services, int burst)
 : Weapon(reserve, magSize, services),
 _rpmPacer(true),
 _reloadPacer(true),
-_state(ARState::Idle)
+_state(ARState::Idle),
+_burst(burst),
+_shotsTaken(0)
 {
     _rpmPacer.SetPace(150);
 
@@ -39,26 +42,30 @@ bool AssaultRifle::Run()
         {
             if(_services.triggerSwitch.RawRead())
             {                 
-
-                if(_magAmmo)
+                if(_burst==-1 ||    ( _shotsTaken < _burst))
                 {
-                    _services.sounds.PlayCached(ARStrings::Shot);
-                    _magAmmo--;
-                   
-                    _state = ARState::Shooting;
-                    _rpmPacer.PacerReset();
-                    actionTaken = true;
-                }
-                else
-                {
-                    _services.sounds.Play(ARStrings::Empty);
-                    _rpmPacer.PacerReset();    
-                    _state = ARState::Empty;             // USe the rpm pacer to debounce the raw trigger       
-                }
+                    if(_magAmmo)
+                    {
+                        _shotsTaken++;
+                        _services.sounds.PlayCached(ARStrings::Shot);
+                        _magAmmo--;
+                    
+                        _state = ARState::Shooting;
+                        _rpmPacer.PacerReset();
+                        actionTaken = true;
+                    }
+                    else
+                    {
+                        _services.sounds.Play(ARStrings::Empty);
+                        _rpmPacer.PacerReset();    
+                        _state = ARState::Empty;             // USe the rpm pacer to debounce the raw trigger       
+                    }
+                }                    
 
             }
             else
             {
+                _shotsTaken = 0;
                 if(_services.reloadSwitch.Pressed())
                 {
                     _state = ARState::MagInsert;
@@ -109,6 +116,16 @@ bool AssaultRifle::Run()
         }
         break;
 
+        case ARState::Equipping:
+        {
+            if(_services.sounds.HasFinished() && !_services.triggerSwitch.RawRead() && !_services.reloadSwitch.RawRead())
+            {
+                _state = ARState::Idle;
+            }
+        }
+        break;
+
+
         default: 
         {
             Serial.println("AR invalid state");
@@ -141,5 +158,21 @@ void AssaultRifle::Stop()
 
 const char * const AssaultRifle::GetFilename() 
 {
-    return ARStrings::ARImage;
+    if(_burst == -1)
+    {
+        return ARStrings::ARImageFullAuto;
+    }
+    else
+    {
+        return ARStrings::ARImage;
+
+    }
+}
+
+
+
+void AssaultRifle::Equip()
+{
+    _services.sounds.Play(ARStrings::Reload);
+    _state =  ARState::Equipping;
 }
