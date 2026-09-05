@@ -55,19 +55,19 @@ uint16_t GameRunningState::Run()
                 new TurnMapToHeadingCommand(
                     data.heading)));
 
-        float zoom = 1.0f;
-        if(_stateData.zoom.GetZoom(zoom))
-        {
-            Serial.println("Zoom");
-            _stateData.sounds.Play("/sounds/zoom.wav");
-            _stateData.displayManager.Send(
-            std::unique_ptr<IDisplayCommand>(
-                new ZoomCommand(
-                    zoom)));    
-        }
-
                 
-    }       
+    }   
+    
+    float zoom = 1.0f;
+    if(_stateData.zoom.GetZoom(zoom))   // Only process zoom if it has changed
+    {
+        Serial.println("Zoom");
+        _stateData.sounds.Play("/sounds/zoom.wav");
+        _stateData.displayManager.Send(
+        std::unique_ptr<IDisplayCommand>(
+            new ZoomCommand(
+                zoom)));    
+    }
 
     _stateData.zoneEngine.Update(0);
 

@@ -23,6 +23,15 @@ public:
     WeaponType GetWeaponType() override { return WeaponType::AssaultRifle;}
     const char * const GetFilename() override;
     void Equip();
+
+protected:
+    virtual bool CockingAction();
+    virtual void MagInsertAction();
+    virtual void EmptyAction();
+    virtual void ShootingAction();  // While shooting, use this for inter round dely
+    virtual bool IdleAction();     // Check the trigger and reload, start the shot
+    virtual void EquippingAction();
+
 private:
     Pacer _reloadPacer;
     Pacer _rpmPacer;

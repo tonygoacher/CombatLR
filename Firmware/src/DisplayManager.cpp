@@ -398,7 +398,8 @@ void DisplayManager::AddWidget(const AddWidgetCommand* command)
                     command->GetId(),
                     _textureManager,
                     command->GetPosition(),
-                    command->GetTextureFilename().c_str());
+                    command->GetTextureFilename().c_str(),  
+                    command->GetPickupType());
 
             _display->AddWidget(widget);
 

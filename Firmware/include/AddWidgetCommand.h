@@ -4,6 +4,7 @@
 #include "IDisplayCommand.h"
 #include "widgets/Widget.h"
 #include "GameCoordinate.h"
+#include "PickupTypes.h"
 
 class AddWidgetCommand final
     : public IDisplayCommand
@@ -13,17 +14,21 @@ public:
         uint32_t id,
         WidgetType widgetType,
         const GameCoordinate& position = { 0.0f, 0.0f },
-        const std::string textureFilename = "")
+        const std::string textureFilename = "",
+        PickupTypes pickupType = PickupTypes::None)
         :
         IDisplayCommand(DisplayCommandType::AddWidget),
         _id(id),
         _widgetType(widgetType),
         _position(position),
         _textureFilename(textureFilename),
-        _widget(nullptr)
+        _widget(nullptr),
+        _pickupType(pickupType)
     {
         
     }
+
+
 
     AddWidgetCommand(
         Widget* widget)
@@ -40,6 +45,11 @@ public:
     WidgetType GetWidgetType() const
     {
         return _widgetType;
+    }
+
+    PickupTypes GetPickupType() const
+    {
+        return _pickupType;
     }
 
     const GameCoordinate& GetPosition() const
@@ -60,4 +70,5 @@ private:
     GameCoordinate _position;
     const std::string _textureFilename;
     Widget* _widget;
+    PickupTypes _pickupType;
 };
