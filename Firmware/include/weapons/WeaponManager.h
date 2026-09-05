@@ -52,6 +52,8 @@ private:
     static const int TextZoom = 2;
     static const int TextFont = 2; 
 
+    inline static constexpr uint16_t DefaultMagSize = 30;
+
     bool AddExistingWeaponAmmo(WeaponType type, uint16_t newAmmo);
     bool InsertWeapon(std::pair<WeaponMap::iterator, bool>& insertResult);
 

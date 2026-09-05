@@ -2017,7 +2017,7 @@ namespace CombatLR.mobile.Pages
                     Id = _gamePlan. AllocatePickupId(),
                     EastMetres = local.EastMetres,
                     NorthMetres = local.NorthMetres,
-                    Type = PickupType.Health,
+                    Type = PickupType.Auto,
                     SpawnTimeSeconds = 0,
                     LifespanSeconds = 0
                 };
@@ -2091,6 +2091,10 @@ namespace CombatLR.mobile.Pages
                 PickupType.WeaponBonus =>
                     ImageSource.FromFile(
                         "pickup_weapon_bonus.png"),
+
+                PickupType.Auto =>
+                              ImageSource.FromFile(
+                                  "auto.png"),
 
                 _ =>
                     ImageSource.FromFile(

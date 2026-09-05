@@ -1092,6 +1092,8 @@ bool  ZoneEngine::GetPickupsWithin(
                 object.position.north -
                 playerPosition.north);
 
+   //     Serial.printf("E: %.3f N: %.3f\n", east, north);
+
         const float distanceSquared =
             east * east +
             north * north;

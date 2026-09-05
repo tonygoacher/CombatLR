@@ -39,6 +39,7 @@
                     <x:String>Health</x:String>
                     <x:String>Reload</x:String>
                     <x:String>Weapon Bonus</x:String>
+                    <x:String>Auto</x:String>
                 </Picker.Items>
             </Picker>
 
