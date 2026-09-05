@@ -905,7 +905,8 @@ void ZoneEngine::ActivatePickup(
             pickup.id,
             WidgetType::Pickup,
             pickup.GetPosition(),
-            filename);
+            filename,
+            pickup.type);
 
     if (!_displayManager.Send(
             std::unique_ptr<IDisplayCommand>(

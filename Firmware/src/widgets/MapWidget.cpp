@@ -6,14 +6,37 @@
     uint32_t id,
     TextureManager& textureManager,
     const GameCoordinate& position,
-    const char* filename)
+    const char* filename,
+    PickupTypes pickupType)
     :
     Widget(id, WidgetType::Pickup),
     _position(position),
-    _textureManager(textureManager)
+    _textureManager(textureManager),
+    _pickupType(pickupType)
 {
     strcpy(_filename, filename);
     _texture = textureManager.GetTexture(filename); // Map widgets are used a lok so use cached data if possible.
+    switch(pickupType)
+    {
+        case PickupTypes::Ammo:
+        {
+            _colour = TFT_RED;
+        }
+        break;
+
+        case PickupTypes::Bonus:
+        {
+            _colour = TFT_BLUE;
+        }
+        break;
+
+        case PickupTypes::Health:
+        {
+            _colour = TFT_GREEN;
+        }
+        break;
+
+    }
 }
 
 WidgetCoordinateSpace
@@ -92,75 +115,82 @@ const int16_t top =
             position.y -
             scaledHeight * 0.5f));
 
-const int16_t right =
-    static_cast<int16_t>(
-        lroundf(
-            position.x +
-            scaledWidth * 0.5f));
-
-const int16_t bottom =
-    static_cast<int16_t>(
-        lroundf(
-            position.y +
-            scaledHeight * 0.5f));
-
-
-
-for (int16_t screenY = top;
-     screenY < bottom;
-     ++screenY)
-{
-    for (int16_t screenX = left;
-         screenX < right;
-         ++screenX)
+    if(position.zoom >= 2.0)                // Prevent hundreds of icons being drawn at high zoom
     {
-        const float sourceX =
-            (static_cast<float>(screenX) -
-             left) /
-            widgetScale;
 
-        const float sourceY =
-            (static_cast<float>(screenY) -
-             top) /
-            widgetScale;
+        const int16_t right =
+            static_cast<int16_t>(
+                lroundf(
+                    position.x +
+                    scaledWidth * 0.5f));
 
-        const uint16_t sourcePixelX =
-            static_cast<uint16_t>(
-                sourceX);
+        const int16_t bottom =
+            static_cast<int16_t>(
+                lroundf(
+                    position.y +
+                    scaledHeight * 0.5f));
 
-        const uint16_t sourcePixelY =
-            static_cast<uint16_t>(
-                sourceY);
 
-        if (sourcePixelX >= width ||
-            sourcePixelY >= height)
+
+        for (int16_t screenY = top;
+            screenY < bottom;
+            ++screenY)
         {
-            continue;
+                for (int16_t screenX = left;
+                    screenX < right;
+                    ++screenX)
+                {
+                    const float sourceX =
+                        (static_cast<float>(screenX) -
+                        left) /
+                        widgetScale;
+
+                    const float sourceY =
+                        (static_cast<float>(screenY) -
+                        top) /
+                        widgetScale;
+
+                    const uint16_t sourcePixelX =
+                        static_cast<uint16_t>(
+                            sourceX);
+
+                    const uint16_t sourcePixelY =
+                        static_cast<uint16_t>(
+                            sourceY);
+
+                    if (sourcePixelX >= width ||
+                        sourcePixelY >= height)
+                    {
+                        continue;
+                    }
+
+                    const uint16_t colour =
+                        pixels[
+                            static_cast<size_t>(sourcePixelY) *
+                                width +
+                            sourcePixelX];
+
+                    if (colour == TFT_BLACK)
+                        continue;
+
+                    canvas.drawPixel(
+                        screenX,
+                        screenY,
+                        colour);
+                }
         }
+    }    
+    else
+    {   
 
-        const uint16_t colour =
-            pixels[
-                static_cast<size_t>(sourcePixelY) *
-                    width +
-                sourcePixelX];
-
-        if (colour == TFT_BLACK)
-            continue;
-
-        canvas.drawPixel(
-            screenX,
-            screenY,
-            colour);
+        canvas.drawSmoothArc(
+        static_cast<int16_t>(left + (scaledWidth /3)),
+        static_cast<int16_t>(top + (scaledHeight / 3)),
+        static_cast<int16_t>(scaledWidth * 0.7 ),
+        static_cast<int16_t>(scaledWidth * 0.7 )+4,
+        0,360,
+        _colour, TFT_BLACK);
     }
-    }
-
-    canvas.drawSmoothArc(
-    static_cast<int16_t>(left + (scaledWidth /2)),
-    static_cast<int16_t>(top + (scaledHeight / 2)),
-    static_cast<int16_t>(scaledWidth * 0.7 ),
-    static_cast<int16_t>(scaledWidth * 0.7 )+4,
-    0,360,
-    TFT_RED, TFT_BLACK);
 }
 
 
