@@ -28,6 +28,7 @@ _state(ARState::Idle),
 _burst(burst),
 _shotsTaken(0)
 {
+    Serial.printf("New weapon reserve: %d\n", reserve);
     _rpmPacer.SetPace(150);
 
 }

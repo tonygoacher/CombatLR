@@ -10,6 +10,8 @@
 #include "widgets/TextWidget.h"
 #include "stateMachine/Services.h"
 #include "weapons/WeaponManager.h"
+#include "ZoneEngine.h"
+#include "Player.h"
 
 class GameRunningState : public State
 {
@@ -21,9 +23,15 @@ public:
     void Exit() override;
 
 private:    
+    static const int PlayerStartHealth = 100;
     uint16_t    _gameTime;
     CombatLRServices& _stateData;
     WeaponManager& _weaponManager;
-    GameCoordinate _playerPosition;
+    Player  _player;
+    void CheckPickups();
+
+    void PickupBonus(ZoneEngine::PickupInfo &pickup);
+    void PickupHealth(ZoneEngine::PickupInfo &pickup);
+    void PickupAmmo(ZoneEngine::PickupInfo &pickup);
 
 };

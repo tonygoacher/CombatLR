@@ -4,7 +4,8 @@ public enum PickupType
 {
     Health = 0,
     Reload = 1,
-    WeaponBonus = 2
+    WeaponBonus = 2,
+    Auto = 3
 }
 
 public class GamePickup
