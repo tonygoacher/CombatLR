@@ -1,6 +1,6 @@
 #pragma once
 
-#include  <map>
+#include <map>
 #include "Pickup.h"
 
 struct Zone
@@ -12,5 +12,6 @@ struct Zone
     uint32_t startTime;
     uint32_t lifespanSeconds;
     uint32_t id;
+
     std::map<int, Pickup> pickups;
 };

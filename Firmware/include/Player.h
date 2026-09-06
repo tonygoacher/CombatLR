@@ -10,9 +10,9 @@ class Player
 public:
     Player(ISounds& sounds, int initialHealth);
     GameCoordinate& Position();
-    int GetHealth();
-    int AddHealth(int health);
-    int TakeHealth(int health);
+    int GetHealth();        // Player health = 0 - 100
+    unsigned int AddHealth(unsigned int health);  // Capped to 100
+    unsigned int TakeHealth(unsigned int health); // Capped to 0
     void SetPosition(GameCoordinate& newPos);
 
 

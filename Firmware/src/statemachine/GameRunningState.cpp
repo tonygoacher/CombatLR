@@ -17,6 +17,11 @@
 #include "weapons/AssaultRifle.h"
 #include "weapons/WeaponManager.h"
 
+#include "widgets/PlayerHealthWidget.h"
+#include "AddWidgetCommand.h"
+#include "RemoveWidgetCommand.h"
+#include "widgets/UIWidgetIds.h"
+
 
 
 
@@ -93,10 +98,17 @@ void GameRunningState::Entry()
 {
     _weaponManager.Init();
     _stateData.systemTime.Reset();
-    Serial.println("Adding weapon");
+
     _weaponManager.AddWeapon(WeaponType::AssaultRifle, 120);
     _weaponManager.AddWeapon(WeaponType::AssaultRifleFullAuto, 120);
-    Serial.println("Added");
+
+    PlayerHealthWidget*  healthDisplay = new PlayerHealthWidget(UIWidgetIds::PlayerHealth, _player, HealthX, HealthY, HealthW, HealthH);
+
+    _stateData.displayManager.Send(
+            std::unique_ptr<IDisplayCommand>(
+                new AddWidgetCommand(healthDisplay)));
+
+
 }
 
 
@@ -105,6 +117,9 @@ void GameRunningState::Entry()
 void GameRunningState::Exit()
 {
 
+    _stateData.displayManager.Send(
+        std::unique_ptr<IDisplayCommand>(
+            new RemoveWidgetCommand(UIWidgetIds::PlayerHealth)));
 }
 
 
@@ -133,7 +148,7 @@ void GameRunningState::CheckPickups()
                 }
                 break;
 
-                case    PickupTypes::Bonus:
+                case    PickupTypes::WeaponBonus:
                 {
                     PickupBonus(item);
                 }

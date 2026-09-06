@@ -94,7 +94,7 @@ uint16_t GameInitState::Run()
 
         if(_timeToGameStart <= 5 && _timeToGameStart)
         {
-            _stateData.sounds.Play("/sounds/countd.wav");
+       //     _stateData.sounds.Play("/sounds/countd.wav");
         }
 
         if(_timeToGameStart)
