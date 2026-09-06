@@ -212,7 +212,7 @@ void WeaponManager::AddWeapon(WeaponType type, uint16_t initialAmmo)
             if(!AddExistingWeaponAmmo(type,initialAmmo))
             {
                 std::pair<WeaponMap::iterator, bool> result;
-                result = _weapons.emplace(type, std::make_shared<AssaultRifle>(initialAmmo, DefaultMagSize, _stateData, 3));    
+                result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type, _stateData, 3));    
                 InsertWeapon(result);
             }
         }
@@ -224,7 +224,7 @@ void WeaponManager::AddWeapon(WeaponType type, uint16_t initialAmmo)
             if(!AddExistingWeaponAmmo(type,initialAmmo))
             {
                 std::pair<WeaponMap::iterator, bool> result;
-                result = _weapons.emplace(type, std::make_shared<AssaultRifle>(initialAmmo, DefaultMagSize, _stateData, -1));    
+                result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type, _stateData, -1));    
                 InsertWeapon(result);
             }
         }

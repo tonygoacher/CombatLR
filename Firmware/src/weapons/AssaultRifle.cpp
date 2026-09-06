@@ -20,15 +20,15 @@ namespace ARStrings
 };
 
 
-AssaultRifle::AssaultRifle( uint16_t reserve, uint16_t magSize, CombatLRServices& services, int burst)
-: Weapon(reserve, magSize, services),
+AssaultRifle::AssaultRifle( WeaponType type, CombatLRServices& services, int burst)
+: Weapon( type, services),
 _rpmPacer(true),
 _reloadPacer(true),
 _state(ARState::Idle),
 _burst(burst),
 _shotsTaken(0)
 {
-    Serial.printf("New weapon reserve: %d\n", reserve);
+
     _rpmPacer.SetPace(150);
 
 }
