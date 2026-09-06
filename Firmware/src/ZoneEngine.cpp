@@ -1325,3 +1325,16 @@ void ZoneEngine::Reset()
 
     _activeObjects.clear();
 }
+
+
+
+float ZoneEngine::GetProgress()
+{
+    if(_currentZoneIndex > 0)
+    {
+        return (float) _gamePlan.GetZones().size() / (float)_currentZoneIndex;
+    }
+
+    return 0.0f;
+
+}

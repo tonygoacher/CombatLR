@@ -23,12 +23,12 @@ class WeaponManager
 
 public:
     typedef std::map<WeaponType, std::shared_ptr<Weapon>> WeaponMap;
-    
+
     WeaponManager(CombatLRServices& stateData);
     void Init();
     void Reset();
     void Run(); // Used to pump the current weapon
-    void AddWeapon(WeaponType type, uint16_t initialAmmo);
+    void AddWeapon(WeaponType type);
     void AddAmmo(WeaponType type, uint16_t ammo);
 
     const WeaponMap& GetWeaponMap();
@@ -66,8 +66,7 @@ private:
 
     Pacer _selectPacer;
 
-    bool AddExistingWeaponAmmo(WeaponType type, uint16_t newAmmo);
-    bool InsertWeapon(std::pair<WeaponMap::iterator, bool>& insertResult);
+    bool InsertWeapon(std::pair<WeaponMap::iterator , bool>& insertResult);
 
 
 };
