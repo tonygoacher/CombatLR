@@ -78,6 +78,27 @@ void Weapon::CompleteReload()   // Shift from remaining ammo into mag given mag 
 }
 
 
+uint16_t Weapon::GetMaxAmmoReserve()
+{
+  static const uint16_t maxReserve[] = 
+    {
+        300,        // SA80,
+        300,        // M16
+    };
+    int index  = static_cast<int>(_type);
+    if(index >= countof(maxReserve))
+    {
+        Serial.printf("GetMaxAmmoReserve undefined value for weapon %d\n",index);
+        return 0;
+    }
+    else
+    {
+        return maxReserve[index];
+    }
+}
+
+
+
 uint16_t Weapon::GetMagCapacity()
 {
     static const uint16_t magCapacity[] = 

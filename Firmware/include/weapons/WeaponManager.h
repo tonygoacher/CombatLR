@@ -18,13 +18,20 @@ class Texture;
 
 class WeaponManager
 {
+
+
+
 public:
+    typedef std::map<WeaponType, std::shared_ptr<Weapon>> WeaponMap;
+    
     WeaponManager(CombatLRServices& stateData);
     void Init();
     void Reset();
     void Run(); // Used to pump the current weapon
     void AddWeapon(WeaponType type, uint16_t initialAmmo);
     void AddAmmo(WeaponType type, uint16_t ammo);
+
+    const WeaponMap& GetWeaponMap();
 
 private:
 
@@ -35,7 +42,8 @@ private:
         Select,
     };
 
-    typedef std::map<WeaponType, std::shared_ptr<Weapon>> WeaponMap;
+
+
     typedef std::pair<WeaponType, std::shared_ptr<Weapon>> WeaponPair;
     WeaponMap _weapons;
     WeaponMap::iterator _currentWeapon;

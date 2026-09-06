@@ -12,6 +12,7 @@
 #include "weapons/WeaponManager.h"
 #include "ZoneEngine.h"
 #include "Player.h"
+#include "weapons/AmmoPickup.h"
 
 class GameRunningState : public State
 {
@@ -28,6 +29,7 @@ private:
     CombatLRServices& _stateData;
     WeaponManager& _weaponManager;
     Player  _player;
+    AmmoPickup _ammoPickup;
     void CheckPickups();
 
     void PickupBonus(ZoneEngine::PickupInfo &pickup);

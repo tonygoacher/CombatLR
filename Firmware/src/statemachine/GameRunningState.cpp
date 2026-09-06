@@ -26,7 +26,7 @@
 
 
 GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, CombatLRServices& stateData, WeaponManager& weaponManager)
-: _stateData(stateData), _gameTime(gameTime), _player(stateData.sounds, PlayerStartHealth), _weaponManager(weaponManager)
+: _stateData(stateData), _gameTime(gameTime), _player(stateData.sounds, PlayerStartHealth), _weaponManager(weaponManager), _ammoPickup(weaponManager)
 {
 }
 
@@ -180,7 +180,9 @@ void GameRunningState::PickupHealth(ZoneEngine::PickupInfo &pickup)
 
 void GameRunningState::PickupAmmo(ZoneEngine::PickupInfo &pickup)
 {
-    
+    _ammoPickup.Collect();
+    _stateData.zoneEngine.ClaimPickup(pickup.id);  
+ 
 }
 
 
