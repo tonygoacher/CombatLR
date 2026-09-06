@@ -23,7 +23,7 @@ public:
     void Exit() override;
 
 private:    
-    static const int PlayerStartHealth = 100;
+    static const int PlayerStartHealth = 50;
     uint16_t    _gameTime;
     CombatLRServices& _stateData;
     WeaponManager& _weaponManager;
@@ -33,5 +33,10 @@ private:
     void PickupBonus(ZoneEngine::PickupInfo &pickup);
     void PickupHealth(ZoneEngine::PickupInfo &pickup);
     void PickupAmmo(ZoneEngine::PickupInfo &pickup);
+
+    static const int HealthX = 0;
+    static const int HealthY = 225;
+    static const int HealthW = 40 ;
+    static const int HealthH = 15;
 
 };

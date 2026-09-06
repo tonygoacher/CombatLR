@@ -24,7 +24,7 @@
         }
         break;
 
-        case PickupTypes::Bonus:
+        case PickupTypes::WeaponBonus:
         {
             _colour = TFT_BLUE;
         }

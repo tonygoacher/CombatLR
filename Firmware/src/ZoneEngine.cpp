@@ -892,7 +892,7 @@ void ZoneEngine::ActivatePickup(
             filename = "/reload.bmp";
             break;
 
-        case PickupTypes::Bonus:
+        case PickupTypes::WeaponBonus:
             filename = "/weapon.bmp";
             break;
 

@@ -6,7 +6,7 @@
 
 class Pickup
 {
-public:    
+public:
     double eastMetres;
     double northMetres;
 

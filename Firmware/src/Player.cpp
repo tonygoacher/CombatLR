@@ -26,7 +26,7 @@ int Player::GetHealth()
     return _health;  
 }
 
-int Player::AddHealth(int addHealth)
+unsigned int Player::AddHealth(unsigned int addHealth)
 {
     _sounds.Play(PlayerStrings::addingHealth); 
     _health += addHealth;
@@ -34,11 +34,11 @@ int Player::AddHealth(int addHealth)
     return _health;
 }
 
-int Player::TakeHealth(int takeHealth)
+unsigned int Player::TakeHealth(unsigned int takeHealth)
 {
     _health -= takeHealth;
 
-    _health = max(takeHealth,0);
+    _health = max(_health,0);
     return _health;
 }
 
