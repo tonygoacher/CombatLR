@@ -10,6 +10,7 @@ AmmoPickup::AmmoPickup(WeaponManager& weaponManager)
     :
     _weaponManager(weaponManager)
 {
+    Serial.println("Ammo pickup");
 }
 
 void AmmoPickup::Collect()

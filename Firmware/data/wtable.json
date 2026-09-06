@@ -1,0 +1,14 @@
+{
+  "weaponPickups": [
+    {
+      "type": 0,
+      "chance": 70,
+      "minimumProgress": 0
+    },
+    {
+      "type": 1,
+      "chance": 30,
+      "minimumProgress": 0
+    }
+  ]
+}

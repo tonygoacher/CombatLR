@@ -26,7 +26,11 @@
 
 
 GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, CombatLRServices& stateData, WeaponManager& weaponManager)
-: _stateData(stateData), _gameTime(gameTime), _player(stateData.sounds, PlayerStartHealth), _weaponManager(weaponManager), _ammoPickup(weaponManager)
+: _stateData(stateData), _gameTime(gameTime), _player(stateData.sounds, PlayerStartHealth),
+ _weaponManager(weaponManager), 
+ _ammoPickup(weaponManager),
+ _weaponPickupTable("/wtable.json"),
+ _weaponPickup(weaponManager, stateData.zoneEngine, _weaponPickupTable)
 {
 }
 
@@ -99,9 +103,6 @@ void GameRunningState::Entry()
     _weaponManager.Init();
     _stateData.systemTime.Reset();
 
-    _weaponManager.AddWeapon(WeaponType::AssaultRifle, 120);
-    _weaponManager.AddWeapon(WeaponType::AssaultRifleFullAuto, 120);
-
     PlayerHealthWidget*  healthDisplay = new PlayerHealthWidget(UIWidgetIds::PlayerHealth, _player, HealthX, HealthY, HealthW, HealthH);
 
     _stateData.displayManager.Send(
@@ -129,11 +130,12 @@ void GameRunningState::CheckPickups()
     std::vector<ZoneEngine::PickupInfo> nearbyPickups;
 
   //  Serial.printf("Player E: %.3f N: %.3f\n", _playerPosition.east, _playerPosition.north);
-    if(_stateData.zoneEngine.GetPickupsWithin(_player.Position(), 5.0f,nearbyPickups))
+    if(_stateData.zoneEngine.GetPickupsWithin(_player.Position(), 2.0f,nearbyPickups))
     {
         Serial.println("Nearby");
         for( auto item : nearbyPickups)
         {
+            Serial.printf("Piuckup type %d\n", item.type);
             switch(item.type)
             {
                 case   PickupTypes::Ammo:
@@ -166,7 +168,9 @@ void GameRunningState::CheckPickups()
 
 void GameRunningState::PickupBonus(ZoneEngine::PickupInfo &pickup)
 {
-
+    Serial.println("Found a weapon pickup");
+    _stateData.zoneEngine.ClaimPickup(pickup.id);
+    _weaponPickup.Collect();
 }
 
 

@@ -13,6 +13,8 @@
 #include "ZoneEngine.h"
 #include "Player.h"
 #include "weapons/AmmoPickup.h"
+#include "weapons/WeaponPickup.h"
+#include "weapons/JSONWeaponPickupTable.h"
 
 class GameRunningState : public State
 {
@@ -30,6 +32,8 @@ private:
     WeaponManager& _weaponManager;
     Player  _player;
     AmmoPickup _ammoPickup;
+    WeaponPickup _weaponPickup;
+    JsonWeaponPickupTable _weaponPickupTable;
     void CheckPickups();
 
     void PickupBonus(ZoneEngine::PickupInfo &pickup);

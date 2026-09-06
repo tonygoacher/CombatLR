@@ -348,7 +348,7 @@ uint16_t ST7789VDisplay::AddWidget(
     uint16_t id = 0;
     if (widget != nullptr)
     {
-        Serial.printf("Adding widget %lx Type %d to renderer", widget->GetId(), widget->GetType());
+        Serial.printf("Adding widget %lx Type %d to renderer\n", widget->GetId(), widget->GetType());
         _widgets.insert(std::pair<uint16_t , Widget*>( widget->GetId(), widget));
     }    
     return id;

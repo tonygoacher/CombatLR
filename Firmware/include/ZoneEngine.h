@@ -50,6 +50,8 @@ public:
     void RemoveZoneEventListener(
         IZoneEvent* listener);
 
+    float GetProgress();        
+
 private:
 
     static const int UpdateRate = 1000;

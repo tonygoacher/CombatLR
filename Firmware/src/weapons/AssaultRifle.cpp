@@ -24,7 +24,7 @@ AssaultRifle::AssaultRifle( WeaponType type, CombatLRServices& services, int bur
 : Weapon( type, services),
 _rpmPacer(true),
 _reloadPacer(true),
-_state(ARState::Idle),
+_state(ARState::StartReload),
 _burst(burst),
 _shotsTaken(0)
 {
@@ -38,6 +38,7 @@ _shotsTaken(0)
 bool AssaultRifle::IdleAction()
 {
     bool actionTaken = false;
+    Serial.println(static_cast<int>(_state));
     if(_services.triggerSwitch.RawRead())
     {                 
         if(_burst==-1 ||    ( _shotsTaken < _burst))
@@ -66,12 +67,20 @@ bool AssaultRifle::IdleAction()
         _shotsTaken = 0;
         if(_services.reloadSwitch.Pressed())
         {
-            _state = ARState::MagInsert;
-            _reloadPacer.SetPace(3000);
-            _services.sounds.Play(ARStrings::InsertClip);
+            _state=ARState::StartReload;
         }
     }
     return actionTaken;
+}
+
+
+void AssaultRifle::StartReload()
+{
+    _shotsTaken = 0;
+
+    _state = ARState::MagInsert;
+    _reloadPacer.SetPace(3000);
+    _services.sounds.Play(ARStrings::InsertClip);
 }
 
 
@@ -148,6 +157,12 @@ bool AssaultRifle::Run()
         case ARState::Empty:
         {
             EmptyAction();
+        }
+        break;
+
+         case ARState::StartReload:
+        {
+            StartReload();
         }
         break;
 
