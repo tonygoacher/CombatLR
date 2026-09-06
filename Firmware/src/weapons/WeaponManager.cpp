@@ -236,5 +236,17 @@ void WeaponManager::AddWeapon(WeaponType type, uint16_t initialAmmo)
 
 void WeaponManager::AddAmmo(WeaponType type, uint16_t ammo)
 {
+    WeaponMap::iterator weapon = _weapons.find(type);
+    if(weapon != _weapons.end())
+    {
+        weapon->second->AddAmmo(ammo);
+    }
+}
 
+
+
+
+const WeaponManager::WeaponMap& WeaponManager::GetWeaponMap()
+{
+    return _weapons;
 }

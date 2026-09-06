@@ -185,6 +185,10 @@ bool AssaultRifle::Run()
 void AssaultRifle::AddAmmo(uint16_t addAmmo)
 {
 
+
+    _services.sounds.Play("/sounds/ampick.wav");   
+    _reserveAmmo += addAmmo;
+
 }
 
 
