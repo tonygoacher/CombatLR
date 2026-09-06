@@ -19,9 +19,10 @@
 
 
 WeaponManager::WeaponManager(CombatLRServices & stateData)
-: _stateData(stateData)
+: _stateData(stateData), _selectPacer(false)
 {
     _state = WMStates::Normal;
+    _selectPacer.SetPace(SelectTimeout);
 }
 
 
@@ -46,6 +47,7 @@ void WeaponManager::Run()
             _state = WMStates::Select;
             _displayWeapon = _currentWeapon;
             ShowSelectWeapon();
+            _selectPacer.PacerReset();
         }
     }
 
@@ -55,6 +57,8 @@ void WeaponManager::Run()
         bool actionTaken = false;
         if(_stateData.leftSwitch.Pressed())
         {
+            _selectPacer.PacerReset();
+
             actionTaken = true;
             if(_displayWeapon == _weapons.begin())
             {
@@ -68,6 +72,8 @@ void WeaponManager::Run()
 
         if(_stateData.rightSwitch.Pressed())
         {
+            _selectPacer.PacerReset();
+          
             actionTaken = true;
             if(std::next(_displayWeapon) == _weapons.end())
             {
@@ -97,6 +103,12 @@ void WeaponManager::Run()
             _state = WMStates::Normal;
 
         }
+
+        if(_selectPacer.Pace())
+        {
+            _state = WMStates::Normal;
+            _stateData.displayManager.Send(std::unique_ptr<IDisplayCommand>(new RemoveWidgetCommand(UIWidgetIds::SelectWeapon))); 
+        }
     }
 
 }
@@ -120,7 +132,7 @@ void WeaponManager::ShowLoadout(WeaponMap::iterator& weapon)
     uint16_t allAmmo = weapon->second->GetRemainingAmmo();
     uint16_t magAmmo = weapon->second->GetMagAmmo();
     char data[16];
-    sprintf(data, "%d :%d", magAmmo, allAmmo);
+    sprintf(data, "%02d :%03d", magAmmo, allAmmo);
 
     _stateData.displayManager.Send(std::unique_ptr<IDisplayCommand>(
         new SetTextCommand(UIWidgetIds::AmmoDisplay, data)));

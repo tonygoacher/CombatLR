@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <map>
 #include "stateMachine/Services.h"
+#include "Pacer.h"
 
 
 
@@ -48,13 +49,17 @@ private:
 
 
     static const int TextX = 270;
-    static const int TextY=220;
+    static const int TextY=225;
     static const int TextZoom = 2;
     static const int TextFont = 2; 
 
     inline static constexpr uint16_t DefaultMagSize = 30;
+     inline static constexpr uint16_t SelectTimeout = 7000; // Weapon select times out back to current weapons after this many ms
+
+    Pacer _selectPacer;
 
     bool AddExistingWeaponAmmo(WeaponType type, uint16_t newAmmo);
     bool InsertWeapon(std::pair<WeaponMap::iterator, bool>& insertResult);
+
 
 };
