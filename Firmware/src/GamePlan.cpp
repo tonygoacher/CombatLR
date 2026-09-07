@@ -29,16 +29,16 @@ namespace
     // the same structure can later be represented directly in JSON.
     constexpr PickupDistribution PickupDistributions[] =
     {
-        { 40, 40, 20 },   // Zone 0
-        { 40, 40, 20 },   // Zone 1
-        { 40, 40, 20 },   // Zone 2
-        { 40, 40, 20 },   // Zone 3
-        { 40, 40, 20 },   // Zone 4
-        { 40, 40, 20 },   // Zone 5
-        { 40, 40, 20 },   // Zone 6
-        { 40, 40, 20 },   // Zone 7
-        { 40, 40, 20 },   // Zone 8
-        { 40, 40, 20 }    // Zone 9
+        { 20, 50, 30 },   // Zone 0
+        { 10, 50, 30 },   // Zone 1
+        { 10, 60, 30 },   // Zone 2
+        { 10, 60, 30 },   // Zone 3
+        { 10, 60, 30 },   // Zone 4
+        { 10, 60, 30 },   // Zone 5
+        { 10, 60, 30 },   // Zone 6
+        { 10, 60, 30 },   // Zone 7
+        { 10, 60, 30 },   // Zone 8
+        { 10, 60, 30 }    // Zone 9
     };
 
     constexpr size_t PickupDistributionCount =

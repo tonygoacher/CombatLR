@@ -1,11 +1,12 @@
 
 #include "weapons/Weapon.h"
-#include "TextureManager.h"
+#include "weapons/WeaponConfig.h"
+#include "graphics/TextureManager.h"
 #include "countof.h"
 
 
-Weapon::Weapon(WeaponType type, CombatLRServices& services)
-:    _services(services), _magAmmo(0), _type(type)
+Weapon::Weapon(WeaponType type, WeaponConfig& weaponConfig, CombatLRServices& services)
+:    _services(services), _magAmmo(0), _type(type), _weaponConfig(weaponConfig)
 {
     _reserveAmmo = GetDefaultAmmoCount();
     CompleteReload();
@@ -17,42 +18,14 @@ Weapon::Weapon(WeaponType type, CombatLRServices& services)
 
 uint16_t Weapon::GetMaxReload()
 {
-    static const uint16_t maxReloads[] = 
-    {
-        300,        // SA80,
-        300,        // M16
-    };
-    int index  = static_cast<int>(_type);
-    if(index >= countof(maxReloads))
-    {
-        Serial.printf("GetMaxReload undefined value for weapon %d\n",index);
-        return 0;
-    }
-    else
-    {
-        return maxReloads[index];
-    }
+    return _weaponConfig.GetMaxReload(_type);
 }
 
 
 
 uint16_t Weapon::GetDefaultAmmoCount()
 {
-    static const uint16_t defaultAmmo[] = 
-    {
-        120,        // SA80,
-        120,        // M16
-    };
-    int index  = static_cast<int>(_type);
-    if(index >= countof(defaultAmmo))
-    {
-        Serial.printf("GetDefaultAmmoCount undefined value for weapon %d\n",index);
-        return 0;
-    }
-    else
-    {
-        return defaultAmmo[index];
-    }
+    return _weaponConfig.GetDefaultAmmoCount(_type);
 }
 
 
@@ -80,40 +53,12 @@ void Weapon::CompleteReload()   // Shift from remaining ammo into mag given mag 
 
 uint16_t Weapon::GetMaxAmmoReserve()
 {
-  static const uint16_t maxReserve[] = 
-    {
-        300,        // SA80,
-        300,        // M16
-    };
-    int index  = static_cast<int>(_type);
-    if(index >= countof(maxReserve))
-    {
-        Serial.printf("GetMaxAmmoReserve undefined value for weapon %d\n",index);
-        return 0;
-    }
-    else
-    {
-        return maxReserve[index];
-    }
+    return _weaponConfig.GetMaxAmmoReserve(_type);
 }
 
 
 
 uint16_t Weapon::GetMagCapacity()
 {
-    static const uint16_t magCapacity[] = 
-    {
-        30,        // SA80,
-        30,        // M16
-    };
-    int index  = static_cast<int>(_type);
-    if(index >= countof(magCapacity))
-    {
-        Serial.printf("GetMagCapacity undefined value for weapon %d\n",index);
-        return 0;
-    }
-    else
-    {
-        return magCapacity[index];
-    }
+    return _weaponConfig.GetMagCapacity(_type);
 }

@@ -11,19 +11,19 @@
 #include "MillisGameTime.h"
 #include "GameController.h"
 #include "widgets/ZoneWidget.h"
-#include "IDisplay.h"
-#include "TextureManager.h"
+#include "graphics/IDisplay.h"
+#include "graphics/TextureManager.h"
 #include "widgets/MapWidget.h"
 #include <LittleFS.h>
 #include "Ports.h"
 #include "SteppedZoom.h"
-#include "ZoomCommand.h"
-#include "PlayerPositionCommand.h"
-#include "TurnMapToHeadingCommand.h"
-#include "DisplayManager.h"
-#include "ConfigureMapCommand.h"
-#include "AddWidgetCommand.h"
-#include "AddZoneCommand.h"
+#include "graphics/ZoomCommand.h"
+#include "graphics/PlayerPositionCommand.h"
+#include "graphics/TurnMapToHeadingCommand.h"
+#include "graphics/DisplayManager.h"
+#include "graphics/ConfigureMapCommand.h"
+#include "graphics/AddWidgetCommand.h"
+#include "graphics/AddZoneCommand.h"
 #include "PickupTypes.h"
 #include "ZoneEngine.h"
 #include "statemachine/PowerUpState.h"
@@ -114,8 +114,8 @@ namespace
     SteppedZoom zoom(zoomSwitch);
 
     PacerTime gameTime;
-
-    CombatLRServices stateData{displayManager, navigation, zoneEngine, sounds, zoom, geoReference, laserTag, gameTime, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch};
+    WeaponConfig weaponConfig;
+    CombatLRServices stateData{displayManager, navigation, zoneEngine, sounds, zoom, geoReference, laserTag, gameTime, weaponConfig, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch};
     WeaponManager weaponManager(stateData);
     CombatLRStateMachine stateMachine(stateData,weaponManager);
 
@@ -191,6 +191,7 @@ void NavigationDisplayTestBegin()
     displayManager.Begin();
     sounds.Begin();
     gameTime.Reset();
+    weaponConfig.Init();
    
     if(!gamePlan.Load("/gameplan.json"))
     {

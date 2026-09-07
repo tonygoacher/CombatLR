@@ -1,7 +1,7 @@
 #include "widgets/UIWidget.h"
 #include "TFT_eSPI.h"
-#include "IDisplayContext.h"
-#include "TextureManager.h"
+#include "graphics/IDisplayContext.h"
+#include "graphics/TextureManager.h"
 #include "widgets/UIWidgetIds.h"
 #include "widgets/UIWidgetIds.h"
 #include <LittleFS.h>
@@ -18,8 +18,16 @@ UIWidget::UIWidget(
     Widget(id, WidgetType::UI),
     _position(position)
 {
-    strcpy(_filename, filename);
-    _texture.Load(LittleFS, filename);
+    if(filename == nullptr)
+    {
+        Serial.printf("Null filename for UI widget id %d\n", id);
+    }
+    else
+    {
+        strcpy(_filename, filename);
+        _texture.Load(LittleFS, filename);
+    }
+
 }
 
 

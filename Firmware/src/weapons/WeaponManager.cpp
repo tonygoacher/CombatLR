@@ -4,10 +4,10 @@
 
 #include "widgets/TextWidget.h"
 #include "widgets/UIWidgetIds.h"
-#include "DisplayManager.h"
-#include "AddWidgetCommand.h"
-#include "SetTextCommand.h"
-#include "RemoveWidgetCommand.h"
+#include "graphics/DisplayManager.h"
+#include "graphics/AddWidgetCommand.h"
+#include "graphics/SetTextCommand.h"
+#include "graphics/RemoveWidgetCommand.h"
 #include "PBSwitch.h"
 #include "weapons/AssaultRifle.h"
 
@@ -204,7 +204,7 @@ void WeaponManager::AddWeapon(WeaponType type)
         {   
 
             std::pair<WeaponMap::iterator, bool> result;
-            result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type, _stateData, 3));    
+            result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type, _stateData.weaponConfig,  _stateData, 3));    
             InsertWeapon(result);
 
         }
@@ -213,7 +213,15 @@ void WeaponManager::AddWeapon(WeaponType type)
         case WeaponType::AssaultRifleFullAuto:
         {   
                 std::pair<WeaponMap::iterator, bool> result;
-                result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type, _stateData, -1));    
+                result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type,  _stateData.weaponConfig, _stateData, -1));    
+                InsertWeapon(result);
+        }
+        break;
+
+        case WeaponType::Blaster:
+        {   
+                std::pair<WeaponMap::iterator, bool> result;
+                result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type,  _stateData.weaponConfig, _stateData, -1));    
                 InsertWeapon(result);
         }
         break;

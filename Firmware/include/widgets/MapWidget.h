@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Widget.h"
-#include "Texture.h"
-#include "TextureManager.h"
+#include "graphics/Texture.h"
+#include "graphics/TextureManager.h"
 #include "PickupTypes.h"
 
 class MapWidget : public Widget

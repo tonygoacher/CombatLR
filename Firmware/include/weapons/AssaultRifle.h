@@ -14,7 +14,7 @@ class IRLaserTag;
 class AssaultRifle : public Weapon
 {
 public:
-    AssaultRifle(WeaponType type, CombatLRServices& services, int burst);
+    AssaultRifle(WeaponType type, WeaponConfig& weaponConfig,CombatLRServices& services, int burst);
     
     bool Run() override;
     void AddAmmo(uint16_t addAmmo) override;
@@ -31,6 +31,11 @@ protected:
     virtual void StartReload();
     virtual bool IdleAction();     // Check the trigger and reload, start the shot
     virtual void EquippingAction();
+
+    const char * const GetShotFilename();
+    const char * const GetReloadFilename();
+    const char * const GetEmptyFilename();
+    const char * const GetMagInsertFilename();
 
 private:
     Pacer _reloadPacer;

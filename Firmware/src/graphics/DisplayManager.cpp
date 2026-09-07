@@ -1,19 +1,19 @@
-#include "DisplayManager.h"
+#include "graphics/DisplayManager.h"
 #include <memory>
-#include "ZoomCommand.h"
-#include "PlayerPositionCommand.h"
-#include "TurnMapToHeadingCommand.h"
-#include "DisplayBackgroundCommand.h"
-#include "ConfigureMapCommand.h"
-#include "AddWidgetCommand.h"
+#include "graphics/ZoomCommand.h"
+#include "graphics/PlayerPositionCommand.h"
+#include "graphics/TurnMapToHeadingCommand.h"
+#include "graphics/DisplayBackgroundCommand.h"
+#include "graphics/ConfigureMapCommand.h"
+#include "graphics/AddWidgetCommand.h"
 #include "widgets/MapWidget.h"
 #include "widgets/ZoneWidget.h"
-#include "AddZoneCommand.h"
-#include "RemoveWidgetCommand.h"
-#include "SetWidgetColourCommand.h"
-#include "SetZoneGeometryCommand.h"
-#include "SetTextCommand.h"
-#include "EnableWidgetCommand.h"
+#include "graphics/AddZoneCommand.h"
+#include "graphics/RemoveWidgetCommand.h"
+#include "graphics/SetWidgetColourCommand.h"
+#include "graphics/SetZoneGeometryCommand.h"
+#include "graphics/SetTextCommand.h"
+#include "graphics/EnableWidgetCommand.h"
 
 DisplayManager::DisplayManager(
     TextureManager& textureManager)
@@ -428,6 +428,7 @@ void DisplayManager::RemoveWidget(const RemoveWidgetCommand* command)
 {
        if (command == nullptr)
         return;
+        
     _display->RemovedWidget(command->GetWidgetId()); 
 }
 

@@ -14,9 +14,11 @@ public:
     unsigned int AddHealth(unsigned int health);  // Capped to 100
     unsigned int TakeHealth(unsigned int health); // Capped to 0
     void SetPosition(GameCoordinate& newPos);
+    bool AtMaxHealth();
 
 
 private:
+    static const int MaxHealth = 100;
     GameCoordinate  _playerPos;
     int         _health;
     ISounds&        _sounds;

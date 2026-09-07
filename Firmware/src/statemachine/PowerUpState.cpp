@@ -1,11 +1,11 @@
 
 #include "statemachine/PowerUpState.h"
 #include "ISounds.h"
-#include "DisplayManager.h"
+#include "graphics/DisplayManager.h"
 #include "Navigation.h"
-#include "DisplayBackgroundCommand.h"
+#include "graphics/DisplayBackgroundCommand.h"
 #include  "statemachine/SystemStates.h"
-#include "AddWidgetCommand.h"
+#include "graphics/AddWidgetCommand.h"
 #include "widgets/GPSStatusWidget.h"
 #include "widgets/UIWidgetIds.h"
 

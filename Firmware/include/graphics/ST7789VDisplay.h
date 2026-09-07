@@ -6,10 +6,10 @@
 
 #include "IDisplay.h"
 #include "widgets/Widget.h"
-#include "IDisplayContext.h"
-#include "ConfigureMapCommand.h"
+#include "graphics/IDisplayContext.h"
+#include "graphics/ConfigureMapCommand.h"
 #include "MapReference.h"
-#include "Texture.h"
+#include "graphics/Texture.h"
 
 
 class ST7789VDisplay : public IDisplay
