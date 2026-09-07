@@ -2,8 +2,8 @@
 
 #include "TFT_eSPI.h"
 #include "widgets/Widget.h"
-#include "Texture.h"
-#include "TextureManager.h"
+#include "graphics/Texture.h"
+#include "graphics/TextureManager.h"
 #include "Navigation.h"
 
 

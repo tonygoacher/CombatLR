@@ -1,6 +1,7 @@
 #pragma once
 
 #include "weapons/Weapon.h"
+#include "weapons/WeaponConfig.h"
 #include <stdint.h>
 #include <map>
 #include "stateMachine/Services.h"
@@ -65,6 +66,7 @@ private:
      inline static constexpr uint16_t SelectTimeout = 7000; // Weapon select times out back to current weapons after this many ms
 
     Pacer _selectPacer;
+
 
     bool InsertWeapon(std::pair<WeaponMap::iterator , bool>& insertResult);
 

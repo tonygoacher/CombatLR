@@ -1,6 +1,6 @@
 #include "widgets/MapWidget.h"
 #include "TFT_eSPI.h"
-#include "IDisplayContext.h"
+#include "graphics/IDisplayContext.h"
 
     MapWidget::MapWidget(
     uint32_t id,
@@ -20,13 +20,13 @@
     {
         case PickupTypes::Ammo:
         {
-            _colour = TFT_RED;
+            _colour = TFT_BLUE;
         }
         break;
 
         case PickupTypes::WeaponBonus:
         {
-            _colour = TFT_BLUE;
+            _colour = TFT_RED;
         }
         break;
 

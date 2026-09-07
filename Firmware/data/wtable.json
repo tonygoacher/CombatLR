@@ -9,6 +9,11 @@
       "type": 1,
       "chance": 30,
       "minimumProgress": 0
+    },
+	{
+      "type": 2,
+      "chance": 20,
+      "minimumProgress": 0
     }
   ]
 }

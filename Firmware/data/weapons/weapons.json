@@ -1,0 +1,43 @@
+{
+  "weapons": [
+    {
+      "type": 0,
+      "image": "/weapons/sa80.bmp",
+      "shoot": "/sounds/milshot.wav",
+      "clipInsert": "/sounds/insclip.wav",
+      "cocking": "/sounds/reload.wav",
+      "empty": "/sounds/empty.wav",
+      "postMagTimeout": 3000,
+	  "magCapacity": 30,
+	  "maxAmmoReserve": 300,
+	  "defaultAmmoCount": 120,
+	  "maxReload": 200
+    },
+    {
+      "type": 1,
+      "image": "/weapons/assault.bmp",
+      "shoot": "/sounds/milshot.wav",
+      "clipInsert": "/sounds/insclip.wav",
+      "cocking": "/sounds/reload.wav",
+      "empty": "/sounds/empty.wav",
+      "postMagTimeout": 3000,
+	  "magCapacity": 30,
+	  "maxAmmoReserve": 300,
+	  "defaultAmmoCount": 120,
+	  "maxReload": 200
+    },
+	{
+      "type": 2,
+      "image": "/weapons/blaster.bmp",
+      "shoot": "/sounds/blaster.wav",
+      "clipInsert": "/sounds/insclip.wav",
+      "cocking": "/sounds/blasterr.wav",
+      "empty": "/sounds/blastere.wav",
+      "postMagTimeout": 1000,
+	  "magCapacity": 20,
+	  "maxAmmoReserve": 200,
+	  "defaultAmmoCount": 100,
+	  "maxReload": 200
+    }
+  ]
+}

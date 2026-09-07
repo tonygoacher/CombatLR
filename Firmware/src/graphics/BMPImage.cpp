@@ -1,4 +1,4 @@
-#include "BMPImage.h"
+#include "graphics/BMPImage.h"
 
 #include <stdlib.h>
 #include <string.h>

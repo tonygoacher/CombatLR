@@ -10,6 +10,7 @@ class GeoReference;
 class ISystemTime;
 class PBSwitch;
 class IRLaserTag;
+class WeaponConfig;
 
 struct CombatLRServices
 {
@@ -22,6 +23,7 @@ struct CombatLRServices
     GeoReference& geoReference;
     IRLaserTag& laserTag;
     ISystemTime& systemTime;
+    WeaponConfig& weaponConfig;
     PBSwitch&   triggerSwitch;
     PBSwitch&   reloadSwitch;
     PBSwitch&   leftSwitch;

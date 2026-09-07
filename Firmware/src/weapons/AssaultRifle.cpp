@@ -1,27 +1,17 @@
 #include "weapons/AssaultRifle.h"
 #include "IRLaserTag.h"
 #include "PBSwitch.h"
-#include "Texture.h"
+#include "graphics/Texture.h"
 #include "ISounds.h"
 #include "stateMachine/Services.h"
-#include "DisplayManager.h"
+#include "graphics/DisplayManager.h"
+#include "weapons/WeaponConfig.h"
+#include "countof.h"
 
 
 
-namespace ARStrings
-{
-    static const char * const Shot = "/sounds/milshot.wav";
-    static const char * const Empty = "/sounds/empty.wav";
-    static const char * const InsertClip = "/sounds/insclip.wav";
-    static const char * const Reload = "/sounds/reload.wav";
-    static const char * const ARImageFullAuto = "/weapons/assault.bmp";
-    static const char * const ARImage = "/weapons/sa80.bmp";
-
-};
-
-
-AssaultRifle::AssaultRifle( WeaponType type, CombatLRServices& services, int burst)
-: Weapon( type, services),
+AssaultRifle::AssaultRifle( WeaponType type, WeaponConfig& weaponConfig,CombatLRServices& services, int burst)
+: Weapon( type, weaponConfig,services),
 _rpmPacer(true),
 _reloadPacer(true),
 _state(ARState::StartReload),
@@ -38,7 +28,6 @@ _shotsTaken(0)
 bool AssaultRifle::IdleAction()
 {
     bool actionTaken = false;
-    Serial.println(static_cast<int>(_state));
     if(_services.triggerSwitch.RawRead())
     {                 
         if(_burst==-1 ||    ( _shotsTaken < _burst))
@@ -46,7 +35,7 @@ bool AssaultRifle::IdleAction()
             if(_magAmmo)
             {
                 _shotsTaken++;
-                _services.sounds.PlayCached(ARStrings::Shot);
+                _services.sounds.PlayCached(GetShotFilename());
                 _magAmmo--;
             
                 _state = ARState::Shooting;
@@ -55,7 +44,7 @@ bool AssaultRifle::IdleAction()
             }
             else
             {
-                _services.sounds.Play(ARStrings::Empty);
+                _services.sounds.Play(GetEmptyFilename());
                 _rpmPacer.PacerReset();    
                 _state = ARState::Empty;             // USe the rpm pacer to debounce the raw trigger       
             }
@@ -79,8 +68,8 @@ void AssaultRifle::StartReload()
     _shotsTaken = 0;
 
     _state = ARState::MagInsert;
-    _reloadPacer.SetPace(3000);
-    _services.sounds.Play(ARStrings::InsertClip);
+    _reloadPacer.SetPace(_weaponConfig.GetPostMagTimeout(_type));
+    _services.sounds.Play(GetMagInsertFilename());
 }
 
 
@@ -107,7 +96,7 @@ void AssaultRifle::MagInsertAction()
 {
     if(_reloadPacer.Pace())
     {
-        _services.sounds.Play(ARStrings::Reload);
+        _services.sounds.Play(GetReloadFilename());
         _state = ARState::Cocking;
     }
 }
@@ -209,34 +198,53 @@ void AssaultRifle::AddAmmo(uint16_t addAmmo)
 
 void AssaultRifle::Start()
 {
-    _services.sounds.CacheSample(ARStrings::Shot);
+    Serial.println(GetShotFilename());
+    _services.sounds.CacheSample(GetShotFilename());
 
 }
 
 void AssaultRifle::Stop()
 {
-    _services.sounds.UnCacheSample(ARStrings::Shot);
+    _services.sounds.UnCacheSample(GetShotFilename());
 }
 
 
 
 const char * const AssaultRifle::GetFilename() 
 {
-    if(_burst == -1)
-    {
-        return ARStrings::ARImageFullAuto;
-    }
-    else
-    {
-        return ARStrings::ARImage;
-
-    }
+    return _weaponConfig.GetImageFilename(_type);  
 }
 
 
 
 void AssaultRifle::Equip()
 {
-    _services.sounds.Play(ARStrings::Reload);
+    _services.sounds.Play(GetReloadFilename());
     _state =  ARState::Equipping;
+}
+
+
+
+const char * const AssaultRifle::GetShotFilename()
+{
+    return _weaponConfig.GetShootSampleFilename(_type);
+}
+
+
+
+const char * const AssaultRifle::GetReloadFilename()
+{
+    return _weaponConfig.GetCockingFilename(_type);
+}
+
+
+
+const char * const AssaultRifle::GetEmptyFilename()
+{
+    return _weaponConfig.GetEmptyFilename(_type);
+}
+
+const char * const AssaultRifle::GetMagInsertFilename()
+{
+    return _weaponConfig.GetClipInsertSampleFilename(_type);
 }

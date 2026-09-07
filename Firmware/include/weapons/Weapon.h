@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "Texture.h"
+#include "graphics/Texture.h"
 
 class PBSwitch;
 class IRLaserTag;
@@ -13,12 +13,18 @@ enum class WeaponType               // These must always start at 0 and be conti
 {
     AssaultRifle,
     AssaultRifleFullAuto,
+    Blaster,
 };
+
+class WeaponConfig;
+
+
+
 
 class Weapon
 {
 public:
-    Weapon(  WeaponType type, CombatLRServices& services);
+    Weapon(  WeaponType type, WeaponConfig& weaponConfig,  CombatLRServices& services);
 
     virtual ~Weapon() = default;
 
@@ -51,4 +57,5 @@ protected:
     CombatLRServices& _services;
     Texture*     _texture;
     WeaponType  _type;
+    WeaponConfig& _weaponConfig;
 };

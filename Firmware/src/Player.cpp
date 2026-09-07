@@ -30,7 +30,7 @@ unsigned int Player::AddHealth(unsigned int addHealth)
 {
     _sounds.Play(PlayerStrings::addingHealth); 
     _health += addHealth;
-    _health = min(_health, 100);
+    _health = min(_health, MaxHealth);
     return _health;
 }
 
@@ -45,4 +45,11 @@ unsigned int Player::TakeHealth(unsigned int takeHealth)
 void Player::SetPosition(GameCoordinate& newPos)
 {
     _playerPos = newPos;
+}
+
+
+
+bool Player::AtMaxHealth()
+{
+    return _health >= MaxHealth;
 }

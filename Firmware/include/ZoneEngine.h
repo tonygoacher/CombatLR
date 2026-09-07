@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "GamePlan.h"
-#include "DisplayManager.h"
+#include "graphics/DisplayManager.h"
 #include "IPickupEvent.h"
 #include "IZoneEvent.h"
 #include "widgets/Widget.h"

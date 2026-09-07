@@ -1,0 +1,233 @@
+#include "weapons/WeaponConfig.h"
+#include <Arduino.h>
+#include <ArduinoJson.h>
+#include <LittleFS.h>
+#include <utility>
+
+namespace
+{
+    constexpr const char* WeaponConfigFilename =
+        "/weapons/weapons.json";
+}
+
+WeaponConfig::WeaponConfig()
+{
+
+}
+
+
+void WeaponConfig::PrintDef(WeaponDefinition& def)
+{
+    Serial.print("Type:"); Serial.println(static_cast<int>(def.type));
+    Serial.printf("Insert sample:   %s\n",def.clipInsertSampleFilename.c_str());
+    Serial.printf("Cocking sample:  %s\n",def.cockingFilename.c_str());
+    Serial.printf("Empty sample:    %s\n",def.emptyFilename.c_str());
+    Serial.printf("Image:           %s\n",def.imageFilename.c_str());
+    Serial.printf("Shoot sample:    %s\n",def.shootSampleFilename.c_str());
+    Serial.printf("Post mag time:   %d\n", def.postMagTimeout);
+    Serial.printf("Mag capacity:    %d\n",def.magCapacity);
+    Serial.printf("Max ammo rserve: %d\n",def.maxAmmoReserve);
+    Serial.printf("Default ammo:    %d\n",def.defaultAmmoCount);
+    Serial.printf("Max reload:      %d\n", def.maxReload);
+}
+
+
+bool WeaponConfig::Load()
+{
+    _weapons.clear();
+
+    File file = LittleFS.open(
+        WeaponConfigFilename,
+        FILE_READ);
+
+    if (!file)
+    {
+        Serial.printf(
+            "WeaponConfig: failed to open %s\n",
+            WeaponConfigFilename);
+
+        return false;
+    }
+
+    JsonDocument document;
+
+    const DeserializationError error =
+        deserializeJson(
+            document,
+            file);
+
+    file.close();
+
+    if (error)
+    {
+        Serial.printf(
+            "WeaponConfig: JSON parse failed: %s\n",
+            error.c_str());
+
+        return false;
+    }
+
+    JsonArray weapons =
+        document["weapons"].as<JsonArray>();
+
+    if (weapons.isNull())
+    {
+        Serial.println(
+            "WeaponConfig: missing weapons array");
+
+        return false;
+    }
+
+
+
+    for (JsonObject weaponJson : weapons)
+    {
+        if (!weaponJson["type"].is<int>())
+        {
+            Serial.println(
+                "WeaponConfig: weapon entry missing type");
+
+            continue;
+        }
+
+        WeaponDefinition definition;
+
+        definition.type =
+            static_cast<WeaponType>(
+                weaponJson["type"].as<int>());
+
+        definition.imageFilename =
+            weaponJson["image"] | "";
+
+        definition.shootSampleFilename =
+            weaponJson["shoot"] | "";
+
+        definition.clipInsertSampleFilename =
+            weaponJson["clipInsert"] | "";
+
+        definition.cockingFilename =
+            weaponJson["cocking"] | "";
+
+        definition.emptyFilename =
+            weaponJson["empty"] | "";
+
+        definition.postMagTimeout =
+            weaponJson["postMagTimeout"] | 0;
+
+        definition.magCapacity = weaponJson["magCapacity"] | 0;
+
+        definition.maxAmmoReserve = weaponJson["maxAmmoReserve"] | 0;
+
+        definition.defaultAmmoCount = weaponJson["defaultAmmoCount"] | 0;
+
+        definition.maxReload = weaponJson["maxReload"] | 0;
+
+        PrintDef(definition);
+        _weapons.push_back(
+            std::move(definition));
+    }
+
+    Serial.printf(
+        "WeaponConfig: loaded %u weapon definitions\n",
+        static_cast<unsigned>(_weapons.size()));
+
+    return true;
+}
+
+const WeaponConfig::WeaponDefinition*
+WeaponConfig::Find(WeaponType type) const
+{
+    Serial.printf("Finding weapon %d\n",static_cast<int>(type));
+    for (const WeaponDefinition& weapon : _weapons)
+    {
+        if (weapon.type == type)
+            return &weapon;
+    }
+    Serial.println("Not found");
+    return nullptr;
+}
+
+const char*
+WeaponConfig::GetImageFilename(
+    WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? nullptr : weapon->imageFilename.c_str();
+}
+
+const char*
+WeaponConfig::GetShootSampleFilename(
+    WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? nullptr : weapon->shootSampleFilename.c_str();
+}
+
+const char*
+WeaponConfig::GetClipInsertSampleFilename(
+    WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? nullptr : weapon->clipInsertSampleFilename.c_str();
+}
+
+const char*
+WeaponConfig::GetCockingFilename(
+    WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? nullptr : weapon->cockingFilename.c_str();
+}
+
+const char*
+WeaponConfig::GetEmptyFilename(
+    WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? nullptr : weapon->emptyFilename.c_str();
+}
+
+int WeaponConfig::GetPostMagTimeout(
+    WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? 0 : weapon->postMagTimeout;
+}
+
+
+
+void WeaponConfig::Init()
+{
+    Serial.println("Weapon config init");
+    Load();
+}
+
+
+
+int WeaponConfig::GetMagCapacity(WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? 0 : weapon->magCapacity;
+}
+
+
+int WeaponConfig::GetMaxAmmoReserve(WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? 0 : weapon->maxAmmoReserve;
+}
+
+
+int WeaponConfig::GetDefaultAmmoCount(WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? 0 : weapon->defaultAmmoCount;
+}
+
+
+int WeaponConfig::GetMaxReload(WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? 0 : weapon->maxReload;
+}
+

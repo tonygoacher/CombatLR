@@ -1,6 +1,6 @@
 #pragma once
 
-#include "BMPImage.h"
+#include "graphics/BMPImage.h"
 
 class Texture
 {

@@ -3,12 +3,12 @@
 
 #include "stateMachine/GameRunningState.h"
 #include "ISystemTime.h"
-#include "DisplayManager.h"
+#include "graphics/DisplayManager.h"
 #include "Navigation.h"
 #include "GameCoordinate.h"
-#include "PlayerPositionCommand.h"
-#include "TurnMapToHeadingCommand.h"
-#include "ZoomCommand.h"
+#include "graphics/PlayerPositionCommand.h"
+#include "graphics/TurnMapToHeadingCommand.h"
+#include "graphics/ZoomCommand.h"
 #include "stateMachine/SystemStates.h"
 #include "IZoom.h"
 #include "PBSwitch.h"
@@ -18,8 +18,8 @@
 #include "weapons/WeaponManager.h"
 
 #include "widgets/PlayerHealthWidget.h"
-#include "AddWidgetCommand.h"
-#include "RemoveWidgetCommand.h"
+#include "graphics/AddWidgetCommand.h"
+#include "graphics/RemoveWidgetCommand.h"
 #include "widgets/UIWidgetIds.h"
 
 
@@ -38,7 +38,6 @@ GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, CombatLRServices&
 uint16_t GameRunningState::Run()
 {
 
-    
     if(_stateData.navigation.Update())
     {
         
@@ -146,7 +145,10 @@ void GameRunningState::CheckPickups()
 
                 case    PickupTypes::Health:
                 {
-                    PickupHealth(item);
+                    if(!_player.AtMaxHealth())  // Pickup health only if not already full.
+                    {
+                        PickupHealth(item);
+                    }                        
                 }
                 break;
 

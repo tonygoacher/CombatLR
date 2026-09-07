@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <cmath>
 
-#include "AddWidgetCommand.h"
-#include "AddZoneCommand.h"
-#include "RemoveWidgetCommand.h"
-#include "SetWidgetColourCommand.h"
-#include "SetZoneGeometryCommand.h"
+#include "graphics/AddWidgetCommand.h"
+#include "graphics/AddZoneCommand.h"
+#include "graphics/RemoveWidgetCommand.h"
+#include "graphics/SetWidgetColourCommand.h"
+#include "graphics/SetZoneGeometryCommand.h"
 #include "ActiveGameObject.h"
 
 namespace
