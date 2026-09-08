@@ -45,7 +45,7 @@ void WeaponManager::Run()
 
 
             // Left or right button pressed and at least one weapon, move to show mode
-            if(_stateData.leftSwitch.Pressed() || _stateData.rightSwitch.Pressed() && _weapons.size() > 1)
+            if(_stateData.leftSwitch.Pressed() || _stateData.rightSwitch.Pressed() && _weapons.size() >= 1)
             {
                 _state = WMStates::Select;
                 _displayWeapon = _currentWeapon;
@@ -55,7 +55,7 @@ void WeaponManager::Run()
         }
 
         
-        if(_state == WMStates::Select && _weapons.size() > 1)
+        if(_state == WMStates::Select && _weapons.size() >= 1)
         {
             bool actionTaken = false;
             if(_stateData.leftSwitch.Pressed())
