@@ -6,7 +6,16 @@
 class IZoneEvent
 {
 public:
-    virtual void ZoneImminent(GameCoordinate newZonePos, int zoneIndexInGamePlan, uint32_t timeToActivation) =0;
-    virtual void ZoneExpired(GameCoordinate newZonePos, int zoneIndexInGamePlan) = 0;
-    virtual void ZoneTransitionComplete(uint32_t zoneIndex) =0;
+    virtual void ZoneMoveImminent(
+        GameCoordinate newZonePos,
+        int zoneIndexInGamePlan,
+        uint32_t timeToActivation) {};
+
+    virtual void ZoneStartedMoving(
+        GameCoordinate newZonePos,
+        int zoneIndexInGamePlan) {};
+
+    virtual void NewZoneActive(
+        GameCoordinate newZonePos,
+        int zoneIndexInGamePlan) {};
 };

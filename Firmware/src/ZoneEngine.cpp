@@ -76,6 +76,7 @@ void ZoneEngine::UpdateZones(
      */
     int newestStartedZone = -1;
 
+
     for (size_t i = 0; i < zones.size(); ++i)
     {
         if (gameTimeSeconds >= zones[i].startTime)
@@ -356,7 +357,7 @@ void ZoneEngine::UpdateZones(
                 zone.startTime -
                 overlapSeconds;
 
-            NotifyZoneImminent(
+            NotifyZoneMoveImminent(
                 zone,
                 imminentZone,
                 transitionStartTime -
@@ -377,7 +378,7 @@ void ZoneEngine::UpdateZones(
                     static_cast<size_t>(
                         imminentZone)];
 
-            NotifyZoneImminent(
+            NotifyZoneMoveImminent(
                 zone,
                 imminentZone,
                 zone.startTime -
@@ -582,6 +583,8 @@ void ZoneEngine::UpdateZoneTransition()
          fromZone.radiusMetres) *
         progress;
 
+    _movingZoneGameCoord =  GameCoordinate(east, north);
+
     _displayManager.Send(
         std::unique_ptr<IDisplayCommand>(
             new SetZoneGeometryCommand(
@@ -697,6 +700,10 @@ void ZoneEngine::StartZoneTransition(
             new SetWidgetColourCommand(
                 fromZone.id,
                 TFT_YELLOW)));
+
+    NotifyZoneStartedMoving(
+        toZone,
+        toZoneIndex);
 }
 
 void ZoneEngine::CompleteZoneTransition()
@@ -743,7 +750,10 @@ void ZoneEngine::CompleteZoneTransition()
     _currentZoneIndex =
         newZoneIndex;
 
-    NotifyZoneTransitionComplete(
+    NotifyNewZoneActive(
+        zones[
+            static_cast<size_t>(
+                newZoneIndex)],
         newZoneIndex);
 }
 
@@ -865,10 +875,6 @@ void ZoneEngine::DeactivateZone(
         zones[
             static_cast<size_t>(
                 zoneIndex)];
-
-    NotifyZoneExpired(
-        zone,
-        zoneIndex);
 
     RemoveZoneObjects(
         zone.id);
@@ -1243,7 +1249,7 @@ void ZoneEngine::NotifyPickupDeactivated(
     }
 }
 
-void ZoneEngine::NotifyZoneImminent(
+void ZoneEngine::NotifyZoneMoveImminent(
     const Zone& zone,
     int zoneIndex,
     uint32_t timeToActivation)
@@ -1258,7 +1264,7 @@ void ZoneEngine::NotifyZoneImminent(
     {
         if (listener != nullptr)
         {
-            listener->ZoneImminent(
+            listener->ZoneMoveImminent(
                 position,
                 zoneIndex,
                 timeToActivation);
@@ -1266,12 +1272,12 @@ void ZoneEngine::NotifyZoneImminent(
     }
 }
 
-void ZoneEngine::NotifyZoneExpired(
+void ZoneEngine::NotifyZoneStartedMoving(
     const Zone& zone,
     int zoneIndex)
 {
+    Serial.println("Zone started moving");
 
-    Serial.println("Zone expired event");
     const GameCoordinate position(
         zone.eastMetres,
         zone.northMetres);
@@ -1281,23 +1287,30 @@ void ZoneEngine::NotifyZoneExpired(
     {
         if (listener != nullptr)
         {
-            listener->ZoneExpired(
+            listener->ZoneStartedMoving(
                 position,
                 zoneIndex);
         }
     }
 }
 
-void ZoneEngine::NotifyZoneTransitionComplete(
+void ZoneEngine::NotifyNewZoneActive(
+    const Zone& zone,
     int zoneIndex)
 {
-    Serial.println("Transition complete event");
+    Serial.println("New zone active");
+
+    const GameCoordinate position(
+        zone.eastMetres,
+        zone.northMetres);
+
     for (IZoneEvent* listener :
          _zoneEventListeners)
     {
         if (listener != nullptr)
         {
-            listener->ZoneTransitionComplete(
+            listener->NewZoneActive(
+                position,
                 zoneIndex);
         }
     }
@@ -1342,4 +1355,42 @@ float ZoneEngine::GetProgress()
 
     return 0.0f;
 
+}
+
+
+bool ZoneEngine::InZone(
+    const GameCoordinate& position) const
+{
+    const std::vector<Zone>& zones =
+        _gamePlan.GetZones();
+
+    if (_currentZoneIndex < 0 ||
+        _currentZoneIndex >=
+            static_cast<int>(zones.size()))
+    {
+        return false;
+    }
+
+    const Zone& zone =
+        zones[
+            static_cast<size_t>(
+                _currentZoneIndex)];
+
+    const GameCoordinate& centre =
+        _zoneTransitionActive
+            ? _movingZoneGameCoord
+            : GameCoordinate(
+                zone.eastMetres,
+                zone.northMetres);
+
+    const double east =
+        position.east - centre.east;
+
+    const double north =
+        position.north - centre.north;
+
+    return (east * east +
+            north * north) <=
+        zone.radiusMetres *
+        zone.radiusMetres;
 }

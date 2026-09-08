@@ -110,7 +110,9 @@ void GameRunningState::Entry()
             std::unique_ptr<IDisplayCommand>(
                 new AddWidgetCommand(healthDisplay)));
 
-    _startTime = _stateData.navigation.GetGpsTime();                    
+    _startTime = _stateData.navigation.GetGpsTime();            
+    
+    _stateData.zoneEngine.AddZoneEventListener(this);
 
 
 }
@@ -124,6 +126,8 @@ void GameRunningState::Exit()
     _stateData.displayManager.Send(
         std::unique_ptr<IDisplayCommand>(
             new RemoveWidgetCommand(UIWidgetIds::PlayerHealth)));
+
+  _stateData.zoneEngine.RemoveZoneEventListener(this);            
 }
 
 
@@ -196,3 +200,24 @@ void GameRunningState::PickupAmmo(ZoneEngine::PickupInfo &pickup)
 }
 
 
+
+
+
+void GameRunningState::ZoneMoveImminent(GameCoordinate newZonePos,int zoneIndexInGamePlan,uint32_t timeToActivation)
+{
+    _stateData.sounds.Play("/sounds/20swarn.wav");
+}
+
+
+
+void GameRunningState::ZoneStartedMoving(GameCoordinate newZonePos, int zoneIndexInGamePlan)
+{
+    _stateData.sounds.Play("/sounds/zmove.wav");
+}
+
+
+
+void GameRunningState::NewZoneActive(GameCoordinate newZonePos,int zoneIndexInGamePlan)
+{
+    _stateData.sounds.Play("/sounds/zactive.wav");
+}
