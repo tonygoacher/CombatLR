@@ -6,21 +6,36 @@
  enum  Ports
 {
     
-    TXPORT =    1,
-    RXPORT =    2,
+    RIGHT =             0,
+    IR_TXPORT =         1,
+    IR_RXPORT =         2,
+    RELOAD =            4,
+    HIT_LED =           5,
+    MUZZLE_LED =        6,
+    LRC =               8,
+    GPS_RX =            9,
 
-    LRC =       8,
-    BCLK =      18,
-    DATA =      17,
+        //DISPLAY
+    CS_DISPAY =         10,
+    DIN_DISPLAY =       11,
+    SCK_DISPLAY =       12,
+    DC_DISPLAY =        13,
 
-    GPS_RX =    9,
-    GPS_TX =    46,
+    DATA =              17,
+    BCLK =              18,
+    LEFT =              19,
 
-    TRIGGER =   48,
-    RELOAD =    4,
-    RIGHT =     0,
-    ZOOM =      47,
-    LEFT =      19,
+    TX_UART2    =   38,
+    RX_UART2    =   39,
+    IR_POWER0   =   40,
+    IR_POWER1   =   41,
+    IR_POWER2   =   42,
+
+
+    GPS_TX =        46,
+    ZOOM =          47,
+    TRIGGER =       48,
+
 };
 
 

@@ -14,6 +14,7 @@ public:
     bool Begin() override;
     bool Update() override;
     NavigationData GetData() const override;
+    double GetGpsTime() const override;
 
 private:
     static constexpr size_t LINE_BUFFER_SIZE = 128;
@@ -27,12 +28,15 @@ private:
     size_t _lineLength = 0;
 
     NavigationData _data{};
+    double _gpsTime = 0.0;
 
     bool ProcessSentence(const char* sentence);
     bool ValidateChecksum(const char* sentence) const;
 
     void ProcessGGA(const char* fields);
     void ProcessRMC(const char* fields);
+
+    static double ParseGpsTime(const char* value);
 
     static double ParseCoordinate(
         const char* value,

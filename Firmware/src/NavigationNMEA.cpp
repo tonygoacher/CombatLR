@@ -88,6 +88,11 @@ NavigationData NavigationNMEA::GetData() const
     return _data;
 }
 
+double NavigationNMEA::GetGpsTime() const
+{
+    return _gpsTime;
+}
+
 bool NavigationNMEA::ValidateChecksum(
     const char* sentence) const
 {
@@ -180,6 +185,10 @@ void NavigationNMEA::ProcessGGA(
 
         switch (index)
         {
+        case 0:
+            _gpsTime = ParseGpsTime(field);
+            break;
+
         case 1:
             strncpy(latitude, field, sizeof(latitude) - 1);
             break;
@@ -247,6 +256,10 @@ void NavigationNMEA::ProcessRMC(
 
         switch (index)
         {
+        case 0:
+            _gpsTime = ParseGpsTime(field);
+            break;
+
         case 1:
             strncpy(status, field, sizeof(status) - 1);
             break;
@@ -305,6 +318,29 @@ void NavigationNMEA::ProcessRMC(
         _data.heading = heading;
         _data.headingValid = true;
     }
+}
+
+double NavigationNMEA::ParseGpsTime(const char* value)
+{
+    if (value == nullptr || value[0] == '\0')
+        return 0.0;
+
+    char* end = nullptr;
+    const double nmea = strtod(value, &end);
+
+    if (end == value)
+        return 0.0;
+
+    const int hours = static_cast<int>(nmea / 10000.0);
+    const double minutesAndSeconds =
+        nmea - static_cast<double>(hours) * 10000.0;
+    const int minutes = static_cast<int>(minutesAndSeconds / 100.0);
+    const double seconds =
+        minutesAndSeconds - static_cast<double>(minutes) * 100.0;
+
+    return static_cast<double>(hours) * 3600.0 +
+           static_cast<double>(minutes) * 60.0 +
+           seconds;
 }
 
 double NavigationNMEA::ParseCoordinate(

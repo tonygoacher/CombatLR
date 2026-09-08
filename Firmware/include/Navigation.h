@@ -42,6 +42,7 @@ public:
     virtual bool Update() = 0;
 
     virtual NavigationData GetData() const = 0;
+    virtual double GetGpsTime() const = 0;
 
     bool HasPosition() const
     {
