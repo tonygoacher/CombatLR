@@ -30,6 +30,7 @@ GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, CombatLRServices&
  _weaponManager(weaponManager), 
  _ammoPickup(weaponManager),
  _weaponPickupTable("/wtable.json"),
+ _startTime(0),
  _weaponPickup(weaponManager, stateData.zoneEngine, _weaponPickupTable)
 {
 }
@@ -83,7 +84,8 @@ uint16_t GameRunningState::Run()
                 zoom)));    
     }
 
-    _stateData.zoneEngine.Update(0);
+    uint32_t elapsedTime = uint32_t(_stateData.navigation.GetGpsTime() - _startTime);
+    _stateData.zoneEngine.Update(elapsedTime);
 
 
    _weaponManager.Run();
@@ -108,6 +110,8 @@ void GameRunningState::Entry()
             std::unique_ptr<IDisplayCommand>(
                 new AddWidgetCommand(healthDisplay)));
 
+    _startTime = _stateData.navigation.GetGpsTime();                    
+
 
 }
 
@@ -131,10 +135,10 @@ void GameRunningState::CheckPickups()
   //  Serial.printf("Player E: %.3f N: %.3f\n", _playerPosition.east, _playerPosition.north);
     if(_stateData.zoneEngine.GetPickupsWithin(_player.Position(), 2.0f,nearbyPickups))
     {
-        Serial.println("Nearby");
+        Serial.printf("Nearby %d\n", nearbyPickups.size());
         for( auto item : nearbyPickups)
         {
-            Serial.printf("Piuckup type %d\n", item.type);
+            Serial.printf("Pickup type %d ID:%d \n", item.type, item.id);
             switch(item.type)
             {
                 case   PickupTypes::Ammo:

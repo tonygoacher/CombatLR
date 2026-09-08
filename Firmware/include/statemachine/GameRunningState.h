@@ -34,6 +34,8 @@ private:
     AmmoPickup _ammoPickup;
     WeaponPickup _weaponPickup;
     JsonWeaponPickupTable _weaponPickupTable;
+                
+    double _startTime;
     void CheckPickups();
 
     void PickupBonus(ZoneEngine::PickupInfo &pickup);

@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-#include "SpoofNavigation.h"
+
 #include "GeoReference.h"
 #include "NavigationNMEA.h"
 #include "GamePlan.h"

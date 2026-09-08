@@ -19,6 +19,7 @@ public:
 private:
     CombatLRServices& _stateData;
     WeaponManager& _weaponManager;
+  
 };
 
 

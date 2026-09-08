@@ -1123,15 +1123,22 @@ bool  ZoneEngine::GetPickupsWithin(
 bool ZoneEngine::ClaimPickup(
     uint32_t pickupId)
 {
-    ActiveGameObject* object =
-        FindActiveObject(
-            pickupId);
+    Serial.printf(
+        "Claiming pickup ID %d\n",
+        (uint16_t)pickupId);
 
-    if (object == nullptr ||
-        object->type !=
-            WidgetType::Pickup ||
-        object->claimed)
+    ActiveGameObject* object =
+        FindActiveObject(pickupId);
+
+    if (object == nullptr)
     {
+        Serial.println("Pickup not found");
+        return false;
+    }
+
+    if (object->claimed)
+    {
+        Serial.println("Pickup already claimed");
         return false;
     }
 
@@ -1142,9 +1149,7 @@ bool ZoneEngine::ClaimPickup(
             new RemoveWidgetCommand(
                 pickupId)));
 
-    RemoveActiveObject(
-        pickupId);
-
+    Serial.println("Claimed");
     return true;
 }
 
