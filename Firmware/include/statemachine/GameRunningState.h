@@ -15,8 +15,9 @@
 #include "weapons/AmmoPickup.h"
 #include "weapons/WeaponPickup.h"
 #include "weapons/JSONWeaponPickupTable.h"
+#include "IZoneEvent.h"
 
-class GameRunningState : public State
+class GameRunningState : public State, public IZoneEvent
 {
 public:
        
@@ -24,6 +25,10 @@ public:
     uint16_t Run() override;
     void Entry() override;
     void Exit() override;
+
+    void ZoneMoveImminent(GameCoordinate newZonePos,int zoneIndexInGamePlan,uint32_t timeToActivation) override;
+    void ZoneStartedMoving(GameCoordinate newZonePos, int zoneIndexInGamePlan) override;
+     void NewZoneActive(GameCoordinate newZonePos,int zoneIndexInGamePlan) override;
 
 private:    
     static const int PlayerStartHealth = 50;

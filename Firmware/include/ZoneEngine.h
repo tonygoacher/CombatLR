@@ -35,6 +35,9 @@ public:
         float radiusMetres,
         std::vector<PickupInfo>& results) const;
 
+    bool InZone(
+        const GameCoordinate& position) const;
+
     bool ClaimPickup(
         uint32_t pickupId);
 
@@ -71,6 +74,7 @@ private:
 
     const GamePlan& _gamePlan;
     DisplayManager& _displayManager;
+    GameCoordinate _movingZoneGameCoord;
 
     std::vector<ActiveGameObject> _activeObjects;
 
@@ -145,16 +149,17 @@ private:
     void NotifyPickupDeactivated(
         uint32_t pickupId);
 
-    void NotifyZoneImminent(
+    void NotifyZoneMoveImminent(
         const Zone& zone,
         int zoneIndex,
         uint32_t timeToActivation);
 
-    void NotifyZoneExpired(
+    void NotifyZoneStartedMoving(
         const Zone& zone,
         int zoneIndex);
 
-    void NotifyZoneTransitionComplete(
+    void NotifyNewZoneActive(
+        const Zone& zone,
         int zoneIndex);
 
     void Reset();
