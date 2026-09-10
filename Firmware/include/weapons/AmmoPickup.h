@@ -17,9 +17,8 @@ private:
 
     static constexpr uint8_t ReloadPercentage = 30;
 
-    // For now, AssaultRifle is the highest-power weapon
-    // that qualifies for the guaranteed reload.
-    static constexpr WeaponType GuaranteedReloadType =
-        WeaponType::AssaultRifle;
+    // For now , any weapon at or below this ID is guarteed a reload weapon pickup. This probably should be in gameplan.
+    static constexpr WeaponType GuaranteedReloadType = 3;
+
 };
 

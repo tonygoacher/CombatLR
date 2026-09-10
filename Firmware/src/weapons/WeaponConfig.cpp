@@ -104,6 +104,9 @@ bool WeaponConfig::Load()
         definition.shootSampleFilename =
             weaponJson["shoot"] | "";
 
+        definition.name =
+            weaponJson["name"] | "";
+
         definition.clipInsertSampleFilename =
             weaponJson["clipInsert"] | "";
 
@@ -251,4 +254,19 @@ int WeaponConfig::GetBurst(WeaponType type) const
 {
     const WeaponDefinition* weapon = Find(type);
     return weapon == nullptr ? 1 : weapon->burst;
+}
+
+
+
+const char* WeaponConfig::GetName(WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? nullptr : weapon->name.c_str();
+}
+
+
+
+int WeaponConfig::GetNumWeapons()
+{
+    return _weapons.size();
 }

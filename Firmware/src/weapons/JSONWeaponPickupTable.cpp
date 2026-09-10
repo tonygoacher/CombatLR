@@ -81,6 +81,8 @@ bool JsonWeaponPickupTable::Load(
 
         _weapons.push_back(
             definition);
+
+        Serial.printf("Type: %d  Chance : %d MinProg: %d\n", definition.type, definition.pickupChance, definition.minimumProgress);            
     }
 
     Serial.printf(

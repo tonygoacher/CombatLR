@@ -6,7 +6,7 @@
 	  "burst": 1,
       "image": "/weapons/handblst.bmp",
       "shoot": "/sounds/handblst.wav",
-      "clipInsert": "/sounds/insclip.wav",
+      "clipInsert": "/sounds/insclip2.wav",
       "cocking": "/sounds/hndblstr.wav",
       "empty": "/sounds/empty.wav",
       "insertClipTime": 1000,
@@ -62,6 +62,21 @@
 	  "maxAmmoReserve": 200,
 	  "defaultAmmoCount": 100,
 	  "maxReload": 200
+    },
+	{
+      "type": 4,
+	  "name": "Rocket",
+      "image": "/weapons/rocket.bmp",
+      "shoot": "/sounds/blaster.wav",
+      "clipInsert": "/sounds/insclip.wav",
+      "cocking": "/sounds/reload.wav",
+      "empty": "/sounds/empty.wav",
+      "insertClipTime": 2000,
+	  "cockingTime":3000,
+	  "magCapacity": 1,
+	  "maxAmmoReserve": 3,
+	  "defaultAmmoCount": 3,
+	  "maxReload": 3
     }
   ]
 }

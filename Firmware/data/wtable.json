@@ -2,22 +2,22 @@
   "weaponPickups": [
     {
       "type": 0,
-      "chance": 70,
+      "chance": 5,
       "minimumProgress": 0
     },
     {
       "type": 1,
-      "chance": 30,
+      "chance": 40,
       "minimumProgress": 0
     },
 	  {
       "type": 2,
-      "chance": 20,
+      "chance": 40,
       "minimumProgress": 0
     },
     {
       "type": 3,
-      "chance": 20,
+      "chance": 15,
       "minimumProgress": 0
     }
   ]
