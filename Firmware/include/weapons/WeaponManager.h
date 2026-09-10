@@ -63,7 +63,7 @@ private:
     static const int TextFont = 2; 
 
     inline static constexpr uint16_t DefaultMagSize = 30;
-     inline static constexpr uint16_t SelectTimeout = 7000; // Weapon select times out back to current weapons after this many ms
+     inline static constexpr uint16_t SelectTimeout = 4000; // Weapon select times out back to current weapons after this many ms
 
     Pacer _selectPacer;
 

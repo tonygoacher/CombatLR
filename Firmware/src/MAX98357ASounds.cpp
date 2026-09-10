@@ -615,9 +615,6 @@ void MAX98357ASounds::AudioTask()
                 _i2s.write(silenceBuffer, TRANSFER_BUFFER_SIZE);
                 continue;
             }
-  
-
-
         }
         else
         {
@@ -754,7 +751,14 @@ void MAX98357ASounds::AudioTask()
 
             if (cachedSamples != nullptr)
             {
-                mixed += cachedSamples[index];
+                int32_t cachedSample = cachedSamples[index];
+
+                if (_priorityPlaying)
+                {
+                    cachedSample /= 2;      // Reduce cached volume while priority plays
+                }
+
+                mixed += cachedSample;
             }
 
             if (fileSamples != nullptr)
