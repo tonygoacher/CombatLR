@@ -25,6 +25,7 @@ namespace
     }
 }
 
+
 MAX98357ASounds::MAX98357ASounds(
     fs::FS& filesystem,
     int bclkPin,
@@ -38,18 +39,27 @@ MAX98357ASounds::MAX98357ASounds(
     _i2s(),
     _audioTask(nullptr),
     _mutex(nullptr),
-    _cachedSamples(),
-    _currentData(nullptr),
-    _currentSize(0),
-    _currentPosition(0),
-    _currentOwnedData(nullptr),
-    _playing(false),
-    _stopRequested(false),
-    _finished(true),
+
+    _cachedSample(nullptr),
+    _cachedData(nullptr),
+    _cachedSize(0),
+    _cachedPosition(0),
+    _cachedPlaying(false),
+
+    _fileData(nullptr),
+    _fileSize(0),
+    _filePosition(0),
+    _fileOwnedData(nullptr),
+
+    _priorityPlaying(false),
+    _filePlaying(false),
+    _fileFinished(true),
+
     _volume(1.0f),
     _initialised(false)
 {
 }
+
 
 MAX98357ASounds::~MAX98357ASounds()
 {
@@ -64,15 +74,16 @@ MAX98357ASounds::~MAX98357ASounds()
         _audioTask = nullptr;
     }
 
-    for (CachedSample& sample : _cachedSamples)
+    if (_cachedSample != nullptr)
     {
-        free(sample.data);
-        sample.data = nullptr;
+        free(_cachedSample->data);
+        _cachedSample->data = nullptr;
+
+        delete _cachedSample;
+        _cachedSample = nullptr;
     }
 
-    _cachedSamples.clear();
-
-    ReleaseCurrentSample();
+    ReleaseFileSample();
 
     if (_mutex != nullptr)
     {
@@ -87,6 +98,7 @@ MAX98357ASounds::~MAX98357ASounds()
     }
 }
 
+
 bool MAX98357ASounds::Begin()
 {
     if (_initialised)
@@ -94,77 +106,29 @@ bool MAX98357ASounds::Begin()
         return true;
     }
 
-    /*
-     * MAX98357A wiring:
-     *
-     *   GPIO18 -> BCLK
-     *   GPIO8  -> LRC / WS
-     *   GPIO17 -> DIN
-     *
-     * The MAX98357A is an I2S receiver/amplifier. It has no
-     * I2C address.
-     */
     Serial.printf(
         "MAX98357A: BCLK=%d LRC=%d DATA=%d\n",
         _bclkPin,
         _lrcPin,
         _dataPin);
 
-    /*
-     * Arduino-ESP32 3.x requires the pins to be configured
-     * before the I2S channel is started.
-     */
     _i2s.setPins(
         _bclkPin,
         _lrcPin,
         _dataPin);
 
-     _i2s.setPins(
-        _bclkPin,
-        _lrcPin,
-        _dataPin);
+    if (!_i2s.begin(
+            I2S_MODE_STD,
+            SAMPLE_RATE,
+            I2S_DATA_BIT_WIDTH_16BIT,
+            I2S_SLOT_MODE_MONO))
+    {
+        Serial.println(
+            "MAX98357ASounds: I2S begin failed");
 
+        return false;
+    }
 
-    /*
-     * Standard Philips I2S, 16 kHz, 16-bit, mono.
-     *
-     * I2SClass uses the ESP32 I2S peripheral and its DMA
-     * transfer mechanism; this class does not implement an
-     * audio ISR or an onTransmit callback.
-     */
-if (!_i2s.begin(
-        I2S_MODE_STD,
-        SAMPLE_RATE,
-        I2S_DATA_BIT_WIDTH_16BIT,
-        I2S_SLOT_MODE_MONO,
-        I2S_STD_SLOT_BOTH))
-{
-    Serial.println(
-        "MAX98357ASounds: I2S begin failed");
-
-    return false;
-}
-
-
-// DEBUG
-
-int16_t samples[256];
-
-for (int i = 0; i < 256; ++i)
-{
-    samples[i] =
-        static_cast<int16_t>(
-            sinf(
-                2.0f * PI * 440.0f *
-                static_cast<float>(i) /
-                SAMPLE_RATE) *
-            12000.0f);
-}
-
-_i2s.write(
-    reinterpret_cast<uint8_t*>(samples),
-    sizeof(samples));
-// __DEBUG
     _mutex = xSemaphoreCreateMutex();
 
     if (_mutex == nullptr)
@@ -173,13 +137,14 @@ _i2s.write(
             "MAX98357ASounds: mutex creation failed");
 
         _i2s.end();
+
         return false;
     }
 
     if (xTaskCreatePinnedToCore(
             AudioTaskEntry,
             "AudioTask",
-            4096,
+            8192,
             this,
             5,
             &_audioTask,
@@ -192,6 +157,7 @@ _i2s.write(
         _mutex = nullptr;
 
         _i2s.end();
+
         return false;
     }
 
@@ -203,21 +169,33 @@ _i2s.write(
     return true;
 }
 
+
 bool MAX98357ASounds::Play(
     const char* filename)
 {
-    if (!_initialised || filename == nullptr)
+    if (!_initialised ||
+        filename == nullptr)
     {
         return false;
     }
 
     /*
-     * Load before stopping the current sound. A filesystem error
-     * therefore does not interrupt an already playing sound.
+     * A normal Play() is ignored while priority
+     * playback is active.
      */
+    if (_priorityPlaying)
+    {
+        return false;
+    }
+
     uint8_t* data = nullptr;
     size_t size = 0;
 
+    /*
+     * Load before replacing the current file playback.
+     * A filesystem error therefore leaves the current
+     * sound playing.
+     */
     if (!LoadWav(
             filename,
             data,
@@ -225,8 +203,6 @@ bool MAX98357ASounds::Play(
     {
         return false;
     }
-
-    Stop();
 
     if (xSemaphoreTake(
             _mutex,
@@ -236,73 +212,36 @@ bool MAX98357ASounds::Play(
         return false;
     }
 
-    ReleaseCurrentSample();
-
-    _currentOwnedData = data;
-    _currentData = data;
-    _currentSize = size;
-    _currentPosition = 0;
-
-    _stopRequested = false;
-    _playing = true;
-    _finished = false;
-Serial.printf(
-    "MAX98357ASounds: playing %s, %u bytes\n",
-    filename,
-    static_cast<unsigned>(size));
-    xSemaphoreGive(_mutex);
-
-    return true;
-}
-
-bool MAX98357ASounds::PlayCached(
-    const char* filename)
-{
-    if (!_initialised || filename == nullptr)
+    /*
+     * Priority could have started while the WAV was
+     * loading.
+     */
+    if (_priorityPlaying)
     {
-        return false;
-    }
+        xSemaphoreGive(_mutex);
 
-    Stop();
+        free(data);
 
-    if (xSemaphoreTake(
-            _mutex,
-            portMAX_DELAY) != pdTRUE)
-    {
         return false;
     }
 
     /*
-     * The lookup is protected because UnCacheSample() can remove
-     * an entry from the vector.
+     * Replace the existing normal file playback.
      */
-    CachedSample* sample =
-        FindCachedSample(filename);
+    ReleaseFileSample();
 
-    if (sample == nullptr)
-    {
-        xSemaphoreGive(_mutex);
+    _fileOwnedData = data;
+    _fileData = data;
+    _fileSize = size;
+    _filePosition = 0;
 
-        /*
-         * PlayCached deliberately never performs filesystem I/O.
-         */
-        return false;
-    }
-
-    ReleaseCurrentSample();
-
-    _currentData = sample->data;
-    _currentSize = sample->size;
-    _currentPosition = 0;
-
-    _stopRequested = false;
-    _playing = true;
-    _finished = false;
+    _filePlaying = true;
+    _priorityPlaying = false;
+    _fileFinished = false;
 
     xSemaphoreGive(_mutex);
 
-    // Instantly wake the audio task so it begins writing to I2S
-    if (_audioTask != nullptr) 
+    if (_audioTask != nullptr)
     {
         xTaskNotifyGive(_audioTask);
     }
@@ -310,19 +249,95 @@ bool MAX98357ASounds::PlayCached(
     return true;
 }
 
-bool MAX98357ASounds::CacheSample(
+
+bool MAX98357ASounds::PlayPriority(
     const char* filename)
 {
-    if (!_initialised || filename == nullptr)
+    if (!_initialised ||
+        filename == nullptr)
     {
         return false;
     }
 
-    if (FindCachedSample(filename) != nullptr)
+    uint8_t* data = nullptr;
+    size_t size = 0;
+
+    /*
+     * Load the new file before cancelling the existing
+     * file playback.
+     */
+    if (!LoadWav(
+            filename,
+            data,
+            size))
     {
-        return true;
+        return false;
     }
 
+    if (xSemaphoreTake(
+            _mutex,
+            portMAX_DELAY) != pdTRUE)
+    {
+        free(data);
+        return false;
+    }
+
+    /*
+     * Cancel whatever file playback currently exists.
+     * Cached playback is deliberately untouched.
+     */
+    ReleaseFileSample();
+
+    _fileOwnedData = data;
+    _fileData = data;
+    _fileSize = size;
+    _filePosition = 0;
+
+    _filePlaying = true;
+    _priorityPlaying = true;
+    _fileFinished = false;
+
+    xSemaphoreGive(_mutex);
+
+    return true;
+}
+
+
+bool MAX98357ASounds::CacheSample(
+    const char* filename)
+{
+    if (!_initialised ||
+        filename == nullptr)
+    {
+        return false;
+    }
+
+    /*
+     * If the requested sample is already cached,
+     * there is nothing more to do.
+     */
+    if (xSemaphoreTake(
+            _mutex,
+            portMAX_DELAY) != pdTRUE)
+    {
+        return false;
+    }
+
+    if (_cachedSample != nullptr)
+    {
+        if (_cachedSample->filename == filename)
+        {
+            xSemaphoreGive(_mutex);
+            return true;
+        }
+    }
+
+    xSemaphoreGive(_mutex);
+
+    /*
+     * Load outside the mutex because filesystem access
+     * can take some time.
+     */
     uint8_t* data = nullptr;
     size_t size = 0;
 
@@ -334,11 +349,6 @@ bool MAX98357ASounds::CacheSample(
         return false;
     }
 
-    CachedSample sample;
-    sample.filename = filename;
-    sample.data = data;
-    sample.size = size;
-
     if (xSemaphoreTake(
             _mutex,
             portMAX_DELAY) != pdTRUE)
@@ -348,27 +358,40 @@ bool MAX98357ASounds::CacheSample(
     }
 
     /*
-     * Check again after taking the mutex in case another caller
-     * cached the same filename while the WAV was being loaded.
+     * Another caller may have cached something while
+     * the WAV was loading.
+     *
+     * Replace the old cached sample with this one.
+     * The old sample must not remain playable.
      */
-    if (FindCachedSample(filename) != nullptr)
+    if (_cachedSample != nullptr)
     {
-        xSemaphoreGive(_mutex);
-        free(data);
-        return true;
+        _cachedPlaying = false;
+        _cachedData = nullptr;
+        _cachedSize = 0;
+        _cachedPosition = 0;
+
+        free(_cachedSample->data);
+        _cachedSample->data = nullptr;
+
+        delete _cachedSample;
+        _cachedSample = nullptr;
     }
 
-    try
-    {
-        _cachedSamples.push_back(
-            std::move(sample));
-    }
-    catch (...)
+    _cachedSample = new CachedSample;
+
+    if (_cachedSample == nullptr)
     {
         xSemaphoreGive(_mutex);
+
         free(data);
+
         return false;
     }
+
+    _cachedSample->filename = filename;
+    _cachedSample->data = data;
+    _cachedSample->size = size;
 
     xSemaphoreGive(_mutex);
 
@@ -380,14 +403,49 @@ bool MAX98357ASounds::CacheSample(
     return true;
 }
 
-bool MAX98357ASounds::UnCacheSample(
-    const char* filename)
+
+bool MAX98357ASounds::PlayCached()
 {
-    if (filename == nullptr)
+    if (!_initialised)
     {
         return false;
     }
 
+    if (xSemaphoreTake(
+            _mutex,
+            portMAX_DELAY) != pdTRUE)
+    {
+        return false;
+    }
+
+    if (_cachedSample == nullptr)
+    {
+        xSemaphoreGive(_mutex);
+
+        return false;
+    }
+
+    /*
+     * Restart the cached sample from the beginning.
+     */
+    _cachedData = _cachedSample->data;
+    _cachedSize = _cachedSample->size;
+    _cachedPosition = 0;
+    _cachedPlaying = true;
+
+    xSemaphoreGive(_mutex);
+
+    if (_audioTask != nullptr)
+    {
+        xTaskNotifyGive(_audioTask);
+    }
+
+    return true;
+}
+
+
+bool MAX98357ASounds::UnCacheSample()
+{
     if (_mutex == nullptr)
     {
         return false;
@@ -400,47 +458,41 @@ bool MAX98357ASounds::UnCacheSample(
         return false;
     }
 
-    for (auto iterator = _cachedSamples.begin();
-         iterator != _cachedSamples.end();
-         ++iterator)
+    if (_cachedSample == nullptr)
     {
-        if (iterator->filename == filename)
-        {
-            /*
-             * Do not free a cached sample while it is the current
-             * playback source.
-             */
-            if (_currentData == iterator->data)
-            {
-                _playing = false;
-                _stopRequested = true;
-                _finished = true;
+        xSemaphoreGive(_mutex);
 
-                _currentData = nullptr;
-                _currentSize = 0;
-                _currentPosition = 0;
-            }
-
-            uint8_t* data = iterator->data;
-
-            _cachedSamples.erase(iterator);
-
-            xSemaphoreGive(_mutex);
-
-            free(data);
-
-            return true;
-        }
+        return false;
     }
+
+    /*
+     * Stop cached playback first.
+     *
+     * The actual memory is not freed until we hold the
+     * mutex, so AudioTask cannot be using the cached
+     * buffer at the same time.
+     */
+    _cachedPlaying = false;
+    _cachedData = nullptr;
+    _cachedSize = 0;
+    _cachedPosition = 0;
+
+    free(_cachedSample->data);
+    _cachedSample->data = nullptr;
+
+    delete _cachedSample;
+    _cachedSample = nullptr;
 
     xSemaphoreGive(_mutex);
 
-    return false;
+    return true;
 }
+
 
 void MAX98357ASounds::Stop()
 {
-    if (!_initialised || _mutex == nullptr)
+    if (!_initialised ||
+        _mutex == nullptr)
     {
         return;
     }
@@ -452,27 +504,36 @@ void MAX98357ASounds::Stop()
         return;
     }
 
-    _stopRequested = true;
-    _playing = false;
-    _finished = true;
-
-    _currentData = nullptr;
-    _currentSize = 0;
-    _currentPosition = 0;
+    /*
+     * Stop cached playback.
+     */
+    _cachedPlaying = false;
+    _cachedData = nullptr;
+    _cachedSize = 0;
+    _cachedPosition = 0;
 
     /*
-     * Only Play() owns _currentOwnedData. Cached samples remain
-     * in _cachedSamples.
+     * Stop normal/priority file playback.
      */
-    ReleaseCurrentSample();
+    _filePlaying = false;
+    _priorityPlaying = false;
+    _fileFinished = true;
+
+    _fileData = nullptr;
+    _fileSize = 0;
+    _filePosition = 0;
+
+    ReleaseFileSample();
 
     xSemaphoreGive(_mutex);
 }
 
+
 bool MAX98357ASounds::HasFinished() const
 {
-    return _finished;
+    return _fileFinished;
 }
+
 
 void MAX98357ASounds::SetVolume(
     float volume)
@@ -489,11 +550,10 @@ void MAX98357ASounds::SetVolume(
     _volume = volume;
 }
 
+
 void MAX98357ASounds::AudioTaskEntry(
     void* parameter)
 {
-
-    Serial.println("MAX98357ASounds: AudioTask started");
     auto* sounds =
         static_cast<MAX98357ASounds*>(parameter);
 
@@ -505,136 +565,284 @@ void MAX98357ASounds::AudioTaskEntry(
 void MAX98357ASounds::AudioTask()
 {
     /*
-     * This buffer is in internal RAM. The complete sample is in
-     * PSRAM. 2048 bytes represents 64 ms of mono 16-bit audio at
-     * 16 kHz.
+     * This buffer remains in internal RAM.
+     *
+     * Samples are mixed here before being passed to I2S.
      */
+    uint8_t transferBuffer[
+        TRANSFER_BUFFER_SIZE];
+
+    const size_t sampleCapacity =
+        TRANSFER_BUFFER_SIZE /
+        sizeof(int16_t);
+
+    constexpr size_t IDLE_SILENCE_BYTES = 256;
+
+    uint8_t silenceBuffer[TRANSFER_BUFFER_SIZE];
+    memset(
+    silenceBuffer,
+    0,
+    TRANSFER_BUFFER_SIZE);
 
     for (;;)
     {
-        if (!_playing)
+        /*
+         * When there is no active playback, wait for up to
+         * 5 ms for a playback operation to signal the mutex.
+         *
+         * If nothing starts playback during that period,
+         * send a short block of silence. This keeps the
+         * MAX98357A awake without continuously polling.
+         */
+   
+        if (!_cachedPlaying &&
+            !_filePlaying)
         {
+            /*
+            * Nothing is playing.
+            *
+            * Sleep until a playback operation explicitly wakes us,
+            * or periodically wake to keep the I2S device alive.
+            */
             // Block and wait for a notification from PlayCached, 
             // checking at least every so often just in case.
             ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(5));
-            if(!_playing)
+             if (!_cachedPlaying &&
+            !_filePlaying)
             {
                 // If no sample requested, pump the I2S bus with zeros to prevent the 98357 shutting down.
                 // This is required to precent slight delay if no samples have been played for a while
-                _i2s.write(_silence, 256);  
+                _i2s.write(silenceBuffer, TRANSFER_BUFFER_SIZE);
+                continue;
             }
   
-            continue;
+
+
         }
-
-        size_t bytesToWrite = 0;
-
-        if (xSemaphoreTake(
-                _mutex,
-                portMAX_DELAY) != pdTRUE)
-        {
-            continue;
-        }
-
-        if (_stopRequested || !_playing)
-        {
-            xSemaphoreGive(_mutex);
-            continue;
-        }
-
-        const size_t remaining =
-            _currentSize - _currentPosition;
-
-        if (remaining == 0)
+        else
         {
             /*
-             * The final block has been accepted by I2SClass::write().
-             * The ESP32 I2S peripheral/DMA is responsible for the
-             * subsequent hardware transfer.
+             * Playback is active. Wait until we can safely
+             * access the playback buffers.
              */
-            _playing = false;
-            _finished = true;
-
-            _currentData = nullptr;
-            _currentSize = 0;
-            _currentPosition = 0;
-
-            ReleaseCurrentSample();
-
-            xSemaphoreGive(_mutex);
-            continue;
-        }
-
-    // Force a much smaller software chunk to reduce blocking time
-        const size_t maxChunk = 256; 
-        bytesToWrite =
-            (remaining < maxChunk)
-                ? remaining
-                : maxChunk;
-
-        /*
-         * Keep PCM samples whole.
-         */
-        bytesToWrite &= ~static_cast<size_t>(1);
-
-        if (bytesToWrite == 0)
-        {
-            _playing = false;
-            _finished = true;
-
-            _currentData = nullptr;
-            _currentSize = 0;
-            _currentPosition = 0;
-
-            ReleaseCurrentSample();
-
-            xSemaphoreGive(_mutex);
-            continue;
-        }
-
-        memcpy(
-            _transferBuffer,
-            _currentData + _currentPosition,
-            bytesToWrite);
-
-        _currentPosition += bytesToWrite;
-
-        xSemaphoreGive(_mutex);
-
-        /*
-         * Volume is applied to the temporary buffer so cached
-         * samples are never modified.
-         */
-        ApplyVolume(
-            reinterpret_cast<int16_t*>(_transferBuffer),
-            bytesToWrite / sizeof(int16_t));
-
-        /*
-         * I2SClass::write() feeds the ESP32 I2S TX channel.
-         * The actual serial transfer is performed by the I2S
-         * peripheral using its DMA/interrupt machinery.
-         */
-   const size_t written =
-    _i2s.write(
-        _transferBuffer,
-        bytesToWrite);
-
-        if (written < bytesToWrite)
-        {
             if (xSemaphoreTake(
                     _mutex,
-                    portMAX_DELAY) == pdTRUE)
+                    portMAX_DELAY) != pdTRUE)
             {
-                _currentPosition -=
-                    bytesToWrite - written;
+                continue;
+            }
+        }
 
-                xSemaphoreGive(_mutex);
+        /*
+         * Work out whether anything is actually playable.
+         */
+        const bool cachedActive =
+            _cachedPlaying &&
+            _cachedData != nullptr &&
+            _cachedPosition < _cachedSize;
+
+        const bool fileActive =
+            _filePlaying &&
+            _fileData != nullptr &&
+            _filePosition < _fileSize;
+
+        if (!cachedActive &&
+            !fileActive)
+        {
+            /*
+             * Cached playback has completed.
+             */
+            if (_cachedPlaying)
+            {
+                _cachedPlaying = false;
+                _cachedData = nullptr;
+                _cachedSize = 0;
+                _cachedPosition = 0;
             }
 
+            /*
+             * File playback has completed.
+             */
+            if (_filePlaying)
+            {
+                _filePlaying = false;
+                _priorityPlaying = false;
+                _fileFinished = true;
+
+                _fileData = nullptr;
+                _fileSize = 0;
+                _filePosition = 0;
+
+                ReleaseFileSample();
+            }
+
+            xSemaphoreGive(_mutex);
             vTaskDelay(1);
+            /*
+             * We got the mutex, but there was no audio to
+             * play. The next iteration will perform the
+             * 5 ms idle wait.
+             */
+            continue;
         }
+
+        /*
+         * Determine how many complete 16-bit samples we
+         * can mix this iteration.
+         */
+        size_t samplesToMix = sampleCapacity;
+
+        if (cachedActive)
+        {
+            const size_t cachedRemaining =
+                (_cachedSize -
+                 _cachedPosition) /
+                sizeof(int16_t);
+
+            if (cachedRemaining < samplesToMix)
+            {
+                samplesToMix = cachedRemaining;
+            }
+        }
+
+        if (fileActive)
+        {
+            const size_t fileRemaining =
+                (_fileSize -
+                 _filePosition) /
+                sizeof(int16_t);
+
+            if (fileRemaining < samplesToMix)
+            {
+                samplesToMix = fileRemaining;
+            }
+        }
+
+        if (samplesToMix == 0)
+        {
+            /*
+             * This should only occur for an invalid or
+             * exhausted source.
+             */
+            xSemaphoreGive(_mutex);
+            continue;
+        }
+
+        const int16_t* cachedSamples =
+            cachedActive
+                ? reinterpret_cast<const int16_t*>(
+                    _cachedData + _cachedPosition)
+                : nullptr;
+
+        const int16_t* fileSamples =
+            fileActive
+                ? reinterpret_cast<const int16_t*>(
+                    _fileData + _filePosition)
+                : nullptr;
+
+        /*
+         * Mix the active sources.
+         *
+         * Use int32_t while adding so two full-scale
+         * samples cannot overflow int16_t.
+         */
+        for (size_t index = 0;
+             index < samplesToMix;
+             ++index)
+        {
+            int32_t mixed = 0;
+
+            if (cachedSamples != nullptr)
+            {
+                mixed += cachedSamples[index];
+            }
+
+            if (fileSamples != nullptr)
+            {
+                mixed += fileSamples[index];
+            }
+
+            if (mixed > 32767)
+            {
+                mixed = 32767;
+            }
+            else if (mixed < -32768)
+            {
+                mixed = -32768;
+            }
+
+            reinterpret_cast<int16_t*>(transferBuffer)[index] =
+                static_cast<int16_t>(mixed);
+        }
+
+        const size_t bytesToWrite =
+            samplesToMix *
+            sizeof(int16_t);
+
+        /*
+         * Advance source positions before releasing the
+         * mutex. The I2S write is performed while holding
+         * the mutex so the source buffers cannot be
+         * replaced or freed halfway through this block.
+         */
+        if (cachedActive)
+        {
+            _cachedPosition += bytesToWrite;
+
+            if (_cachedPosition >= _cachedSize)
+            {
+                _cachedPlaying = false;
+                _cachedData = nullptr;
+                _cachedSize = 0;
+                _cachedPosition = 0;
+            }
+        }
+
+        if (fileActive)
+        {
+            _filePosition += bytesToWrite;
+
+            if (_filePosition >= _fileSize)
+            {
+                _filePlaying = false;
+                _priorityPlaying = false;
+                _fileFinished = true;
+
+                _fileData = nullptr;
+                _fileSize = 0;
+                _filePosition = 0;
+
+                /*
+                 * The file has now been completely copied
+                 * into the I2S buffer. Its PSRAM allocation
+                 * can be released.
+                 */
+                ReleaseFileSample();
+            }
+        }
+
+        /*
+         * Apply volume after mixing.
+         */
+        ApplyVolume(
+            reinterpret_cast<int16_t*>(transferBuffer),
+            samplesToMix);
+
+
+            /*
+        * The transfer buffer contains a complete copy of the
+        * source samples, so the mutex is no longer required.
+        */
+        xSemaphoreGive(_mutex);
+
+        _i2s.write(
+            transferBuffer,
+            bytesToWrite);
+
+        vTaskDelay(1);
     }
 }
+
 
 bool MAX98357ASounds::LoadWav(
     const char* filename,
@@ -667,12 +875,10 @@ bool MAX98357ASounds::LoadWav(
             dataSize))
     {
         file.close();
+
         return false;
     }
 
-    /*
-     * Complete PCM sample is stored in PSRAM.
-     */
     data =
         static_cast<uint8_t*>(
             ps_malloc(dataSize));
@@ -685,6 +891,7 @@ bool MAX98357ASounds::LoadWav(
             static_cast<unsigned>(dataSize));
 
         file.close();
+
         return false;
     }
 
@@ -692,7 +899,9 @@ bool MAX98357ASounds::LoadWav(
     {
         free(data);
         data = nullptr;
+
         file.close();
+
         return false;
     }
 
@@ -713,6 +922,7 @@ bool MAX98357ASounds::LoadWav(
 
         free(data);
         data = nullptr;
+
         return false;
     }
 
@@ -720,6 +930,7 @@ bool MAX98357ASounds::LoadWav(
 
     return true;
 }
+
 
 bool MAX98357ASounds::ParseWav(
     File& file,
@@ -780,7 +991,6 @@ bool MAX98357ASounds::ParseWav(
                     format,
                     sizeof(format)) != sizeof(format))
             {
-                Serial.println("Chunk header error");
                 return false;
             }
 
@@ -819,6 +1029,7 @@ bool MAX98357ASounds::ParseWav(
             dataOffset = chunkOffset;
             dataSize = chunkSize;
             dataFound = true;
+
             break;
         }
 
@@ -835,12 +1046,13 @@ bool MAX98357ASounds::ParseWav(
 
         if (!file.seek(nextOffset))
         {
-            Serial.println("WAV seek error");
             return false;
         }
     }
 
-    if (!formatFound || !dataFound || dataSize == 0)
+    if (!formatFound ||
+        !dataFound ||
+        dataSize == 0)
     {
         Serial.println(
             "MAX98357ASounds: invalid WAV");
@@ -858,9 +1070,10 @@ bool MAX98357ASounds::ParseWav(
 
         return false;
     }
-    Serial.println("WAV load OK");
+
     return true;
 }
+
 
 void MAX98357ASounds::ApplyVolume(
     int16_t* samples,
@@ -909,42 +1122,64 @@ void MAX98357ASounds::ApplyVolume(
     }
 }
 
+
 MAX98357ASounds::CachedSample*
 MAX98357ASounds::FindCachedSample(
     const char* filename)
 {
-    for (CachedSample& sample : _cachedSamples)
+    if (_cachedSample == nullptr)
     {
-        if (sample.filename == filename)
-        {
-            return &sample;
-        }
+        return nullptr;
+    }
+
+    if (_cachedSample->filename == filename)
+    {
+        return _cachedSample;
     }
 
     return nullptr;
 }
+
 
 const MAX98357ASounds::CachedSample*
 MAX98357ASounds::FindCachedSample(
     const char* filename) const
 {
-    for (const CachedSample& sample :
-         _cachedSamples)
+    if (_cachedSample == nullptr)
     {
-        if (sample.filename == filename)
-        {
-            return &sample;
-        }
+        return nullptr;
+    }
+
+    if (_cachedSample->filename == filename)
+    {
+        return _cachedSample;
     }
 
     return nullptr;
 }
 
-void MAX98357ASounds::ReleaseCurrentSample()
+
+void MAX98357ASounds::ReleaseFileSample()
 {
-    if (_currentOwnedData != nullptr)
+    if (_fileOwnedData != nullptr)
     {
-        free(_currentOwnedData);
-        _currentOwnedData = nullptr;
+        free(_fileOwnedData);
+
+        _fileOwnedData = nullptr;
+    }
+}
+
+
+void MAX98357ASounds::ReleaseCachedSample()
+{
+    if (_cachedSample != nullptr)
+    {
+        free(_cachedSample->data);
+
+        _cachedSample->data = nullptr;
+
+        delete _cachedSample;
+
+        _cachedSample = nullptr;
     }
 }

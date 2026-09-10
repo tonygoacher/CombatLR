@@ -7,30 +7,13 @@
 #include <ESP_I2S.h>
 
 #include <string>
-#include <vector>
 
 class MAX98357ASounds : public ISounds
 {
 public:
-    /*
-     * CombatLR audio format:
-     *
-     *   PCM WAV
-     *   16000 Hz
-     *   16-bit
-     *   mono
-     *
-     * This is intentionally modest quality for a small mono
-     * speaker and keeps PSRAM use and I2S bandwidth low.
-     */
     static constexpr uint32_t SAMPLE_RATE = 16000;
     static constexpr uint16_t BITS_PER_SAMPLE = 16;
-
-    /*
-     * Temporary internal-RAM buffer used between PSRAM and I2S.
-     * The complete sample itself remains in PSRAM.
-     */
-    static constexpr size_t TRANSFER_BUFFER_SIZE = 2048;
+    static constexpr size_t TRANSFER_BUFFER_SIZE = 256;
 
     MAX98357ASounds(
         fs::FS& filesystem,
@@ -43,19 +26,19 @@ public:
     bool Begin();
 
     bool Play(const char* filename) override;
-    bool PlayCached(const char* filename) override;
+    bool PlayPriority(const char* filename) override;
 
     bool CacheSample(const char* filename) override;
-    bool UnCacheSample(const char* filename) override;
+    bool PlayCached() override;
+    bool UnCacheSample() override;
 
     void Stop() override;
+
     bool HasFinished() const override;
+
     void SetVolume(float volume) override;
 
 private:
-
-    uint8_t _transferBuffer[TRANSFER_BUFFER_SIZE];
-    
     struct CachedSample
     {
         std::string filename;
@@ -83,7 +66,9 @@ private:
     const CachedSample* FindCachedSample(
         const char* filename) const;
 
-    void ReleaseCurrentSample();
+    void ReleaseFileSample();
+
+    void ReleaseCachedSample();
 
     void ApplyVolume(
         int16_t* samples,
@@ -96,42 +81,54 @@ private:
     const int _lrcPin;
     const int _dataPin;
 
-    /*
-     * Arduino-ESP32 3.x I2S implementation.
-     *
-     * There is deliberately no legacy I2S.h object and no
-     * onTransmit callback. I2SClass owns the hardware/DMA path.
-     */
     I2SClass _i2s;
 
     TaskHandle_t _audioTask;
     SemaphoreHandle_t _mutex;
 
     /*
-     * Explicitly cached samples. Every sample is allocated from
-     * PSRAM by CacheSample().
+     * There is only one cached sample.
      */
-    std::vector<CachedSample> _cachedSamples;
+    CachedSample* _cachedSample;
 
     /*
-     * Current playback source.
+     * Cached playback state.
      *
-     * For Play(), _currentOwnedData owns the PSRAM allocation.
-     * For PlayCached(), _currentData points into _cachedSamples.
+     * This is independent of file playback.
      */
-    const uint8_t* _currentData;
-    size_t _currentSize;
-    size_t _currentPosition;
+    const uint8_t* _cachedData;
+    size_t _cachedSize;
+    size_t _cachedPosition;
+    volatile bool _cachedPlaying;
 
-    uint8_t* _currentOwnedData;
+    /*
+     * File playback state.
+     *
+     * _fileOwnedData owns the PSRAM allocation.
+     */
+    const uint8_t* _fileData;
+    size_t _fileSize;
+    size_t _filePosition;
+    uint8_t* _fileOwnedData;
 
-    volatile bool _playing;
-    volatile bool _stopRequested;
-    volatile bool _finished;
+    /*
+     * True when the current file playback is priority
+     * playback.
+     */
+    volatile bool _priorityPlaying;
+
+    /*
+     * True while either normal or priority file playback
+     * is active.
+     */
+    volatile bool _filePlaying;
+
+    /*
+     * HasFinished() refers only to the file channel.
+     */
+    volatile bool _fileFinished;
 
     float _volume;
 
     bool _initialised;
-
-    uint8_t _silence[256]={0};
 };

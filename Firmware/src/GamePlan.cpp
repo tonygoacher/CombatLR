@@ -176,6 +176,7 @@ namespace
                 selectionCount);
 
         std::vector<uint32_t> selectedIds;
+        Serial.printf("Selected indececs %d\n", selectedIndices.size());
         selectedIds.reserve(selectedIndices.size());
 
         for (size_t index : selectedIndices)
