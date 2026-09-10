@@ -17,11 +17,13 @@ public:
     const char* GetClipInsertSampleFilename(WeaponType type) const;
     const char* GetCockingFilename(WeaponType type) const;
     const char* GetEmptyFilename(WeaponType type) const;   
-    int GetPostMagTimeout(WeaponType type) const;
+    int GetInsertTime(WeaponType type) const;
+    int GetCockingTime(WeaponType type) const;
     int GetMagCapacity(WeaponType type) const;
     int GetMaxAmmoReserve(WeaponType type) const;
     int GetDefaultAmmoCount(WeaponType type) const;
     int GetMaxReload(WeaponType type) const;
+    int GetBurst(WeaponType type) const;
     
 
 private:
@@ -33,11 +35,13 @@ private:
         std::string clipInsertSampleFilename;
         std::string cockingFilename;
         std::string emptyFilename;
-        int postMagTimeout;
+        int insertClipTime;
+        int cockingTime;
         int magCapacity;
         int maxAmmoReserve;
         int defaultAmmoCount;
         int maxReload;
+        int burst;
     };
 
     void PrintDef(WeaponDefinition& def);

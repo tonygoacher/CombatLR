@@ -10,16 +10,15 @@
 
 
 
-AssaultRifle::AssaultRifle( WeaponType type, WeaponConfig& weaponConfig,CombatLRServices& services, int burst)
+AssaultRifle::AssaultRifle( WeaponType type, WeaponConfig& weaponConfig,CombatLRServices& services)
 : Weapon( type, weaponConfig,services),
 _rpmPacer(true),
 _reloadPacer(true),
 _state(ARState::StartReload),
-_burst(burst),
+
 _shotsTaken(0)
 {
-
-    _rpmPacer.SetPace(150);
+    _burst = _weaponConfig.GetBurst(type);
 
 }
 
@@ -28,8 +27,8 @@ _shotsTaken(0)
 bool AssaultRifle::IdleAction()
 {
     bool actionTaken = false;
-    if(_services.triggerSwitch.RawRead())
-    {                 
+    if(_services.triggerSwitch.Pressed())
+    {   Serial.printf("Shots taken %d Burst %d\n", _shotsTaken, _burst);             
         if(_burst==-1 ||    ( _shotsTaken < _burst))
         {
             if(_magAmmo)
@@ -57,6 +56,7 @@ bool AssaultRifle::IdleAction()
         if(_services.reloadSwitch.Pressed())
         {
             _state=ARState::StartReload;
+            
         }
     }
     return actionTaken;
@@ -68,7 +68,7 @@ void AssaultRifle::StartReload()
     _shotsTaken = 0;
 
     _state = ARState::MagInsert;
-    _reloadPacer.SetPace(_weaponConfig.GetPostMagTimeout(_type));
+    _reloadPacer.SetPace(_weaponConfig.GetInsertTime(_type));
     _services.sounds.Play(GetMagInsertFilename());
 }
 
@@ -98,6 +98,7 @@ void AssaultRifle::MagInsertAction()
     {
         _services.sounds.Play(GetReloadFilename());
         _state = ARState::Cocking;
+        _reloadPacer.SetPace(_weaponConfig.GetCockingTime(_type));
     }
 }
 
@@ -105,7 +106,7 @@ void AssaultRifle::MagInsertAction()
 bool AssaultRifle::CockingAction()
 {
     bool actionTaken = false;
-    if(_services.sounds.HasFinished())
+    if(_reloadPacer.Pace())
     {
         _state = ARState::Idle;
         actionTaken = true;
