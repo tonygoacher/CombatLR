@@ -92,6 +92,12 @@ uint16_t GameRunningState::Run()
 
     CheckPickups();
 
+  //  if(_player.CheckInZone(_stateData.zoneEngine.InZone(_player.Position())))
+    {
+    //    _stateData.sounds.Play("/sounds/hit.wav");
+    }
+
+    
 
     return SystemStates::GameRunning;  
 
@@ -103,7 +109,7 @@ void GameRunningState::Entry()
 {
     _weaponManager.Init();
     _stateData.systemTime.Reset();
-
+    _player.InitHealth();
     PlayerHealthWidget*  healthDisplay = new PlayerHealthWidget(UIWidgetIds::PlayerHealth, _player, HealthX, HealthY, HealthW, HealthH);
 
     _stateData.displayManager.Send(
