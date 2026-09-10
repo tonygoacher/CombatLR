@@ -35,7 +35,7 @@ bool AssaultRifle::IdleAction()
             if(_magAmmo)
             {
                 _shotsTaken++;
-                _services.sounds.PlayCached(GetShotFilename());
+                _services.sounds.PlayCached();
                 _magAmmo--;
             
                 _state = ARState::Shooting;
@@ -205,7 +205,7 @@ void AssaultRifle::Start()
 
 void AssaultRifle::Stop()
 {
-    _services.sounds.UnCacheSample(GetShotFilename());
+    _services.sounds.UnCacheSample();
 }
 
 
