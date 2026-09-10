@@ -31,7 +31,7 @@ public:
     void Run(); // Used to pump the current weapon
     void AddWeapon(WeaponType type);
     void AddAmmo(WeaponType type, uint16_t ammo);
-
+    int GetNumWeapons();
     const WeaponMap& GetWeaponMap();
 
 private:
@@ -52,6 +52,8 @@ private:
 
     CombatLRServices& _stateData;
     WMStates    _state;
+    int GetGuaranteedWeaponReload();
+
 
     void ShowSelectWeapon();
     void ShowLoadout (WeaponMap::iterator& weapon);

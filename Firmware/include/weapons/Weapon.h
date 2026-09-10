@@ -9,13 +9,7 @@ class DisplayManager;
 class ISounds;
 class CombatLRServices;
 
-enum class WeaponType               // These must always start at 0 and be contiguous as the int value is used as an index
-{
-    HandBlaster,
-    AssaultRifle,
-    AssaultRifleFullAuto,
-    Blaster,
-};
+typedef int   WeaponType;
 
 class WeaponConfig;
 

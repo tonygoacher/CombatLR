@@ -17,6 +17,7 @@ public:
     const char* GetClipInsertSampleFilename(WeaponType type) const;
     const char* GetCockingFilename(WeaponType type) const;
     const char* GetEmptyFilename(WeaponType type) const;   
+    const char* GetName(WeaponType type) const;
     int GetInsertTime(WeaponType type) const;
     int GetCockingTime(WeaponType type) const;
     int GetMagCapacity(WeaponType type) const;
@@ -24,12 +25,15 @@ public:
     int GetDefaultAmmoCount(WeaponType type) const;
     int GetMaxReload(WeaponType type) const;
     int GetBurst(WeaponType type) const;
+
+    int GetNumWeapons();
     
 
 private:
     struct WeaponDefinition
     {
         WeaponType type;
+        std::string name;
         std::string imageFilename;
         std::string shootSampleFilename;
         std::string clipInsertSampleFilename;

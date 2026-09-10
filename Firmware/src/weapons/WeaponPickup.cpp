@@ -126,10 +126,7 @@ WeaponType WeaponPickup::SelectWeaponType(
     std::vector<WeaponType> availableTypes;
     std::vector<uint8_t> chances;
 
-    for (int typeValue = 0;
-         typeValue <=
-             static_cast<int>(WeaponType::AssaultRifleFullAuto);
-         ++typeValue)
+    for (int typeValue = 0; typeValue < _weaponManager.GetNumWeapons(); ++typeValue)
     {
         const WeaponType type =
             static_cast<WeaponType>(typeValue);
@@ -138,7 +135,7 @@ WeaponType WeaponPickup::SelectWeaponType(
             _pickupTable.GetPickupChance(
                 type,
                 gameProgress);
-
+        Serial.printf("Type: %d Chance %d\n", typeValue, chance);
         if (chance == 0)
             continue;
 
@@ -148,6 +145,8 @@ WeaponType WeaponPickup::SelectWeaponType(
         totalChance += chance;
     }
 
+    Serial.printf("Total chance %d\n", totalChance);
+
     if (availableTypes.empty())
     {
         /*
@@ -155,7 +154,8 @@ WeaponType WeaponPickup::SelectWeaponType(
          * pickup table. This should normally indicate
          * a configuration error.
          */
-        return WeaponType::AssaultRifle;
+        Serial.println("No available weapon types for pickup");
+        return 0;
     }
 
     const uint16_t roll =

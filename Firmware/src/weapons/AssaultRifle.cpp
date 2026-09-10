@@ -220,6 +220,7 @@ const char * const AssaultRifle::GetFilename()
 
 void AssaultRifle::Equip()
 {
+
     _services.sounds.Play(GetReloadFilename());
     _state =  ARState::Equipping;
 }

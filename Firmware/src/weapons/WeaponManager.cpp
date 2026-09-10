@@ -98,7 +98,13 @@ void WeaponManager::Run()
                 _stateData.displayManager.Send(std::unique_ptr<IDisplayCommand>(new RemoveWidgetCommand(UIWidgetIds::SelectWeapon))); 
                 if(_currentWeapon->first != _displayWeapon->first)
                 {
+                    if(_currentWeapon != _weapons.end())
+                    {
+                        _currentWeapon->second->Stop();
+                    }
+                    
                     _currentWeapon = _displayWeapon;
+                    _currentWeapon->second->Start();
                 
                     _currentWeapon->second->Equip();
                 }                
@@ -178,7 +184,7 @@ bool WeaponManager::InsertWeapon(std::pair<WeaponMap::iterator, bool>& insertRes
         {
             _currentWeapon = _displayWeapon = insertResult.first;
             ShowSelectWeapon();
-            Serial.printf("Insert w %d\n", static_cast<int>(_currentWeapon->second->GetWeaponType()));
+            Serial.printf("Inserting weapon:%s Type: %d\n", _stateData.weaponConfig.GetName(_currentWeapon->second->GetWeaponType()),static_cast<int>(_currentWeapon->second->GetWeaponType()));
             _currentWeapon->second->Start();
             ShowLoadout(_currentWeapon);
             result = true;
@@ -196,45 +202,17 @@ bool WeaponManager::InsertWeapon(std::pair<WeaponMap::iterator, bool>& insertRes
 
 void WeaponManager::AddWeapon(WeaponType type)
 {
-    Serial.print("Adding weapon type "); Serial.println(static_cast<int>(type));
-    switch(type)
+    if(type >= _stateData.weaponConfig.GetNumWeapons())
     {
-        case WeaponType::HandBlaster:
-        {   
-
-            std::pair<WeaponMap::iterator, bool> result;
-            result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type, _stateData.weaponConfig,  _stateData));    
-            InsertWeapon(result);
-
-        }
-        break;
-
-        case WeaponType::AssaultRifle:
-        {   
-
-            std::pair<WeaponMap::iterator, bool> result;
-            result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type, _stateData.weaponConfig,  _stateData));    
-            InsertWeapon(result);
-
-        }
-        break;
-
-        case WeaponType::AssaultRifleFullAuto:
-        {   
-                std::pair<WeaponMap::iterator, bool> result;
-                result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type,  _stateData.weaponConfig, _stateData));    
-                InsertWeapon(result);
-        }
-        break;
-
-        case WeaponType::Blaster:
-        {   
-                std::pair<WeaponMap::iterator, bool> result;
-                result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type,  _stateData.weaponConfig, _stateData));    
-                InsertWeapon(result);
-        }
-        break;
-    };
+        Serial.printf("Error adding weapon type %d. Weapons size is %d\n", type, _stateData.weaponConfig.GetNumWeapons());
+    }
+    else
+    {
+        Serial.printf("Adding weapon: %s Type: %d\n", _stateData.weaponConfig.GetName(type), type);
+        std::pair<WeaponMap::iterator, bool> result;
+        result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type, _stateData.weaponConfig,  _stateData));    
+        InsertWeapon(result);
+    }        
 }
 
 
@@ -246,6 +224,26 @@ void WeaponManager::AddAmmo(WeaponType type, uint16_t ammo)
     if(weapon != _weapons.end())
     {
         weapon->second->AddAmmo(ammo);
+        if(_currentWeapon != _weapons.end() && _displayWeapon != _weapons.end())    // IF both iterators are valid
+        {
+            if(_currentWeapon->first == _displayWeapon->first)  // If display and current are the same, the current weapon needs a laodout update
+            {
+                ShowLoadout(_currentWeapon);
+            }
+            else
+            {
+                ShowLoadout(_displayWeapon);    // If current and dispkay are not the same, the display weapon is active so update it.
+            }
+
+         }      
+         else
+         {
+            if(_currentWeapon != _weapons.end())    // No display weapon active, if current is active, update it
+            {
+                ShowLoadout(_currentWeapon);
+            }
+         }      
+        
     }
 }
 
@@ -255,4 +253,11 @@ void WeaponManager::AddAmmo(WeaponType type, uint16_t ammo)
 const WeaponManager::WeaponMap& WeaponManager::GetWeaponMap()
 {
     return _weapons;
+}
+
+
+
+int WeaponManager::GetNumWeapons()
+{
+    return _stateData.weaponConfig.GetNumWeapons();
 }
