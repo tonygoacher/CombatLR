@@ -38,14 +38,14 @@ void WeaponManager::Run()
         if(_state == WMStates::Normal)
         {
 
-                if(_currentWeapon->second->Run())
-                {
-                    ShowLoadout(_currentWeapon);
-                }
+            if(_currentWeapon->second->Run())
+            {
+                ShowLoadout(_currentWeapon);
+            }
 
 
             // Left or right button pressed and at least one weapon, move to show mode
-            if(_stateData.leftSwitch.Pressed() || _stateData.rightSwitch.Pressed() && _weapons.size() >= 1)
+            if(_stateData.leftSwitch.Pressed() || _stateData.rightSwitch.Pressed() && _weapons.size() > 0)
             {
                 _state = WMStates::Select;
                 _displayWeapon = _currentWeapon;
@@ -106,9 +106,8 @@ void WeaponManager::Run()
                 _state = WMStates::Normal;
 
             }
-
-
         }
+        
         if(_selectPacer.Pace())
         {
             _state = WMStates::Normal;
