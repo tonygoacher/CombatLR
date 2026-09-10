@@ -24,11 +24,13 @@ void WeaponConfig::PrintDef(WeaponDefinition& def)
     Serial.printf("Empty sample:    %s\n",def.emptyFilename.c_str());
     Serial.printf("Image:           %s\n",def.imageFilename.c_str());
     Serial.printf("Shoot sample:    %s\n",def.shootSampleFilename.c_str());
-    Serial.printf("Post mag time:   %d\n", def.postMagTimeout);
+    Serial.printf("Insert Clip Time:%d\n", def.insertClipTime);
+    Serial.printf("Cocking Time:    %d\n", def.cockingTime);
     Serial.printf("Mag capacity:    %d\n",def.magCapacity);
     Serial.printf("Max ammo rserve: %d\n",def.maxAmmoReserve);
     Serial.printf("Default ammo:    %d\n",def.defaultAmmoCount);
     Serial.printf("Max reload:      %d\n", def.maxReload);
+    Serial.printf("Burst:           %d\n", def.burst);
 }
 
 
@@ -111,8 +113,14 @@ bool WeaponConfig::Load()
         definition.emptyFilename =
             weaponJson["empty"] | "";
 
-        definition.postMagTimeout =
-            weaponJson["postMagTimeout"] | 0;
+        definition.insertClipTime =
+            weaponJson["insertClipTime"] | 0;
+
+        definition.cockingTime =  
+            weaponJson["cockingTime"] | 0;            
+
+        definition.burst =
+            weaponJson["burst"] | 1;
 
         definition.magCapacity = weaponJson["magCapacity"] | 0;
 
@@ -187,13 +195,20 @@ WeaponConfig::GetEmptyFilename(
     return weapon == nullptr ? nullptr : weapon->emptyFilename.c_str();
 }
 
-int WeaponConfig::GetPostMagTimeout(
+int WeaponConfig::GetInsertTime(
     WeaponType type) const
 {
     const WeaponDefinition* weapon = Find(type);
-    return weapon == nullptr ? 0 : weapon->postMagTimeout;
+    return weapon == nullptr ? 0 : weapon->insertClipTime;
 }
 
+
+int WeaponConfig::GetCockingTime(
+    WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? 0 : weapon->cockingTime;
+}
 
 
 void WeaponConfig::Init()
@@ -231,3 +246,9 @@ int WeaponConfig::GetMaxReload(WeaponType type) const
     return weapon == nullptr ? 0 : weapon->maxReload;
 }
 
+
+int WeaponConfig::GetBurst(WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? 1 : weapon->burst;
+}

@@ -199,11 +199,21 @@ void WeaponManager::AddWeapon(WeaponType type)
     Serial.print("Adding weapon type "); Serial.println(static_cast<int>(type));
     switch(type)
     {
+        case WeaponType::HandBlaster:
+        {   
+
+            std::pair<WeaponMap::iterator, bool> result;
+            result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type, _stateData.weaponConfig,  _stateData));    
+            InsertWeapon(result);
+
+        }
+        break;
+
         case WeaponType::AssaultRifle:
         {   
 
             std::pair<WeaponMap::iterator, bool> result;
-            result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type, _stateData.weaponConfig,  _stateData, 3));    
+            result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type, _stateData.weaponConfig,  _stateData));    
             InsertWeapon(result);
 
         }
@@ -212,7 +222,7 @@ void WeaponManager::AddWeapon(WeaponType type)
         case WeaponType::AssaultRifleFullAuto:
         {   
                 std::pair<WeaponMap::iterator, bool> result;
-                result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type,  _stateData.weaponConfig, _stateData, -1));    
+                result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type,  _stateData.weaponConfig, _stateData));    
                 InsertWeapon(result);
         }
         break;
@@ -220,7 +230,7 @@ void WeaponManager::AddWeapon(WeaponType type)
         case WeaponType::Blaster:
         {   
                 std::pair<WeaponMap::iterator, bool> result;
-                result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type,  _stateData.weaponConfig, _stateData, -1));    
+                result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type,  _stateData.weaponConfig, _stateData));    
                 InsertWeapon(result);
         }
         break;

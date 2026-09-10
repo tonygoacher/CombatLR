@@ -120,7 +120,7 @@ void GameRunningState::Entry()
     
     _stateData.zoneEngine.AddZoneEventListener(this);
 
-    _weaponManager.AddWeapon(WeaponType::AssaultRifle);
+    _weaponManager.AddWeapon(WeaponType::HandBlaster);
 
 }
 
