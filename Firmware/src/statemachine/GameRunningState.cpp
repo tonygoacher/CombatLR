@@ -120,7 +120,7 @@ void GameRunningState::Entry()
     
     _stateData.zoneEngine.AddZoneEventListener(this);
 
-    _weaponManager.AddWeapon(4);
+    _weaponManager.AddWeapon(2);
 
 }
 

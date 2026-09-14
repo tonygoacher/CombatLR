@@ -18,6 +18,8 @@ public:
     const char* GetCockingFilename(WeaponType type) const;
     const char* GetEmptyFilename(WeaponType type) const;   
     const char* GetName(WeaponType type) const;
+    const char* GetBuildUpFilename(WeaponType type);
+
     int GetInsertTime(WeaponType type) const;
     int GetCockingTime(WeaponType type) const;
     int GetMagCapacity(WeaponType type) const;
@@ -25,7 +27,8 @@ public:
     int GetDefaultAmmoCount(WeaponType type) const;
     int GetMaxReload(WeaponType type) const;
     int GetBurst(WeaponType type) const;
-
+    int GetBuildUpTime(WeaponType type) const;
+    int GetPostBuildUpShotTime(WeaponType type) const;
     int GetNumWeapons();
     
 
@@ -39,6 +42,7 @@ private:
         std::string clipInsertSampleFilename;
         std::string cockingFilename;
         std::string emptyFilename;
+        std::string buildUpFilename;
         int insertClipTime;
         int cockingTime;
         int magCapacity;
@@ -46,6 +50,8 @@ private:
         int defaultAmmoCount;
         int maxReload;
         int burst;
+        int buildUpTime;
+        int postBuildUpShotTime;
     };
 
     void PrintDef(WeaponDefinition& def);

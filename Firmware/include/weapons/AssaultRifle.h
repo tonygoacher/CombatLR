@@ -31,6 +31,7 @@ protected:
     virtual void StartReload();
     virtual bool IdleAction();     // Check the trigger and reload, start the shot
     virtual void EquippingAction();
+    virtual bool BuildUpAction();
 
     const char * const GetShotFilename();
     const char * const GetReloadFilename();
@@ -46,6 +47,7 @@ private:
     enum class ARState
     {
         Idle,
+        BuildUp,
         Shooting,
         Empty,
         StartReload,

@@ -529,6 +529,34 @@ void MAX98357ASounds::Stop()
 }
 
 
+void MAX98357ASounds::StopCached()
+{
+ if (!_initialised ||
+        _mutex == nullptr)
+    {
+        return;
+    }
+
+    if (xSemaphoreTake(
+            _mutex,
+            portMAX_DELAY) != pdTRUE)
+    {
+        return;
+    }
+
+    /*
+     * Stop cached playback.
+     */
+    _cachedPlaying = false;
+    _cachedData = nullptr;
+    _cachedSize = 0;
+    _cachedPosition = 0;
+
+    xSemaphoreGive(_mutex);
+}
+
+
+
 bool MAX98357ASounds::HasFinished() const
 {
     return _fileFinished;

@@ -19,11 +19,13 @@ WeaponConfig::WeaponConfig()
 void WeaponConfig::PrintDef(WeaponDefinition& def)
 {
     Serial.print("Type:"); Serial.println(static_cast<int>(def.type));
+    Serial.printf("Name             %s\n",def.name.c_str());
     Serial.printf("Insert sample:   %s\n",def.clipInsertSampleFilename.c_str());
     Serial.printf("Cocking sample:  %s\n",def.cockingFilename.c_str());
     Serial.printf("Empty sample:    %s\n",def.emptyFilename.c_str());
     Serial.printf("Image:           %s\n",def.imageFilename.c_str());
     Serial.printf("Shoot sample:    %s\n",def.shootSampleFilename.c_str());
+    Serial.printf("Build Up Sample %s\n", def.buildUpFilename.c_str());
     Serial.printf("Insert Clip Time:%d\n", def.insertClipTime);
     Serial.printf("Cocking Time:    %d\n", def.cockingTime);
     Serial.printf("Mag capacity:    %d\n",def.magCapacity);
@@ -31,6 +33,9 @@ void WeaponConfig::PrintDef(WeaponDefinition& def)
     Serial.printf("Default ammo:    %d\n",def.defaultAmmoCount);
     Serial.printf("Max reload:      %d\n", def.maxReload);
     Serial.printf("Burst:           %d\n", def.burst);
+    Serial.printf("Build up time    %d\n", def.buildUpTime);
+    Serial.printf("Post Build time  %d\n", def.postBuildUpShotTime);
+
 }
 
 
@@ -116,6 +121,9 @@ bool WeaponConfig::Load()
         definition.emptyFilename =
             weaponJson["empty"] | "";
 
+        definition.buildUpFilename =
+            weaponJson["buildUp"] | "";
+
         definition.insertClipTime =
             weaponJson["insertClipTime"] | 0;
 
@@ -124,6 +132,12 @@ bool WeaponConfig::Load()
 
         definition.burst =
             weaponJson["burst"] | 1;
+
+        definition.buildUpTime = 
+            weaponJson["buildUpTime"] | 0;        
+
+        definition.postBuildUpShotTime = 
+            weaponJson["postBuildUpShotTime"] | 0;               
 
         definition.magCapacity = weaponJson["magCapacity"] | 0;
 
@@ -269,4 +283,29 @@ const char* WeaponConfig::GetName(WeaponType type) const
 int WeaponConfig::GetNumWeapons()
 {
     return _weapons.size();
+}
+
+
+
+int WeaponConfig::GetBuildUpTime(WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? 0 : weapon->buildUpTime;
+}
+
+
+
+
+const char* WeaponConfig::GetBuildUpFilename(WeaponType type)
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? nullptr : weapon->buildUpFilename.c_str();   
+}
+
+
+
+int WeaponConfig::GetPostBuildUpShotTime(WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? 0 : weapon->postBuildUpShotTime;   
 }
