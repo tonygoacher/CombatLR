@@ -33,13 +33,24 @@ bool AssaultRifle::IdleAction()
         {
             if(_magAmmo)
             {
-                _shotsTaken++;
                 _services.sounds.PlayCached();
-                _magAmmo--;
-            
-                _state = ARState::Shooting;
-                _rpmPacer.PacerReset();
-                actionTaken = true;
+                if(_weaponConfig.GetBuildUpTime(_type) == 0) // Weapon has no build up
+                {
+                
+                    _shotsTaken++;
+                    _magAmmo--;
+
+                
+                    _state = ARState::Shooting;
+                    _rpmPacer.PacerReset();
+                    actionTaken = true;
+                } 
+                else
+                {
+                        _rpmPacer.SetPace(_weaponConfig.GetBuildUpTime(_type));
+                        _state = ARState::BuildUp;
+                }
+
             }
             else
             {
@@ -80,6 +91,31 @@ void AssaultRifle::ShootingAction()
         _state = ARState::Idle;
     }
 }
+
+
+bool AssaultRifle::BuildUpAction()
+{
+    bool actionTaken = false;
+    if(_rpmPacer.Pace())
+    {
+        _shotsTaken++;
+        _magAmmo--;
+
+    
+        _state = ARState::Shooting;
+        _rpmPacer.SetPace(_weaponConfig.GetPostBuildUpShotTime(_type));
+        actionTaken = true;
+    }
+
+    if(!_services.triggerSwitch.Pressed())  // If the trigger has been released, stop the build up
+    {
+        _services.sounds.StopCached();
+        _state = ARState::Idle;
+    }
+
+    return actionTaken;
+}
+
 
 
 void AssaultRifle::EmptyAction()
@@ -144,6 +180,12 @@ bool AssaultRifle::Run()
         }
         break;
 
+        case ARState::BuildUp:
+        {
+            actionTaken = BuildUpAction();
+        }
+        break;
+
         case ARState::Empty:
         {
             EmptyAction();
@@ -200,7 +242,10 @@ void AssaultRifle::AddAmmo(uint16_t addAmmo)
 void AssaultRifle::Start()
 {
     Serial.println(GetShotFilename());
-    _services.sounds.CacheSample(GetShotFilename());
+    if(GetShotFilename() != nullptr)
+    {
+        _services.sounds.CacheSample(GetShotFilename());
+    }        
 
 }
 

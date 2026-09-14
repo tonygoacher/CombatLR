@@ -13,6 +13,7 @@ public:
     virtual bool UnCacheSample() = 0;
 
     virtual void Stop() = 0;
+    virtual void StopCached() = 0;
     virtual bool HasFinished() const = 0;
     virtual void SetVolume(float volume) = 0;
 };

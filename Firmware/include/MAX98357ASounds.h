@@ -33,6 +33,7 @@ public:
     bool UnCacheSample() override;
 
     void Stop() override;
+    void StopCached() override;
 
     bool HasFinished() const override;
 
