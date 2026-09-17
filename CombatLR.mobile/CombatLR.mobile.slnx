@@ -1,3 +1,5 @@
 <Solution>
-  <Project Path="CombatLR.mobile.csproj" />
+  <Project Path="CombatLR.mobile.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
 </Solution>

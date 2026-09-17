@@ -63,7 +63,6 @@ uint16_t GameRunningState::Run()
         }
     }
 
-    return SystemStates::Dead;
     
     if(_stateData.navigation.Update())
     {
@@ -263,4 +262,17 @@ void GameRunningState::ZoneStartedMoving(GameCoordinate newZonePos, int zoneInde
 void GameRunningState::NewZoneActive(GameCoordinate newZonePos,int zoneIndexInGamePlan)
 {
     _stateData.sounds.Play("/sounds/zactive.wav");
+}
+
+
+
+void GameRunningState::PickupActivated(uint32_t pickupId)
+{
+    Serial.printf("Pickup activated %d\n", pickupId);
+}
+
+
+void GameRunningState::PickupDeactivated(uint32_t pickupId)
+{
+    Serial.printf("Pickup deactivated %d\n", pickupId);
 }
