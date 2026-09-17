@@ -33,6 +33,7 @@
 #include "PacerTime.h"
 #include "IRLaserTag.h"
 #include "weapons/WeaponManager.h"
+#include "ESP32LaserTag.h"
 
 
 
@@ -96,9 +97,6 @@ namespace
 
     GamePlan gamePlan;
  
-    MockLaserTag  laserTag;        
-
-
     TextureManager textureManager(LittleFS);
     DisplayManager displayManager(textureManager);
 
@@ -115,6 +113,7 @@ namespace
 
     PacerTime gameTime;
     WeaponConfig weaponConfig;
+    ESP32LaserTag laserTag(IR_TXPORT, IR_RXPORT);
     CombatLRServices stateData{displayManager, navigation, zoneEngine, sounds, zoom, geoReference, laserTag, gameTime, weaponConfig, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch};
     WeaponManager weaponManager(stateData);
     CombatLRStateMachine stateMachine(stateData,weaponManager);

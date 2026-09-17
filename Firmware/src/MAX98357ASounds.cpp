@@ -173,6 +173,7 @@ bool MAX98357ASounds::Begin()
 bool MAX98357ASounds::Play(
     const char* filename)
 {
+    Serial.printf("Playing %s\n",filename);
     if (!_initialised ||
         filename == nullptr)
     {
@@ -888,6 +889,7 @@ bool MAX98357ASounds::LoadWav(
         _filesystem.open(
             filename,
             FILE_READ);
+            Serial.printf("Loading %s\n", filename);
 
     if (!file)
     {

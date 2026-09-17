@@ -29,6 +29,7 @@ public:
     int GetBurst(WeaponType type) const;
     int GetBuildUpTime(WeaponType type) const;
     int GetPostBuildUpShotTime(WeaponType type) const;
+    int GetShotPower(WeaponType type) const;
     int GetNumWeapons();
     
 
@@ -52,6 +53,7 @@ private:
         int burst;
         int buildUpTime;
         int postBuildUpShotTime;
+        int shotPower;
     };
 
     void PrintDef(WeaponDefinition& def);

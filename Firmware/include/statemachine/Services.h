@@ -11,6 +11,7 @@ class ISystemTime;
 class PBSwitch;
 class IRLaserTag;
 class WeaponConfig;
+class ESP32LaserTag;
 
 struct CombatLRServices
 {
@@ -20,10 +21,12 @@ struct CombatLRServices
     ZoneEngine& zoneEngine;
     ISounds& sounds;
     IZoom& zoom;
+
     GeoReference& geoReference;
     IRLaserTag& laserTag;
     ISystemTime& systemTime;
     WeaponConfig& weaponConfig;
+
     PBSwitch&   triggerSwitch;
     PBSwitch&   reloadSwitch;
     PBSwitch&   leftSwitch;

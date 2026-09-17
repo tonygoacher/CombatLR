@@ -1028,6 +1028,13 @@ void ZoneEngine::RemoveZoneObjects(
     }
 }
 
+
+void ZoneEngine::RemoveObjectsInCurrentZone()
+{
+    RemoveZoneObjects(_currentZoneIndex);
+}
+
+
 ActiveGameObject*
 ZoneEngine::FindActiveObject(
     uint32_t objectId)
