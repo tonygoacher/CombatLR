@@ -6,6 +6,7 @@ public class GamePlan
     {
         _nextPickupId = 0;
     }
+
     public int Version { get; set; } = 1;
 
     public HomePosition? Home { get; set; }
@@ -17,6 +18,15 @@ public class GamePlan
     public int AllocatePickupId()
     {
         return _nextPickupId++;
+    }
+
+    public void InitialisePickupIdAllocator()
+    {
+        _nextPickupId = Zones
+            .SelectMany(z => z.Pickups)
+            .Select(p => p.Id)
+            .DefaultIfEmpty(-1)
+            .Max() + 1;
     }
 }
 

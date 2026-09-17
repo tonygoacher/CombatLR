@@ -270,7 +270,7 @@ namespace CombatLR.mobile.Pages
                 _gamePlan =
                     await _gamePlanService.LoadAsync(
                         filePath);
-
+                _gamePlan.InitialisePickupIdAllocator();
                 UpdateGameObjectControls();
                 UpdateHomeMarker();
                 _currentZoneIndex =

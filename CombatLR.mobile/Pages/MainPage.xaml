@@ -172,10 +172,10 @@
                     BackgroundColor="White" />
 
                 <Button
-                    x:Name="NewButton"
-                    Text="New"
-                    Style="{StaticResource PanelButton}"
-                    Clicked="NewGamePlan_Clicked" />
+    x:Name="NewButton"
+    Text="New"
+    Style="{StaticResource PanelButton}"
+    Clicked="NewGamePlan_Clicked" />
 
                 <Button
                     x:Name="SaveButton"

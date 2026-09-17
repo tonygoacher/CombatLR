@@ -16,8 +16,9 @@
 #include "weapons/WeaponPickup.h"
 #include "weapons/JSONWeaponPickupTable.h"
 #include "IZoneEvent.h"
+#include "IPickupEvent.h"
 
-class GameRunningState : public State, public IZoneEvent
+class GameRunningState : public State, public IZoneEvent,  public IPickupEvent
 {
 public:
        
@@ -28,7 +29,10 @@ public:
 
     void ZoneMoveImminent(GameCoordinate newZonePos,int zoneIndexInGamePlan,uint32_t timeToActivation) override;
     void ZoneStartedMoving(GameCoordinate newZonePos, int zoneIndexInGamePlan) override;
-     void NewZoneActive(GameCoordinate newZonePos,int zoneIndexInGamePlan) override;
+    void NewZoneActive(GameCoordinate newZonePos,int zoneIndexInGamePlan) override;
+
+    void PickupActivated(uint32_t pickupId) override;         // A timed pickup has been added to the map
+    void PickupDeactivated(uint32_t pickupId) override;
 
 private:    
     static const int PlayerStartHealth = 50;
@@ -53,3 +57,4 @@ private:
     static const int HealthH = 15;
 
 };
+
