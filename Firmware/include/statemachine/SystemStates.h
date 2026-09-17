@@ -8,5 +8,5 @@ enum SystemStates
     AwaitingStart,
     GameInit,       // Time t to get in position around the map
     GameRunning,
-    OutOfGame,
+    Dead,
 };

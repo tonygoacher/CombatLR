@@ -21,6 +21,7 @@
 #include "graphics/AddWidgetCommand.h"
 #include "graphics/RemoveWidgetCommand.h"
 #include "widgets/UIWidgetIds.h"
+#include "ESP32Lasertag.h"
 
 
 
@@ -38,7 +39,32 @@ GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, CombatLRServices&
 
 uint16_t GameRunningState::Run()
 {
+    LaserTagData ltData;
+    if(_stateData.laserTag.GetLasertagData(ltData))
+    {
+        Serial.println("Got LT data");
+        Serial.printf("Shot weapon: %d\n", ltData.weapon);
 
+  
+        int shotPower = _stateData.weaponConfig.GetShotPower(ltData.weapon);
+        Serial.printf("Shot weapon %d\n", ltData.weapon);
+        Serial.printf("Shot power %d\n", shotPower);
+        if(shotPower)
+        {
+            int newHealth = _player.TakeHealth(shotPower);
+            if(newHealth)
+            {
+                _stateData.sounds.Play("/sounds/hit.wav");  
+            }
+            else
+            {
+                Serial.println("DEAD");
+            }
+        }
+    }
+
+    return SystemStates::Dead;
+    
     if(_stateData.navigation.Update())
     {
         
@@ -110,6 +136,7 @@ void GameRunningState::Entry()
     _weaponManager.Init();
     _stateData.systemTime.Reset();
     _player.InitHealth();
+    _stateData.laserTag.Init();
     PlayerHealthWidget*  healthDisplay = new PlayerHealthWidget(UIWidgetIds::PlayerHealth, _player, HealthX, HealthY, HealthW, HealthH);
 
     _stateData.displayManager.Send(
@@ -120,7 +147,7 @@ void GameRunningState::Entry()
     
     _stateData.zoneEngine.AddZoneEventListener(this);
 
-    _weaponManager.AddWeapon(2);
+    _weaponManager.AddWeapon(5);
 
 }
 
@@ -134,7 +161,16 @@ void GameRunningState::Exit()
         std::unique_ptr<IDisplayCommand>(
             new RemoveWidgetCommand(UIWidgetIds::PlayerHealth)));
 
-  _stateData.zoneEngine.RemoveZoneEventListener(this);            
+    _stateData.zoneEngine.RemoveZoneEventListener(this);    
+    _stateData.zoneEngine.RemoveObjectsInCurrentZone();
+
+    _stateData.displayManager.Send(
+        std::unique_ptr<IDisplayCommand>(
+            new RemoveWidgetCommand(UIWidgetIds::AmmoDisplay)));
+
+    _stateData.displayManager.Send(
+        std::unique_ptr<IDisplayCommand>(
+            new RemoveWidgetCommand(UIWidgetIds::SelectWeapon)));
 }
 
 

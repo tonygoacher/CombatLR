@@ -14,7 +14,8 @@
 	  "magCapacity": 12,
 	  "maxAmmoReserve": 200,
 	  "defaultAmmoCount": 40,
-	  "maxReload": 200
+	  "maxReload": 200,
+	  "shotPower": 1
     },
     {
       "type": 1,
@@ -30,7 +31,9 @@
 	  "magCapacity": 30,
 	  "maxAmmoReserve": 300,
 	  "defaultAmmoCount": 120,
-	  "maxReload": 200
+	  "maxReload": 200,
+	  "shotPower": 2
+	  
     },
     {
       "type": 2,
@@ -46,7 +49,8 @@
 	  "magCapacity": 30,
 	  "maxAmmoReserve": 300,
 	  "defaultAmmoCount": 120,
-	  "maxReload": 200
+	  "maxReload": 200,
+	  "shotPower": 3
     },
 	{
       "type": 3,
@@ -61,7 +65,9 @@
 	  "magCapacity": 20,
 	  "maxAmmoReserve": 200,
 	  "defaultAmmoCount": 100,
-	  "maxReload": 200
+	  "maxReload": 200,
+	  "shotPower": 10
+	  
     },
 	{
       "type": 4,
@@ -76,7 +82,9 @@
 	  "magCapacity": 1,
 	  "maxAmmoReserve": 3,
 	  "defaultAmmoCount": 3,
-	  "maxReload": 3
+	  "maxReload": 3, 
+	  "shotPower": 20
+	  
     },
 	{
       "type": 5,
@@ -93,7 +101,8 @@
 	  "magCapacity": 1,
 	  "maxAmmoReserve": 3,
 	  "defaultAmmoCount": 3,
-	  "maxReload": 3
+	  "maxReload": 3,
+	  "shotPower": 50
     }
   ]
 }

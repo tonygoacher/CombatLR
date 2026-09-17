@@ -563,7 +563,7 @@ LaserTagData ESP32LaserTag::DecodePacket(
         (packet >> 4) & 0x03;
 
 
-    data.damage =
+    data.weapon =
         packet & 0x0F;
 
 
@@ -664,7 +664,7 @@ void ESP32LaserTag::SendLasertagData(
 
     packet |=
         static_cast<uint16_t>(
-            dataToSend.damage & 0x0F);
+            dataToSend.weapon & 0x0F);
 
 
     /*

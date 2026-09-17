@@ -1,4 +1,6 @@
 #pragma once
+
+#include <stdint.h>
 /*
  * MilesTag 2 shot packet.
  *
@@ -16,7 +18,7 @@ struct __attribute__((packed)) LaserTagData
 {
     uint8_t playerId;
     uint8_t team;
-    uint8_t damage;
+    uint8_t weapon;
 };
 
 class IRLaserTag

@@ -35,6 +35,7 @@ void WeaponConfig::PrintDef(WeaponDefinition& def)
     Serial.printf("Burst:           %d\n", def.burst);
     Serial.printf("Build up time    %d\n", def.buildUpTime);
     Serial.printf("Post Build time  %d\n", def.postBuildUpShotTime);
+    Serial.printf("Shot Power     %d\n", def.shotPower);    
 
 }
 
@@ -146,6 +147,8 @@ bool WeaponConfig::Load()
         definition.defaultAmmoCount = weaponJson["defaultAmmoCount"] | 0;
 
         definition.maxReload = weaponJson["maxReload"] | 0;
+
+        definition.shotPower = weaponJson["shotPower"] | 0;
 
         PrintDef(definition);
         _weapons.push_back(
@@ -308,4 +311,12 @@ int WeaponConfig::GetPostBuildUpShotTime(WeaponType type) const
 {
     const WeaponDefinition* weapon = Find(type);
     return weapon == nullptr ? 0 : weapon->postBuildUpShotTime;   
+}
+
+
+
+int WeaponConfig::GetShotPower(WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? 0 : weapon->shotPower;  
 }

@@ -249,15 +249,28 @@ void WeaponManager::AddAmmo(WeaponType type, uint16_t ammo)
 
 
 
-
 const WeaponManager::WeaponMap& WeaponManager::GetWeaponMap()
 {
     return _weapons;
 }
 
 
-
 int WeaponManager::GetNumWeapons()
 {
     return _stateData.weaponConfig.GetNumWeapons();
 }
+
+
+
+
+WeaponType WeaponManager::GetCurrentWeaponType()
+{
+    if(_currentWeapon != _weapons.end())
+    {
+        return _currentWeapon->second->GetWeaponType();
+    }
+
+    return -1;
+}
+
+

@@ -53,7 +53,9 @@ public:
     void RemoveZoneEventListener(
         IZoneEvent* listener);
 
-    float GetProgress();        
+    float GetProgress();    
+    
+    void RemoveObjectsInCurrentZone();
 
 private:
 
