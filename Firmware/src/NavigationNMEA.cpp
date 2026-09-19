@@ -26,6 +26,15 @@ bool NavigationNMEA::Begin()
     _lineLength = 0;
     _data = NavigationData{};
 
+    _havePreviousData = false;
+
+    _previousLatitude = 0.0;
+    _previousLongitude = 0.0;
+    _previousHeading = 0.0f;
+
+    _previousPositionValid = false;
+    _previousHeadingValid = false;
+
     return true;
 }
 
@@ -126,7 +135,6 @@ bool NavigationNMEA::ValidateChecksum(
     return checksum ==
         static_cast<uint8_t>(supplied);
 }
-
 bool NavigationNMEA::ProcessSentence(
     const char* sentence)
 {
@@ -150,16 +158,86 @@ bool NavigationNMEA::ProcessSentence(
     if (strncmp(type, "GGA", 3) == 0)
     {
         ProcessGGA(comma + 1);
-        return true;
     }
-
-    if (strncmp(type, "RMC", 3) == 0)
+    else if (strncmp(type, "RMC", 3) == 0)
     {
         ProcessRMC(comma + 1);
-        return true;
+    }
+    else
+    {
+        return false;
     }
 
-    return false;
+    /*
+     * The first valid navigation data is always considered changed.
+     */
+    if (!_havePreviousData)
+    {
+        if (_data.positionValid || _data.headingValid)
+        {
+            _previousLatitude = _data.latitude;
+            _previousLongitude = _data.longitude;
+            _previousHeading = _data.heading;
+
+            _previousPositionValid = _data.positionValid;
+            _previousHeadingValid = _data.headingValid;
+
+            _havePreviousData = true;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    bool changed = false;
+
+    /*
+     * Position validity changing is also considered an update.
+     */
+    if (_data.positionValid != _previousPositionValid)
+    {
+        changed = true;
+    }
+    else if (_data.positionValid)
+    {
+        if (_data.latitude != _previousLatitude ||
+            _data.longitude != _previousLongitude)
+        {
+            changed = true;
+        }
+    }
+
+    /*
+     * Heading validity changing is also considered an update.
+     */
+    if (_data.headingValid != _previousHeadingValid)
+    {
+        changed = true;
+    }
+    else if (_data.headingValid)
+    {
+        if (_data.heading != _previousHeading)
+        {
+            changed = true;
+        }
+    }
+
+    /*
+     * Only update the comparison values when we are actually
+     * going to report a change.
+     */
+    if (changed)
+    {
+        _previousLatitude = _data.latitude;
+        _previousLongitude = _data.longitude;
+        _previousHeading = _data.heading;
+
+        _previousPositionValid = _data.positionValid;
+        _previousHeadingValid = _data.headingValid;
+    }
+
+    return changed;
 }
 
 void NavigationNMEA::ProcessGGA(

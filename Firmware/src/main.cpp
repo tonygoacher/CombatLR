@@ -72,7 +72,7 @@ void loop()
 {
 
 
-    UpdateNavigationDisplay();
+   UpdateNavigationDisplay();
 
 
                       
