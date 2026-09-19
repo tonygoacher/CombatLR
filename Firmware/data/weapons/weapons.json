@@ -88,6 +88,23 @@
     },
 	{
       "type": 5,
+	  "name": "LaserSniper",
+      "image": "/weapons/lasersnp.bmp",
+      "shoot": "/sounds/lasersnp.wav",
+      "clipInsert": "/sounds/rocketi.wav",
+      "cocking": "/sounds/reload.wav",
+      "empty": "/sounds/empty.wav",
+      "insertClipTime": 1000,
+	  "cockingTime":1500,
+	  "magCapacity": 1,
+	  "maxAmmoReserve": 3,
+	  "defaultAmmoCount": 3,
+	  "maxReload": 3, 
+	  "shotPower": 20
+	  
+    },
+	{
+      "type": 6,
 	  "name": "Laser",
       "image": "/weapons/laser.bmp",
       "shoot": "/sounds/lasersht.wav",
