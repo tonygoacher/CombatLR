@@ -128,6 +128,7 @@ bool ST7789VDisplay::Init()
 {
     _tft.init();
 
+    Serial.println("ST7789VDisplay::Init");
 
     /*
      * Enable TFT_eSPI PSRAM support.
@@ -148,10 +149,7 @@ bool ST7789VDisplay::Init()
 
     _tft.setSwapBytes(true);
 
-// DEBUG
 
-
-//_DEBUG
     if (!AllocateSprites())
     {
         return false;
@@ -311,6 +309,7 @@ void ST7789VDisplay::RemovedWidget(uint32_t widgetId)
 void ST7789VDisplay::SetMapZoom(
     float zoom)
 {
+      Serial.printf("Zoom %.3f\n", zoom);
     /*
      * Don't allow zero or negative zoom.
      */
@@ -332,6 +331,7 @@ void ST7789VDisplay::SetMapZoom(
 
 float ST7789VDisplay::GetMapZoom() const
 {
+  
     return _mapZoom;
 }
 

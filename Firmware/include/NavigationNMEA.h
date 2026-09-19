@@ -50,4 +50,13 @@ private:
         const char*& cursor,
         char* field,
         size_t fieldSize);
+
+    bool _havePreviousData = false;
+
+    double _previousLatitude = 0.0;
+    double _previousLongitude = 0.0;
+    float _previousHeading = 0.0f;
+
+    bool _previousPositionValid = false;
+    bool _previousHeadingValid = false;
 };

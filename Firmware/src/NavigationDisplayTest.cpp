@@ -101,7 +101,7 @@ namespace
     DisplayManager displayManager(textureManager);
 
     ZoneEngine zoneEngine(gamePlan, displayManager);
-    MAX98357ASounds sounds(LittleFS,BCLK,LRC,DATA);
+    MAX98357ASounds sounds(LittleFS,BCLK,LRC,I2S_DATA);
     NavigationData data;
     Pacer zoneUpdatePacer(true);
     PBSwitch triggerSwitch(Ports::TRIGGER, false);
@@ -163,18 +163,6 @@ namespace
                 
     }       
     
-    /*
-    float zoom = 1.0f;
-    if(zoomDevice->GetZoom(zoom))
-    {
-        
-        displayManager.Send(
-        std::unique_ptr<IDisplayCommand>(
-            new ZoomCommand(
-                zoom)));    
-    }
-                */
-
 
     zoneEngine.Update(gameTime.GetGameTime());
 
@@ -187,8 +175,10 @@ void NavigationDisplayTestBegin()
     Serial.println(F("Navigation display integration test"));
     Serial.println(F("===================================="));
 
-    displayManager.Begin();
+   
     sounds.Begin();
+
+    displayManager.Begin();
     gameTime.Reset();
     weaponConfig.Init();
    
@@ -217,50 +207,6 @@ void NavigationDisplayTestBegin()
     navigation.Begin();
 
 
-
-    /*
-    const Zone& z = gamePlan.GetZones()[0];
-    AddZoneCommand* addZone = new AddZoneCommand(z.id, GameCoordinate(z.eastMetres, z.northMetres), z.radiusMetres, TFT_GREEN);
-    displayManager.Send(
-            std::unique_ptr<IDisplayCommand>(addZone));
-
-    if(gamePlan.GetZones()[0].pickups.size())
-    {
-        std::map<int ,  Pickup>::const_iterator pickupIter = gamePlan.GetZones()[0].pickups.find(3);
-        while(pickupIter != gamePlan.GetZones()[0].pickups.cend())
-        {
-            GameCoordinate position = pickupIter->second.GetPosition(); 
-
-            std::string filename;
-            switch(pickupIter->second.type)
-            {
-                case PickupTypes::Health:
-                {
-                    filename = "/health.bmp";
-                }
-                break;
-                case PickupTypes::Ammo:
-                {
-                    filename = "/reload.bmp";
-                }
-                break;
-                
-                case PickupTypes::Bonus:
-                {
-                    filename = "/weapon.bmp";
-                }
-                break;
-            }
-
-            AddWidgetCommand* command = new AddWidgetCommand(pickupIter->second.id, WidgetType::Pickup, position, filename);
-            Serial.print("Adding widget type "); Serial.println(pickupIter->second.type);
-            displayManager.Send(
-            std::unique_ptr<IDisplayCommand>(command));
-            pickupIter++;
-        }
-         
-    }
-        */
     stateMachine.Init();
     stateMachine.Start();
 
