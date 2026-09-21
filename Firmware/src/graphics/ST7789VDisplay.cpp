@@ -88,6 +88,9 @@ ST7789VDisplay::ST7789VDisplay()
          * Heading-up map: the player's forward direction is always the
          * top of the display, so the marker itself remains upright.
          */
+
+
+
         const int16_t arrowX = screenX;
         const int16_t arrowY =
             screenY - arrowLength;
@@ -488,7 +491,8 @@ const float rotatedY =
  * =============================================================
  */
 
-
+constexpr float MAP_RENDER_OFFSET_X = 0.0f;
+constexpr float MAP_RENDER_OFFSET_Y = 0.0f;
 
 
 void ST7789VDisplay::RenderMap()
@@ -643,10 +647,11 @@ const float scaleY =
      */
     for (int16_t y = 0; y < CANVAS_HEIGHT; ++y)
     {
-        const float sourceY =
-            cameraMapY +
-            (static_cast<float>(y) - canvasCentreY) /
-                effectiveScale;
+    const float sourceY =
+    cameraMapY +
+    MAP_RENDER_OFFSET_Y +
+    (static_cast<float>(y) - canvasCentreY) /
+        effectiveScale;
 
         const int32_t sy =
             static_cast<int32_t>(floorf(sourceY + 0.5f));
@@ -659,10 +664,11 @@ const float scaleY =
 
         for (int16_t x = 0; x < CANVAS_WIDTH; ++x)
         {
-            const float sourceX =
-                cameraMapX +
-                (static_cast<float>(x) - canvasCentreX) /
-                    effectiveScale;
+const float sourceX =
+    cameraMapX +
+    MAP_RENDER_OFFSET_X +
+    (static_cast<float>(x) - canvasCentreX) /
+        effectiveScale;
 
             const int32_t sx =
                 static_cast<int32_t>(floorf(sourceX + 0.5f));
@@ -684,6 +690,8 @@ const float scaleY =
     }
 
     const float mapRotation = _rotation;
+
+
 
 
     if (_playerVisible)
@@ -729,6 +737,7 @@ const float scaleY =
   
 
     _screenSprite.fillSprite(TFT_BLACK);
+    
 
     _mapSprite.pushRotated(
         &_screenSprite,
@@ -788,6 +797,37 @@ const float scaleY =
             static_cast<int16_t>(
                 lroundf(
                     canvasCentreY + rotatedY));
+
+ Serial.printf(
+    "Canvas %dx%d  ScreenSprite %dx%d  playerScreen=(%d,%d)\n",
+    CANVAS_WIDTH,
+    CANVAS_HEIGHT,
+    _screenSprite.width(),
+    _screenSprite.height(),
+    playerScreenX,
+    playerScreenY);
+
+    Serial.printf(
+    "Canvas centre=(%.1f,%.1f)\n",
+    canvasCentreX,
+    canvasCentreY);
+
+
+ Serial.printf(
+    "GPS -> Game: %.3f, %.3f\n",
+    _playerPosition.east,
+    _playerPosition.north);
+
+Serial.printf(
+    "Player map: %.3f, %.3f\n",
+    playerMapX,
+    playerMapY);
+
+Serial.printf(
+    "Camera map: %.3f, %.3f scale %.3f\n",
+    cameraMapX,
+    cameraMapY,
+    effectiveScale);
 
 
         RenderNavigationPlayer(

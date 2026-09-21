@@ -1,642 +1,639 @@
 #include "MapReference.h"
 
-#include <ArduinoJson.h>
-#include <FS.h>
 #include <math.h>
+#include <string.h>
 #include <LittleFS.h>
 
-#include "WorldConstants.h"
-
-namespace
+MapReference::MapReference()
 {
-    constexpr double EARTH_RADIUS_METRES =
-        6371000.0;
-
-    /*
-     * Convert two nearby GPS coordinates into a local east/north
-     * displacement in metres.
-     */
-    void GpsDeltaMetres(
-        double latitudeA,
-        double longitudeA,
-        double latitudeB,
-        double longitudeB,
-        double& east,
-        double& north)
-    {
-        const double meanLatitude =
-            (latitudeA + latitudeB) * 0.5 *
-            DEG_TO_RAD;
-
-        north =
-            (latitudeB - latitudeA) *
-            DEG_TO_RAD *
-            EARTH_RADIUS_METRES;
-
-        east =
-            (longitudeB - longitudeA) *
-            DEG_TO_RAD *
-            EARTH_RADIUS_METRES *
-            cos(meanLatitude);
-    }
 }
 
-void printDouble( double val, unsigned int precision){
-// prints val with number of decimal places determine by precision
-// NOTE: precision is 1 followed by the number of zeros for the desired number of decimial places
-// example: printDouble( 3.1415, 100); // prints 3.14 (two decimal places)
-
-    Serial.print (int(val));  //prints the int part
-    Serial.print("."); // print the decimal point
-    unsigned int frac;
-    if(val >= 0)
-        frac = (val - int(val)) * precision;
-    else
-        frac = (int(val)- val ) * precision;
-
-} 
+double MapReference::LatitudeScale(double latitudeDegrees)
+{
+    return cos(latitudeDegrees * DEG_TO_RAD_VALUE);
+}
 
 bool MapReference::Load(const char* filename)
 {
-    _valid = false;
+    _loaded = false;
+    _configured = false;
+
+    for (int i = 0; i < POINT_COUNT; ++i)
+    {
+        _points[i] = ReferencePoint();
+    }
+
+    _cropX = 0.0;
+    _cropY = 0.0;
+    _cropWidth = 0.0;
+    _cropHeight = 0.0;
+    _metresPerPixel = 0.0;
 
     if (filename == nullptr)
         return false;
 
-    File file = LittleFS.open(
-        filename,
-        FILE_READ);
-
+    File file = LittleFS.open(filename, "r");
     if (!file)
     {
-        Serial.printf(
-            "MapReference: failed to open %s\n",
-            filename);
-
+        Serial.printf("MapReference: failed to open %s\n", filename);
         return false;
     }
 
     JsonDocument document;
-
-    const DeserializationError error =
-        deserializeJson(
-            document,
-            file);
-
+    DeserializationError error = deserializeJson(document, file);
     file.close();
 
     if (error)
     {
-        Serial.printf(
-            "MapReference: JSON parse failed: %s\n",
-            error.c_str());
-
+        Serial.printf("MapReference: JSON parse failed: %s\n",
+                      error.c_str());
         return false;
     }
 
-    if (!document["Version"].is<int>() ||
-        !document["Image"]["Width"].is<float>() ||
-        !document["Image"]["Height"].is<float>())
+    JsonObject sourceCrop = document["SourceCrop"].as<JsonObject>();
+    if (sourceCrop.isNull())
     {
-        Serial.println(
-            "MapReference: missing image metadata");
-
+        Serial.println("MapReference: SourceCrop missing");
         return false;
     }
 
-    JsonObject reference =
-        document["Reference"].as<JsonObject>();
+    _cropX = sourceCrop["X"].as<double>();
+    _cropY = sourceCrop["Y"].as<double>();
+    _cropWidth = sourceCrop["Width"].as<double>();
+    _cropHeight = sourceCrop["Height"].as<double>();
 
+    if (_cropWidth <= 0.0 || _cropHeight <= 0.0)
+    {
+        Serial.println("MapReference: invalid SourceCrop");
+        return false;
+    }
+
+    JsonObject image = document["Image"].as<JsonObject>();
+    if (!image.isNull())
+    {
+        int width = image["Width"].as<int>();
+        int height = image["Height"].as<int>();
+
+        if (width > 0)
+            _imageWidth = width;
+
+        if (height > 0)
+            _imageHeight = height;
+    }
+
+    // The exported map is normally 1280x960. The JSON image dimensions
+    // are retained so the reference also follows the file if that ever
+    // changes.
+    if (_imageWidth <= 0 || _imageHeight <= 0)
+    {
+        Serial.println("MapReference: invalid image dimensions");
+        return false;
+    }
+
+    _metresPerPixel = document["MetresPerPixel"].as<double>();
+
+    JsonObject reference = document["Reference"].as<JsonObject>();
     if (reference.isNull())
     {
-        Serial.println(
-            "MapReference: missing Reference");
-
+        Serial.println("MapReference: Reference missing");
         return false;
     }
 
-    JsonObject pointA =
-        reference["PointA"].as<JsonObject>();
-
-    JsonObject pointB =
-        reference["PointB"].as<JsonObject>();
-
-    JsonObject gpsA =
-        reference["GpsA"].as<JsonObject>();
-
-    JsonObject gpsB =
-        reference["GpsB"].as<JsonObject>();
-
-    if (pointA.isNull() ||
-        pointB.isNull() ||
-        gpsA.isNull() ||
-        gpsB.isNull())
+    JsonArray points = reference["Points"].as<JsonArray>();
+    if (points.isNull())
     {
-        Serial.println(
-            "MapReference: incomplete A/B reference");
-
+        Serial.println("MapReference: Reference.Points missing");
         return false;
     }
 
-    if (!pointA["X"].is<float>() ||
-        !pointA["Y"].is<float>() ||
-        !pointB["X"].is<float>() ||
-        !pointB["Y"].is<float>() ||
-        !gpsA["Latitude"].is<double>() ||
-        !gpsA["Longitude"].is<double>() ||
-        !gpsB["Latitude"].is<double>() ||
-        !gpsB["Longitude"].is<double>())
+    for (JsonObject point : points)
     {
-        Serial.println(
-            "MapReference: invalid A/B reference");
+        const char* name = point["Name"] | "";
 
-        return false;
+        int index = -1;
+
+        if (strcmp(name, "A") == 0)
+            index = 0;
+        else if (strcmp(name, "B") == 0)
+            index = 1;
+        else if (strcmp(name, "C") == 0)
+            index = 2;
+        else if (strcmp(name, "D") == 0)
+            index = 3;
+
+        if (index < 0)
+            continue;
+
+        _points[index].sourceX = point["X"].as<double>();
+        _points[index].sourceY = point["Y"].as<double>();
+
+        JsonObject gps = point["Gps"].as<JsonObject>();
+        if (gps.isNull())
+        {
+            Serial.printf("MapReference: GPS missing for point %s\n", name);
+            return false;
+        }
+
+        _points[index].latitude = gps["Latitude"].as<double>();
+        _points[index].longitude = gps["Longitude"].as<double>();
+        _points[index].valid = true;
     }
 
-    _version =
-        document["Version"].as<int>();
-
-  _imageWidth =
-    document["Image"]["Width"].as<float>();
-
-_imageHeight =
-    document["Image"]["Height"].as<float>();
-
-_metresPerPixel =
-    document["MetresPerPixel"].as<float>();
-
-/*
- * Point A/B in map.json are expressed in the original
- * source-image coordinate system.
- *
- * map.bmp is the cropped image described by SourceCrop.
- * Convert the calibration points into map.bmp coordinates
- * here so the rest of MapReference operates entirely in
- * the loaded map coordinate system.
- */
-JsonObject sourceCrop =
-    document["SourceCrop"].as<JsonObject>();
-
-if (sourceCrop.isNull() ||
-    !sourceCrop["X"].is<float>() ||
-    !sourceCrop["Y"].is<float>())
-{
-    Serial.println(
-        "MapReference: missing SourceCrop");
-
-    return false;
-}
-
-const float sourceCropX =
-    sourceCrop["X"].as<float>();
-
-const float sourceCropY =
-    sourceCrop["Y"].as<float>();
-
-_pointAX =
-    pointA["X"].as<float>() -
-    sourceCropX;
-
-_pointAY =
-    pointA["Y"].as<float>() -
-    sourceCropY;
-
-_pointBX =
-    pointB["X"].as<float>() -
-    sourceCropX;
-
-_pointBY =
-    pointB["Y"].as<float>() -
-    sourceCropY;
-    
-
-    _gpsALatitude =
-        gpsA["Latitude"].as<double>();
-
-    _gpsALongitude =
-        gpsA["Longitude"].as<double>();
-
-    _gpsBLatitude =
-        gpsB["Latitude"].as<double>();
-
-    _gpsBLongitude =
-        gpsB["Longitude"].as<double>();
-
-
-    /*
-     * Calculate the real-world A->B vector.
-     */
-    double gpsEast = 0.0;
-    double gpsNorth = 0.0;
-
-    GpsDeltaMetres(
-        _gpsALatitude,
-        _gpsALongitude,
-        _gpsBLatitude,
-        _gpsBLongitude,
-        gpsEast,
-        gpsNorth);
-
-    const double gpsDistance =
-        sqrt(
-            gpsEast * gpsEast +
-            gpsNorth * gpsNorth);
-
-    /*
-     * Calculate the source-map A->B vector.
-     */
-    const double mapX =
-        static_cast<double>(_pointBX) -
-        static_cast<double>(_pointAX);
-
-    const double mapY =
-        static_cast<double>(_pointBY) -
-        static_cast<double>(_pointAY);
-
-    const double mapDistance =
-        sqrt(
-            mapX * mapX +
-            mapY * mapY);
-
-    if (gpsDistance <= 0.0 ||
-        mapDistance <= 0.0)
+    for (int i = 0; i < POINT_COUNT; ++i)
     {
-        Serial.println(
-            "MapReference: invalid A/B distance");
-
-        return false;
+        if (!_points[i].valid)
+        {
+            Serial.printf("MapReference: calibration point %c missing\n",
+                          'A' + i);
+            return false;
+        }
     }
 
-  
+    if (!BuildImageToGeoTransform())
+        return false;
 
-    _valid = true;
+    _loaded = true;
 
-    Serial.printf(
-        "MapReference: loaded version %d\n",
-        _version);
+    Serial.println("MapReference loaded");
+    Serial.printf("  Exported image: %dx%d\n",
+                  _imageWidth, _imageHeight);
 
-    Serial.printf(
-        "MapReference: image %.0fx%.0f\n",
-        _imageWidth,
-        _imageHeight);
+    Serial.printf("  Source crop: X=%.3f Y=%.3f W=%.3f H=%.3f\n",
+                  _cropX, _cropY, _cropWidth, _cropHeight);
 
-    Serial.printf(
-        "MapReference: A=(%.3f,%.3f) B=(%.3f,%.3f)\n",
-        _pointAX,
-        _pointAY,
-        _pointBX,
-        _pointBY);
+    for (int i = 0; i < POINT_COUNT; ++i)
+    {
+        Serial.printf("  %c source=(%.3f, %.3f) GPS=(%.8f, %.8f)\n",
+                      'A' + i,
+                      _points[i].sourceX,
+                      _points[i].sourceY,
+                      _points[i].latitude,
+                      _points[i].longitude);
+    }
 
-    Serial.printf(
-        "MapReference: GPS distance %.3fm, map distance %.3fpx\n",
-        gpsDistance,
-        mapDistance);
+    Serial.printf("  East transform:  %.12f*x + %.12f*y + %.12f\n",
+                  _eastPerPixelX,
+                  _eastPerPixelY,
+                  _eastOffset);
 
-   
+    Serial.printf("  North transform: %.12f*x + %.12f*y + %.12f\n",
+                  _northPerPixelX,
+                  _northPerPixelY,
+                  _northOffset);
+
+    Serial.printf("  Metres/pixel: %.12f\n", _metresPerPixel);
+
     return true;
 }
 
-bool MapReference::IsValid() const
+bool MapReference::Configure(double homeLatitude, double homeLongitude)
 {
-    return _valid;
+    if (!_loaded)
+    {
+        Serial.println("MapReference: Configure called before Load");
+        return false;
+    }
+
+    // GameCoordinate is measured in metres east/north of the game home.
+    // Work out where GPS point A lies in that coordinate system.
+    //
+    // This is deliberately the same local-earth approximation used by
+    // MapBuilder.
+    _homeLatitude = homeLatitude;
+    _homeLongitude = homeLongitude;
+
+    const double cosHomeLatitude = LatitudeScale(homeLatitude);
+
+    _aEastFromHome =
+        (_points[0].longitude - homeLongitude) *
+        DEG_TO_RAD_VALUE *
+        cosHomeLatitude *
+        EARTH_RADIUS_METRES;
+
+    _aNorthFromHome =
+        (_points[0].latitude - homeLatitude) *
+        DEG_TO_RAD_VALUE *
+        EARTH_RADIUS_METRES;
+
+    _configured = true;
+
+    Serial.printf("MapReference configured: home=(%.8f, %.8f)\n",
+                  homeLatitude,
+                  homeLongitude);
+
+    Serial.printf("  A relative to home: east=%.3f north=%.3f m\n",
+                  _aEastFromHome,
+                  _aNorthFromHome);
+
+    return true;
 }
 
-int MapReference::GetVersion() const
+bool MapReference::BuildImageToGeoTransform()
 {
-    return _version;
+    // This is intentionally the same calculation as MapBuilder's
+    // BuildImageToGeoTransform().
+    //
+    // GPS A is the local geographic origin.
+    //
+    // East:
+    //   (longitude - longitudeA) * cos(latitudeA) * R
+    //
+    // North:
+    //   (latitude - latitudeA) * R
+    //
+    // The four source-image calibration points are then used to solve
+    // two independent affine least-squares equations.
+
+    const double latitudeA = _points[0].latitude;
+    const double longitudeA = _points[0].longitude;
+    const double cosLatitudeA = LatitudeScale(latitudeA);
+
+    double rows[POINT_COUNT][3];
+    double east[POINT_COUNT];
+    double north[POINT_COUNT];
+
+    for (int i = 0; i < POINT_COUNT; ++i)
+    {
+        rows[i][0] = _points[i].sourceX;
+        rows[i][1] = _points[i].sourceY;
+        rows[i][2] = 1.0;
+
+        east[i] =
+            (_points[i].longitude - longitudeA) *
+            DEG_TO_RAD_VALUE *
+            cosLatitudeA *
+            EARTH_RADIUS_METRES;
+
+        north[i] =
+            (_points[i].latitude - latitudeA) *
+            DEG_TO_RAD_VALUE *
+            EARTH_RADIUS_METRES;
+    }
+
+    double eastResult[3];
+    double northResult[3];
+
+    if (!SolveLeastSquares3(rows, east, eastResult))
+    {
+        Serial.println("MapReference: failed to solve east transform");
+        return false;
+    }
+
+    if (!SolveLeastSquares3(rows, north, northResult))
+    {
+        Serial.println("MapReference: failed to solve north transform");
+        return false;
+    }
+
+    _eastPerPixelX = eastResult[0];
+    _eastPerPixelY = eastResult[1];
+    _eastOffset = eastResult[2];
+
+    _northPerPixelX = northResult[0];
+    _northPerPixelY = northResult[1];
+    _northOffset = northResult[2];
+
+    return true;
 }
 
-float MapReference::GetImageWidth() const
+bool MapReference::SolveLeastSquares3(
+    const double rows[POINT_COUNT][3],
+    const double values[POINT_COUNT],
+    double result[3])
 {
-    return _imageWidth;
+    // Form the normal equations:
+    //
+    //   (A^T A) x = A^T b
+    //
+    // This mirrors the solver used by MapBuilder.
+
+    double matrix[3][4] = {};
+
+    for (int row = 0; row < POINT_COUNT; ++row)
+    {
+        for (int col = 0; col < 3; ++col)
+        {
+            for (int k = 0; k < 3; ++k)
+            {
+                matrix[col][k] += rows[row][col] * rows[row][k];
+            }
+
+            matrix[col][3] += rows[row][col] * values[row];
+        }
+    }
+
+    // Gaussian elimination with partial pivoting.
+    for (int column = 0; column < 3; ++column)
+    {
+        int pivot = column;
+        double largest = fabs(matrix[column][column]);
+
+        for (int row = column + 1; row < 3; ++row)
+        {
+            double value = fabs(matrix[row][column]);
+
+            if (value > largest)
+            {
+                largest = value;
+                pivot = row;
+            }
+        }
+
+        if (largest < 1.0e-12)
+            return false;
+
+        if (pivot != column)
+        {
+            for (int col = column; col < 4; ++col)
+            {
+                double temp = matrix[column][col];
+                matrix[column][col] = matrix[pivot][col];
+                matrix[pivot][col] = temp;
+            }
+        }
+
+        double divisor = matrix[column][column];
+
+        for (int col = column; col < 4; ++col)
+            matrix[column][col] /= divisor;
+
+        for (int row = 0; row < 3; ++row)
+        {
+            if (row == column)
+                continue;
+
+            double factor = matrix[row][column];
+
+            for (int col = column; col < 4; ++col)
+                matrix[row][col] -= factor * matrix[column][col];
+        }
+    }
+
+    result[0] = matrix[0][3];
+    result[1] = matrix[1][3];
+    result[2] = matrix[2][3];
+
+    return true;
 }
 
-float MapReference::GetImageHeight() const
+bool MapReference::GetSourcePixelFromGameCoordinate(
+    const GameCoordinate& coordinate,
+    double& sourceX,
+    double& sourceY) const
 {
-    return _imageHeight;
+    if (!_configured)
+        return false;
+
+    // Explicitly reconstruct the GPS position from the CombatLR
+    // GameCoordinate. GameCoordinate is metres east/north of Home.
+    const double latitude =
+        _homeLatitude +
+        ((double)coordinate.north /
+         (EARTH_RADIUS_METRES * DEG_TO_RAD_VALUE));
+
+    const double longitude =
+        _homeLongitude +
+        ((double)coordinate.east /
+         (EARTH_RADIUS_METRES *
+          DEG_TO_RAD_VALUE *
+          LatitudeScale(_homeLatitude)));
+
+    Serial.printf("  Game -> GPS: %.8f, %.8f\n",
+                  latitude, longitude);
+
+    // Now use exactly the same local geographic coordinate system as
+    // MapBuilder: metres east/north relative to calibration point A.
+    const double east =
+        (longitude - _points[0].longitude) *
+        DEG_TO_RAD_VALUE *
+        LatitudeScale(_points[0].latitude) *
+        EARTH_RADIUS_METRES;
+
+    const double north =
+        (latitude - _points[0].latitude) *
+        DEG_TO_RAD_VALUE *
+        EARTH_RADIUS_METRES;
+
+    Serial.printf("  GPS -> local A: east=%.3f north=%.3f\n",
+                  east, north);
+
+    const double eastAdjusted = east - _eastOffset;
+    const double northAdjusted = north - _northOffset;
+
+    const double determinant =
+        _eastPerPixelX * _northPerPixelY -
+        _eastPerPixelY * _northPerPixelX;
+
+    if (fabs(determinant) < 1.0e-12)
+        return false;
+
+    sourceX =
+        (eastAdjusted * _northPerPixelY -
+         _eastPerPixelY * northAdjusted) /
+        determinant;
+
+    sourceY =
+        (_eastPerPixelX * northAdjusted -
+         eastAdjusted * _northPerPixelX) /
+        determinant;
+
+    Serial.printf("  GPS -> Source: %.3f, %.3f\n",
+                  sourceX, sourceY);
+
+    return isfinite(sourceX) && isfinite(sourceY);
 }
 
-float MapReference::GetMetresPerPixel() const
+bool MapReference::GpsToMapPixel(
+    double latitude,
+    double longitude,
+    float& mapX,
+    float& mapY) const
 {
-    return _metresPerPixel;
+    if (!_loaded)
+        return false;
+
+    const double east =
+        (longitude - _points[0].longitude) *
+        DEG_TO_RAD_VALUE *
+        LatitudeScale(_points[0].latitude) *
+        EARTH_RADIUS_METRES;
+
+    const double north =
+        (latitude - _points[0].latitude) *
+        DEG_TO_RAD_VALUE *
+        EARTH_RADIUS_METRES;
+
+    const double eastAdjusted = east - _eastOffset;
+    const double northAdjusted = north - _northOffset;
+
+    const double determinant =
+        _eastPerPixelX * _northPerPixelY -
+        _eastPerPixelY * _northPerPixelX;
+
+    if (fabs(determinant) < 1.0e-12)
+        return false;
+
+    const double sourceX =
+        (eastAdjusted * _northPerPixelY -
+         _eastPerPixelY * northAdjusted) /
+        determinant;
+
+    const double sourceY =
+        (_eastPerPixelX * northAdjusted -
+         eastAdjusted * _northPerPixelX) /
+        determinant;
+
+    mapX = (float)(
+        (sourceX - _cropX) *
+        ((double)_imageWidth / _cropWidth));
+
+    mapY = (float)(
+        (sourceY - _cropY) *
+        ((double)_imageHeight / _cropHeight));
+
+    Serial.printf("MAP TEST GPS %.8f, %.8f\n", latitude, longitude);
+    Serial.printf("  local A: east=%.6f north=%.6f\n", east, north);
+    Serial.printf("  source:  %.6f, %.6f\n", sourceX, sourceY);
+    Serial.printf("  map:     %.6f, %.6f\n", mapX, mapY);
+
+    return isfinite(mapX) && isfinite(mapY);
 }
 
-float MapReference::GetPointAX() const
+bool MapReference::GameToMapPixel(
+    const GameCoordinate& coordinate,
+    float& mapX,
+    float& mapY) const
 {
-    return _pointAX;
-}
+    if (!_configured)
+        return false;
 
-float MapReference::GetPointAY() const
-{
-    return _pointAY;
-}
+    const double latitude =
+        _homeLatitude +
+        ((double)coordinate.north /
+         (EARTH_RADIUS_METRES * DEG_TO_RAD_VALUE));
 
-float MapReference::GetPointBX() const
-{
-    return _pointBX;
-}
+    const double longitude =
+        _homeLongitude +
+        ((double)coordinate.east /
+         (EARTH_RADIUS_METRES *
+          DEG_TO_RAD_VALUE *
+          LatitudeScale(_homeLatitude)));
 
-float MapReference::GetPointBY() const
-{
-    return _pointBY;
-}
-
-double MapReference::GetGpsALatitude() const
-{
-    return _gpsALatitude;
-}
-
-double MapReference::GetGpsALongitude() const
-{
-    return _gpsALongitude;
-}
-
-double MapReference::GetGpsBLatitude() const
-{
-    return _gpsBLatitude;
-}
-
-double MapReference::GetGpsBLongitude() const
-{
-    return _gpsBLongitude;
+    return GpsToMapPixel(latitude, longitude, mapX, mapY);
 }
 
 float MapReference::GetPixelsPerMetre() const
 {
-    return static_cast<float>(
-        sqrt(
-            _eastToMapX * _eastToMapX +
-            _eastToMapY * _eastToMapY));
-}
+    if (_metresPerPixel <= 0.0)
+        return 0.0f;
 
-
-bool MapReference::Configure(
-    double homeLatitude,
-    double homeLongitude)
-{
-    if (!_valid)
-    {
-        Serial.println(
-            "MapReference: cannot configure before Load()");
-        return false;
-    }
-
-    /*
-     * Convert A and B from GPS into the local east/north
-     * coordinate system whose origin is GamePlan Home.
-     */
-    double aEast = 0.0;
-    double aNorth = 0.0;
-    double bEast = 0.0;
-    double bNorth = 0.0;
-
-    GpsDeltaMetres(
-        homeLatitude,
-        homeLongitude,
-        _gpsALatitude,
-        _gpsALongitude,
-        aEast,
-        aNorth);
-
-    GpsDeltaMetres(
-        homeLatitude,
-        homeLongitude,
-        _gpsBLatitude,
-        _gpsBLongitude,
-        bEast,
-        bNorth);
-
-    /*
-     * A -> B vector in GameCoordinate metres.
-     */
-    const double gameEast =
-        bEast - aEast;
-
-    const double gameNorth =
-        bNorth - aNorth;
-
-    /*
-     * A -> B vector in map pixels.
-     */
-    const double mapX =
-        static_cast<double>(_pointBX) -
-        static_cast<double>(_pointAX);
-
-    const double mapY =
-        static_cast<double>(_pointBY) -
-        static_cast<double>(_pointAY);
-
-    const double gameLength =
-        sqrt(
-            gameEast * gameEast +
-            gameNorth * gameNorth);
-
-    const double mapLength =
-        sqrt(
-            mapX * mapX +
-            mapY * mapY);
-
-            /*
- * Calculate the compass bearing of the map's UP direction.
- *
- * BMP Y increases downwards, so map-up is the negative Y direction.
- */
-const double mapAngleDegrees =
-    atan2(
-        mapY,
-        mapX) *
-    180.0 / M_PI;
-
-
-    Serial.printf(
-    "AB map vector: X=%.3f Y=%.3f\n",
-    mapX,
-    mapY);
-
-const double gpsBearingDegrees =
-    atan2(
-        gameEast,
-        gameNorth) *
-    180.0 / M_PI;
-
-_mapUpHeading =
-    static_cast<float>(
-        gpsBearingDegrees -
-        mapAngleDegrees -
-        90.0);
-
-
-
-        Serial.printf(
-    "Map angles: gps=%.3f map=%.3f\n",
-    gpsBearingDegrees,
-    mapAngleDegrees);
-
-
-while (_mapUpHeading < 0.0f)
-    _mapUpHeading += 360.0f;
-
-while (_mapUpHeading >= 360.0f)
-    _mapUpHeading -= 360.0f;
-
-    if (gameLength <= 0.0 ||
-        mapLength <= 0.0)
-    {
-        Serial.println(
-            "MapReference: invalid A/B reference");
-
-        return false;
-    }
-
-    /*
-     * Unit vector along A -> B in GameCoordinate space.
-     */
-const double gameAlongEast =
-    gameEast / gameLength;
-
-const double gameAlongNorth =
-    gameNorth / gameLength;
-
-/*
- * Perpendicular GameCoordinate vector.
- *
- * This is the opposite handedness to the previous
- * implementation.  It matches the orientation used by
- * the mobile map transform.
- */
-const double gameAcrossEast =
-    gameAlongNorth;
-
-const double gameAcrossNorth =
-    -gameAlongEast;
-
-    /*
-     * Unit vector along A -> B in map space.
-     */
-    const double mapAlongX =
-        mapX / mapLength;
-
-    const double mapAlongY =
-        mapY / mapLength;
-
-    /*
-     * Perpendicular map vector.
-     */
-    const double mapAcrossX =
-        -mapAlongY;
-
-    const double mapAcrossY =
-        mapAlongX;
-
-    const double pixelsPerMetre =
-        mapLength / gameLength;
-
-    /*
-     * Build GameCoordinate -> map pixel transform.
-     */
-    _eastToMapX =
-        pixelsPerMetre *
-        (mapAlongX * gameAlongEast +
-         mapAcrossX * gameAcrossEast);
-
-    _eastToMapY =
-        pixelsPerMetre *
-        (mapAlongY * gameAlongEast +
-         mapAcrossY * gameAcrossEast);
-
-    _northToMapX =
-        pixelsPerMetre *
-        (mapAlongX * gameAlongNorth +
-         mapAcrossX * gameAcrossNorth);
-
-    _northToMapY =
-        pixelsPerMetre *
-        (mapAlongY * gameAlongNorth +
-         mapAcrossY * gameAcrossNorth);
-
-    /*
-     * Find the BMP position of Home, which is
-     * GameCoordinate (0,0).
-     */
-    _mapOriginX =
-        static_cast<double>(_pointAX) -
-        aEast * _eastToMapX -
-        aNorth * _northToMapX;
-
-    _mapOriginY =
-        static_cast<double>(_pointAY) -
-        aEast * _eastToMapY -
-        aNorth * _northToMapY;
-
-    _configured = true;
-
-    Serial.printf(
-    "Map origin diagnostic:\n"
-    "  A game EN=(%.3f,%.3f)\n"
-    "  origin=(%.3f,%.3f)\n"
-    "  transform E=(%.6f,%.6f) N=(%.6f,%.6f)\n",
-    aEast,
-    aNorth,
-    _mapOriginX,
-    _mapOriginY,
-    _eastToMapX,
-    _eastToMapY,
-    _northToMapX,
-    _northToMapY);
-
-    Serial.printf(
-        "MapReference: Home map=(%.3f,%.3f)\n",
-        _mapOriginX,
-        _mapOriginY);
-
-    Serial.printf(
-        "MapReference: scale=%.6f pixels/metre\n",
-        pixelsPerMetre);
-
-        Serial.printf(
-    "Map transform:\n"
-    "  East  -> X=%+.4f Y=%+.4f\n"
-    "  North -> X=%+.4f Y=%+.4f\n",
-    _eastToMapX,
-    _eastToMapY,
-    _northToMapX,
-    _northToMapY);
-
-    Serial.printf(
-    "MapReference: map-up heading=%.2f degrees\n",
-    _mapUpHeading);
-
-    return true;
-}
-
-bool MapReference::GameToMapPixel(
-    const GameCoordinate& position,
-    float& x,
-    float& y) const
-{
-    if (!_valid || !_configured)
-        return false;
-
-    x = static_cast<float>(
-        _mapOriginX +
-        static_cast<double>(position.east) *
-            _eastToMapX +
-        static_cast<double>(position.north) *
-            _northToMapX);
-
-    y = static_cast<float>(
-        _mapOriginY +
-        static_cast<double>(position.east) *
-            _eastToMapY +
-        static_cast<double>(position.north) *
-            _northToMapY);
-           
-
-    return true;
+    return (float)(1.0 / _metresPerPixel);
 }
 
 float MapReference::GetMapUpHeading() const
 {
-    Serial.printf("Map up in MapREf is %.3f\n", _mapUpHeading);
-    return _mapUpHeading;
+    if (!_configured)
+        return 0.0f;
+
+    // The affine transform from GameCoordinate east/north to map X/Y
+    // can be obtained by transforming the inverse image->geo matrix.
+    //
+    // For a unit north vector in the game coordinate system, determine
+    // which direction it points in the map. This gives the heading of
+    // map-up, expressed clockwise from true north.
+
+    const double determinant =
+        _eastPerPixelX * _northPerPixelY -
+        _eastPerPixelY * _northPerPixelX;
+
+    if (fabs(determinant) < 1.0e-12)
+        return 0.0f;
+
+    // Inverse image transform:
+    //
+    // sourceX = ixEast * east + ixNorth * north + constant
+    // sourceY = iyEast * east + iyNorth * north + constant
+    //
+    // We only need the north column.
+    const double sourceXPerNorth =
+        -_eastPerPixelY / determinant;
+
+    const double sourceYPerNorth =
+        _eastPerPixelX / determinant;
+
+    // Source pixel coordinates become exported map coordinates by
+    // positive scale factors, so the direction is unchanged.
+    //
+    // Image Y increases downwards. Therefore the map-up vector is the
+    // negative map-Y direction. Convert that map-up vector back into
+    // east/north and calculate its true-north heading.
+    const double mapUpEast = -sourceXPerNorth;
+    const double mapUpNorth = -sourceYPerNorth;
+
+    double heading =
+        atan2(mapUpEast, mapUpNorth) / DEG_TO_RAD;
+
+    while (heading < 0.0)
+        heading += 360.0;
+
+    while (heading >= 360.0)
+        heading -= 360.0;
+
+    return (float)heading;
+}
+
+bool MapReference::GetPointA(
+    double& x, double& y,
+    double& latitude, double& longitude) const
+{
+    if (!_points[0].valid)
+        return false;
+
+    x = _points[0].sourceX;
+    y = _points[0].sourceY;
+    latitude = _points[0].latitude;
+    longitude = _points[0].longitude;
+    return true;
+}
+
+bool MapReference::GetPointB(
+    double& x, double& y,
+    double& latitude, double& longitude) const
+{
+    if (!_points[1].valid)
+        return false;
+
+    x = _points[1].sourceX;
+    y = _points[1].sourceY;
+    latitude = _points[1].latitude;
+    longitude = _points[1].longitude;
+    return true;
+}
+
+bool MapReference::GetPointC(
+    double& x, double& y,
+    double& latitude, double& longitude) const
+{
+    if (!_points[2].valid)
+        return false;
+
+    x = _points[2].sourceX;
+    y = _points[2].sourceY;
+    latitude = _points[2].latitude;
+    longitude = _points[2].longitude;
+    return true;
+}
+
+bool MapReference::GetPointD(
+    double& x, double& y,
+    double& latitude, double& longitude) const
+{
+    if (!_points[3].valid)
+        return false;
+
+    x = _points[3].sourceX;
+    y = _points[3].sourceY;
+    latitude = _points[3].latitude;
+    longitude = _points[3].longitude;
+    return true;
 }

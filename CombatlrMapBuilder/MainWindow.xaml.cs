@@ -1,6 +1,8 @@
 using Microsoft.Win32;
 using System.Globalization;
 using System.IO;
+using System.Linq;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -20,22 +22,29 @@ public partial class MainWindow : Window
     private const double MaximumZoom = 4.00;
     private const double ZoomFactor = 1.15;
 
-    private Point? _referencePointA;
-    private Point? _referencePointB;
+    private const int CalibrationPointCount = 4;
+
+    private readonly Point?[] _referencePoints = new Point?[CalibrationPointCount];
+    private static readonly string[] CalibrationPointNames = { "A", "B", "C", "D" };
 
     private double _imageWidth;
     private double _imageHeight;
+    private double _sourceDpiX = 96.0;
+    private double _sourceDpiY = 96.0;
     private double _metresPerPixel;
     private double? _gpsDistanceMetres;
-    private double? _gpsBearingDegrees;
 
-    // Image-space -> local geographic east/north similarity transform.
+    // Image-space -> local geographic east/north affine transform.
+    // east  = _eastPerPixelX * x + _eastPerPixelY * y + _eastOffset
+    // north = _northPerPixelX * x + _northPerPixelY * y + _northOffset
     private double _eastMetresPerImagePixel;
     private double _northMetresPerImagePixel;
     private double _eastPerPixelX;
     private double _eastPerPixelY;
     private double _northPerPixelX;
     private double _northPerPixelY;
+    private double _eastOffset;
+    private double _northOffset;
     private bool _transformValid;
 
     private double _playfieldLeft;
@@ -53,6 +62,7 @@ public partial class MainWindow : Window
     private double _resizeStartWidth;
     private double _resizeStartHeight;
     private bool _resizeUsesWidth;
+    private Point _resizeStartMouse;
 
     private bool _initialised;
     private string? _projectFilePath;
@@ -144,19 +154,19 @@ public partial class MainWindow : Window
         MapImage.Source = null;
         _imageWidth = 0;
         _imageHeight = 0;
+        _sourceDpiX = 96.0;
+        _sourceDpiY = 96.0;
 
-        _referencePointA = null;
-        _referencePointB = null;
+        ClearReferencePoints();
         _gpsDistanceMetres = null;
-        _gpsBearingDegrees = null;
         _transformValid = false;
         _metresPerPixel = 0;
 
         OverlayCanvas.Children.Clear();
         PlayfieldRectangle.Visibility = Visibility.Collapsed;
 
-        MapScaleTransform.ScaleX = 1;
-        MapScaleTransform.ScaleY = 1;
+        MapScaleTransform.ScaleX = 1.0;
+        MapScaleTransform.ScaleY = 1.0;
         ZoomStatus.Text = "100%";
 
         ImageStatus.Text = "No image loaded";
@@ -167,10 +177,7 @@ public partial class MainWindow : Window
         TransformStatus.Text = "Transform: —";
         PlayfieldStatus.Text = "Site area: —";
 
-        LatitudeATextBox.Clear();
-        LongitudeATextBox.Clear();
-        LatitudeBTextBox.Clear();
-        LongitudeBTextBox.Clear();
+        ClearGpsTextBoxes();
 
         SetTitle();
     }
@@ -186,52 +193,13 @@ public partial class MainWindow : Window
 
         var project = new ProjectMetadata
         {
-            Version = 1,
+            Version = 3,
             SourceImage = string.IsNullOrWhiteSpace(_sourceImagePath)
                 ? null
                 : System.IO.Path.GetRelativePath(
                     projectDirectory,
                     System.IO.Path.GetFullPath(_sourceImagePath)),
-            RotationDegrees = ParseRotation(),
-            Reference = _referencePointA is not null && _referencePointB is not null
-                ? new ReferenceMetadata
-                {
-                    PointA = new PixelPoint
-                    {
-                        X = _referencePointA.Value.X,
-                        Y = _referencePointA.Value.Y
-                    },
-                    PointB = new PixelPoint
-                    {
-                        X = _referencePointB.Value.X,
-                        Y = _referencePointB.Value.Y
-                    },
-                    DistanceMetres = _gpsDistanceMetres ?? 0,
-                    GpsA = TryReadGps(
-                        LatitudeATextBox.Text,
-                        LongitudeATextBox.Text,
-                        out var saveLatA,
-                        out var saveLonA)
-                        ? new GpsPoint
-                        {
-                            Latitude = saveLatA,
-                            Longitude = saveLonA
-                        }
-                        : null,
-                    GpsB = TryReadGps(
-                        LatitudeBTextBox.Text,
-                        LongitudeBTextBox.Text,
-                        out var saveLatB,
-                        out var saveLonB)
-                        ? new GpsPoint
-                        {
-                            Latitude = saveLatB,
-                            Longitude = saveLonB
-                        }
-                        : null,
-                    BearingDegrees = _gpsBearingDegrees ?? 0
-                }
-                : null,
+            Reference = BuildReferenceMetadata(),
             Playfield = new ProjectPlayfield
             {
                 X = _playfieldLeft,
@@ -266,10 +234,6 @@ public partial class MainWindow : Window
 
         ResetProjectStateForLoad();
 
-        RotationTextBox.Text =
-            project.RotationDegrees.ToString(
-                CultureInfo.InvariantCulture);
-
         var projectDirectory = System.IO.Path.GetDirectoryName(
             System.IO.Path.GetFullPath(filePath))!;
 
@@ -286,40 +250,20 @@ public partial class MainWindow : Window
 
             LoadSourceImage(sourceImage);
             _sourceImagePath = sourceImage;
+
+            // Project versions before 3 stored map coordinates in WPF DIPs.
+            // Version 3 and later store true source-image pixels. Convert
+            // legacy projects while their original image DPI is still known.
+            if (project.Version < 3)
+                MigrateLegacyProjectCoordinates(project);
         }
 
         if (project.Reference is not null)
         {
-            _referencePointA = new Point(
-                project.Reference.PointA.X,
-                project.Reference.PointA.Y);
-
-            _referencePointB = new Point(
-                project.Reference.PointB.X,
-                project.Reference.PointB.Y);
-
-            if (project.Reference.GpsA is not null)
-            {
-                LatitudeATextBox.Text =
-                    project.Reference.GpsA.Latitude.ToString(
-                        CultureInfo.InvariantCulture);
-                LongitudeATextBox.Text =
-                    project.Reference.GpsA.Longitude.ToString(
-                        CultureInfo.InvariantCulture);
-            }
-
-            if (project.Reference.GpsB is not null)
-            {
-                LatitudeBTextBox.Text =
-                    project.Reference.GpsB.Latitude.ToString(
-                        CultureInfo.InvariantCulture);
-                LongitudeBTextBox.Text =
-                    project.Reference.GpsB.Longitude.ToString(
-                        CultureInfo.InvariantCulture);
-            }
+            LoadReferenceMetadata(project.Reference);
 
             if (MapImage.Source is not null)
-                DrawReferenceLine();
+                DrawReferencePoints();
         }
 
         if (MapImage.Source is not null)
@@ -344,21 +288,18 @@ public partial class MainWindow : Window
         _sourceImagePath = null;
         _imageWidth = 0;
         _imageHeight = 0;
+        _sourceDpiX = 96.0;
+        _sourceDpiY = 96.0;
 
-        _referencePointA = null;
-        _referencePointB = null;
+        ClearReferencePoints();
         _gpsDistanceMetres = null;
-        _gpsBearingDegrees = null;
         _transformValid = false;
         _metresPerPixel = 0;
 
         OverlayCanvas.Children.Clear();
         PlayfieldRectangle.Visibility = Visibility.Collapsed;
 
-        LatitudeATextBox.Clear();
-        LongitudeATextBox.Clear();
-        LatitudeBTextBox.Clear();
-        LongitudeBTextBox.Clear();
+        ClearGpsTextBoxes();
 
         ImageStatus.Text = "No image loaded";
         PointStatus.Text = "Load an image, then click reference point A";
@@ -369,34 +310,114 @@ public partial class MainWindow : Window
         PlayfieldStatus.Text = "Site area: —";
     }
 
+    private void MigrateLegacyProjectCoordinates(ProjectMetadata project)
+    {
+        var xScale = _sourceDpiX / 96.0;
+        var yScale = _sourceDpiY / 96.0;
+
+        if (Math.Abs(xScale - 1.0) < 0.000001 &&
+            Math.Abs(yScale - 1.0) < 0.000001)
+        {
+            return;
+        }
+
+        if (project.Reference is not null)
+        {
+            foreach (var point in project.Reference.Points)
+            {
+                point.X *= xScale;
+                point.Y *= yScale;
+            }
+        }
+
+        project.Playfield.X *= xScale;
+        project.Playfield.Y *= yScale;
+        project.Playfield.Width *= xScale;
+        project.Playfield.Height *= yScale;
+    }
+
     private void LoadSourceImage(string imagePath)
     {
-        var bitmap = new BitmapImage();
-        bitmap.BeginInit();
-        bitmap.CacheOption = BitmapCacheOption.OnLoad;
-        bitmap.UriSource = new Uri(imagePath);
-        bitmap.EndInit();
-        bitmap.Freeze();
+        var sourceBitmap = new BitmapImage();
+        sourceBitmap.BeginInit();
+        sourceBitmap.CacheOption = BitmapCacheOption.OnLoad;
+        sourceBitmap.UriSource = new Uri(imagePath);
+        sourceBitmap.EndInit();
+        sourceBitmap.Freeze();
 
-        MapImage.Source = bitmap;
+        // WPF positions Image content in device-independent pixels (DIPs),
+        // while the map calibration and the BMP exporter use source-image
+        // pixels. Some map screenshots have a 72 DPI (or other) metadata
+        // value, which makes WPF's natural image size different from its
+        // PixelWidth/PixelHeight. That was causing the mouse coordinates,
+        // playfield rectangle and calibration points to be recorded in DIPs
+        // rather than source pixels.
+        //
+        // Recreate the bitmap at 96 DPI so one WPF coordinate is exactly one
+        // source pixel. The actual pixel data is unchanged.
+        var normalizedBitmap = NormalizeBitmapTo96Dpi(sourceBitmap);
+        normalizedBitmap.Freeze();
+
+        MapImage.Source = normalizedBitmap;
 
         _sourceImagePath = imagePath;
-        _imageWidth = bitmap.PixelWidth;
-        _imageHeight = bitmap.PixelHeight;
+        _imageWidth = sourceBitmap.PixelWidth;
+        _imageHeight = sourceBitmap.PixelHeight;
+        _sourceDpiX = sourceBitmap.DpiX > 0 ? sourceBitmap.DpiX : 96.0;
+        _sourceDpiY = sourceBitmap.DpiY > 0 ? sourceBitmap.DpiY : 96.0;
 
-        MapWorkspace.Width = _imageWidth;
-        MapWorkspace.Height = _imageHeight;
         OverlayCanvas.Width = _imageWidth;
         OverlayCanvas.Height = _imageHeight;
 
-        MapScaleTransform.ScaleX = 1;
-        MapScaleTransform.ScaleY = 1;
+        // MapWorkspace is the source-image coordinate surface. Its
+        // LayoutTransform supplies the zoomed ScrollViewer extent.
+        MapWorkspace.Width = _imageWidth;
+        MapWorkspace.Height = _imageHeight;
+
+        MapScaleTransform.ScaleX = 1.0;
+        MapScaleTransform.ScaleY = 1.0;
+
+        MapScrollViewer.ScrollToHorizontalOffset(0);
+        MapScrollViewer.ScrollToVerticalOffset(0);
+
         ZoomStatus.Text = "100%";
 
         ImageStatus.Text =
-            $"{System.IO.Path.GetFileName(imagePath)}  ({_imageWidth} × {_imageHeight})";
+            $"{System.IO.Path.GetFileName(imagePath)}  ({_imageWidth} × {_imageHeight})  " +
+            $"({_sourceDpiX:0.#} DPI)";
 
         PlayfieldRectangle.Visibility = Visibility.Visible;
+    }
+
+    private static BitmapSource NormalizeBitmapTo96Dpi(BitmapSource source)
+    {
+        if (Math.Abs(source.DpiX - 96.0) < 0.001 &&
+            Math.Abs(source.DpiY - 96.0) < 0.001)
+        {
+            return source;
+        }
+
+        var converted = new FormatConvertedBitmap(
+            source,
+            PixelFormats.Bgra32,
+            null,
+            0);
+
+        converted.Freeze();
+
+        var stride = converted.PixelWidth * 4;
+        var pixels = new byte[stride * converted.PixelHeight];
+        converted.CopyPixels(pixels, stride, 0);
+
+        return BitmapSource.Create(
+            converted.PixelWidth,
+            converted.PixelHeight,
+            96.0,
+            96.0,
+            PixelFormats.Bgra32,
+            null,
+            pixels,
+            stride);
     }
 
     private void SetTitle()
@@ -424,10 +445,8 @@ public partial class MainWindow : Window
             LoadSourceImage(dialog.FileName);
 
             _projectFilePath = null;
-            _referencePointA = null;
-            _referencePointB = null;
+            ClearReferencePoints();
             _gpsDistanceMetres = null;
-            _gpsBearingDegrees = null;
             _transformValid = false;
             _metresPerPixel = 0;
 
@@ -440,11 +459,7 @@ public partial class MainWindow : Window
             TransformStatus.Text = "Transform: —";
             PlayfieldStatus.Text = "Site area: —";
 
-            _playfieldLeft = Math.Max(0, (_imageWidth - 1280) / 2);
-            _playfieldTop = Math.Max(0, (_imageHeight - 960) / 2);
-            PlayfieldRectangle.Width = 1280;
-            PlayfieldRectangle.Height = 960;
-            SetPlayfieldPosition(_playfieldLeft, _playfieldTop);
+            InitialisePlayfield();
 
             SetTitle();
         }
@@ -464,39 +479,35 @@ public partial class MainWindow : Window
         if (MapImage.Source is null)
             return;
 
-        var position = e.GetPosition(MapWorkspace);
+        var position = GetSourceImagePosition();
 
-        if (_referencePointA is null)
+        for (var i = 0; i < CalibrationPointCount; i++)
         {
-            _referencePointA = position;
-            _referencePointB = null;
-            PointStatus.Text =
-                $"A = ({position.X:0.0}, {position.Y:0.0}) — click reference point B";
-        }
-        else if (_referencePointB is null)
-        {
-            _referencePointB = position;
-            PointStatus.Text =
-                $"A = ({_referencePointA.Value.X:0.0}, {_referencePointA.Value.Y:0.0})   " +
-                $"B = ({position.X:0.0}, {position.Y:0.0})";
-        }
-        else
-        {
-            _referencePointA = position;
-            _referencePointB = null;
-            PointStatus.Text =
-                $"A = ({position.X:0.0}, {position.Y:0.0}) — click reference point B";
+            if (_referencePoints[i] is null)
+            {
+                _referencePoints[i] = position;
+                UpdatePointStatus();
+                DrawReferencePoints();
+                UpdateScaleAndPlayfield();
+                e.Handled = true;
+                return;
+            }
         }
 
-        DrawReferenceLine();
+        // Once all four points exist, start a new calibration set at A.
+        ClearReferencePoints();
+        _referencePoints[0] = position;
+
+        UpdatePointStatus();
+        DrawReferencePoints();
         UpdateScaleAndPlayfield();
         e.Handled = true;
     }
 
     private void ClearPoints_Click(object sender, RoutedEventArgs e)
     {
-        _referencePointA = null;
-        _referencePointB = null;
+        ClearReferencePoints();
+        ClearGpsTextBoxes();
         OverlayCanvas.Children.Clear();
 
         PointStatus.Text = MapImage.Source is null
@@ -506,17 +517,12 @@ public partial class MainWindow : Window
         ScaleStatus.Text = "Scale: —";
         GpsStatus.Text = "GPS: —";
         PlayfieldStatus.Text = "Playfield: —";
+        TransformStatus.Text = "Transform: —";
         _gpsDistanceMetres = null;
-        _gpsBearingDegrees = null;
+        _transformValid = false;
 
         if (MapImage.Source is not null)
             PlayfieldRectangle.Visibility = Visibility.Visible;
-    }
-
-    private void SettingsTextBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (_initialised)
-            UpdateScaleAndPlayfield();
     }
 
     private void GpsTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -527,9 +533,9 @@ public partial class MainWindow : Window
 
     private void UpdateScaleAndPlayfield()
     {
-        if (_referencePointA is null || _referencePointB is null)
+        if (!AllCalibrationPointsPresent())
         {
-            ScaleStatus.Text = "Scale: —";
+            ScaleStatus.Text = "Scale: complete A/B/C/D calibration required";
             DistanceDisplay.Text = "—";
             PlayfieldStatus.Text = "Playfield: —";
             TransformStatus.Text = "Transform: —";
@@ -540,176 +546,97 @@ public partial class MainWindow : Window
 
         if (!_transformValid || !_gpsDistanceMetres.HasValue)
         {
-            ScaleStatus.Text = "Scale: enter valid GPS coordinates for A and B";
+            ScaleStatus.Text = "Scale: enter valid GPS coordinates for A/B/C/D";
             PlayfieldStatus.Text = "Playfield: —";
             return;
         }
-
-        _metresPerPixel =
-            _gpsDistanceMetres.Value /
-            Math.Sqrt(
-                Math.Pow(_referencePointB.Value.X - _referencePointA.Value.X, 2) +
-                Math.Pow(_referencePointB.Value.Y - _referencePointA.Value.Y, 2));
 
         ScaleStatus.Text =
             $"Scale: {_metresPerPixel:0.000000} m/pixel";
 
         DistanceDisplay.Text =
-            $"{_gpsDistanceMetres.Value:0.00} m";
+            $"{_gpsDistanceMetres.Value:0.00} m A→B";
 
         UpdatePlayfieldStatus();
-
-        SetPlayfieldPhysicalSize();
     }
 
     private void UpdatePlayfieldStatus()
     {
-        if (!_transformValid || _metresPerPixel <= 0)
+        var width = PlayfieldRectangle.Width;
+        var height = PlayfieldRectangle.Height;
+
+        if (width <= 0 || height <= 0)
         {
             PlayfieldStatus.Text = "Playfield: —";
             return;
         }
 
-        var width = PlayfieldRectangle.Width;
-        var height = PlayfieldRectangle.Height;
+        if (!_transformValid || _metresPerPixel <= 0)
+        {
+            PlayfieldStatus.Text =
+                $"Playfield: {width:0}×{height:0} source px → {OutputWidth}×{OutputHeight}";
+            return;
+        }
+
+        var widthMetres = width * _metresPerPixel;
+        var heightMetres = height * _metresPerPixel;
 
         PlayfieldStatus.Text =
-            $"Site area: {width:0}×{height:0} px = " +
-            $"{width * _metresPerPixel:0.0}×{height * _metresPerPixel:0.0} m";
+            $"Site area: {width:0}×{height:0} source px = " +
+            $"{widthMetres:0.0}×{heightMetres:0.0} m → {OutputWidth}×{OutputHeight}";
     }
 
     private void UpdateGpsCalibration()
     {
         _transformValid = false;
         _gpsDistanceMetres = null;
-        _gpsBearingDegrees = null;
 
-        if (!TryReadGps(
-                LatitudeATextBox.Text, LongitudeATextBox.Text,
-                out var latA, out var lonA) ||
-            !TryReadGps(
-                LatitudeBTextBox.Text, LongitudeBTextBox.Text,
-                out var latB, out var lonB))
+        if (!AllCalibrationPointsPresent())
         {
-            GpsStatus.Text = "GPS: enter valid A/B coordinates";
+            GpsStatus.Text = "GPS: enter/select A, B, C and D";
             TransformStatus.Text = "Transform: —";
             return;
         }
 
-        if (_referencePointA is null || _referencePointB is null)
+        var gps = new GpsPoint[CalibrationPointCount];
+
+        for (var i = 0; i < CalibrationPointCount; i++)
         {
-            GpsStatus.Text = "GPS: A/B entered — select image A/B";
-            TransformStatus.Text = "Transform: —";
-            return;
+            if (!TryReadGps(
+                    GetLatitudeTextBox(i).Text,
+                    GetLongitudeTextBox(i).Text,
+                    out var latitude,
+                    out var longitude))
+            {
+                GpsStatus.Text = $"GPS: enter valid coordinates for {CalibrationPointNames[i]}";
+                TransformStatus.Text = "Transform: —";
+                return;
+            }
+
+            gps[i] = new GpsPoint
+            {
+                Latitude = latitude,
+                Longitude = longitude
+            };
         }
 
-        _gpsDistanceMetres =
-            HaversineDistanceMetres(latA, lonA, latB, lonB);
+        var a = gps[0];
+        _gpsDistanceMetres = HaversineDistanceMetres(
+            gps[0].Latitude, gps[0].Longitude,
+            gps[1].Latitude, gps[1].Longitude);
 
-        _gpsBearingDegrees =
-            InitialBearingDegrees(latA, lonA, latB, lonB);
-
-        BuildImageToGeoTransform(
-            _referencePointA.Value,
-            _referencePointB.Value,
-            latA, lonA, latB, lonB);
+        if (!BuildImageToGeoTransform(gps))
+        {
+            GpsStatus.Text = "GPS: calibration points are degenerate";
+            TransformStatus.Text = "Transform: invalid";
+            return;
+        }
 
         GpsStatus.Text =
-            $"GPS: {_gpsDistanceMetres.Value:0.00} m, bearing {_gpsBearingDegrees.Value:0.0}°";
+            $"GPS: A→B {_gpsDistanceMetres.Value:0.00} m";
 
         TransformStatus.Text =
-            $"Transform: {_transformRotationDegrees:0.0}°";
-    }
-
-    private double _transformRotationDegrees;
-
-    private void BuildImageToGeoTransform(
-    Point imageA,
-    Point imageB,
-    double latA,
-    double lonA,
-    double latB,
-    double lonB)
-    {
-        var meanLat = ((latA + latB) / 2.0) * Math.PI / 180.0;
-        const double earthRadius = 6371008.8;
-
-        var dLon = (lonB - lonA) * Math.PI / 180.0;
-        var dLat = (latB - latA) * Math.PI / 180.0;
-
-        var east = dLon * Math.Cos(meanLat) * earthRadius;
-        var north = dLat * earthRadius;
-
-        var dx = imageB.X - imageA.X;
-        var dy = imageB.Y - imageA.Y;
-
-        var pixelDistance = Math.Sqrt(dx * dx + dy * dy);
-        var geoDistance = Math.Sqrt(east * east + north * north);
-
-        if (pixelDistance < 0.000001 ||
-            geoDistance < 0.000001)
-        {
-            return;
-        }
-
-        var ix = dx / pixelDistance;
-        var iy = dy / pixelDistance;
-
-        var gx = east / geoDistance;
-        var gy = north / geoDistance;
-
-        var scale = geoDistance / pixelDistance;
-
-        // Image coordinates are X=right, Y=down.
-        // Geographic coordinates are East/North.
-        // These coordinate systems have opposite handedness, so
-        // the transform includes the required reflection.
-
-        _eastPerPixelX =
-            scale * (ix * gx - iy * gy);
-
-        _eastPerPixelY =
-            scale * (iy * gx + ix * gy);
-
-        _northPerPixelX =
-            scale * (ix * gy + iy * gx);
-
-        _northPerPixelY =
-            scale * (iy * gy - ix * gx);
-
-        _transformRotationDegrees =
-            NormalizeDegrees(
-                Math.Atan2(
-                    _eastPerPixelX,
-                    _northPerPixelX) *
-                180.0 / Math.PI);
-
-        _transformValid = true;
-    }
-
-    private GeoPoint ImageToGeo(Point imagePoint)
-    {
-        if (!_transformValid || _referencePointA is null)
-            throw new InvalidOperationException("Map calibration is incomplete.");
-
-        if (!TryReadGps(
-                LatitudeATextBox.Text, LongitudeATextBox.Text,
-                out var latA, out var lonA))
-            throw new InvalidOperationException("GPS calibration is incomplete.");
-
-        var dx = imagePoint.X - _referencePointA.Value.X;
-        var dy = imagePoint.Y - _referencePointA.Value.Y;
-
-        var east = _eastPerPixelX * dx + _eastPerPixelY * dy;
-        var north = _northPerPixelX * dx + _northPerPixelY * dy;
-
-        const double earthRadius = 6371008.8;
-        var lat = latA + (north / earthRadius) * 180.0 / Math.PI;
-        var lon = lonA +
-                  (east / (earthRadius * Math.Cos(latA * Math.PI / 180.0))) *
-                  180.0 / Math.PI;
-
-        return new GeoPoint(lat, lon);
+            $"Transform: affine, {_referencePoints.Length} points";
     }
 
     private static bool TryReadGps(
@@ -731,10 +658,12 @@ public partial class MainWindow : Window
                 NumberStyles.Float,
                 CultureInfo.InvariantCulture,
                 out longitude))
+        {
             return false;
+        }
 
-        return latitude >= -90 && latitude <= 90 &&
-               longitude >= -180 && longitude <= 180;
+        return latitude >= -90.0 && latitude <= 90.0 &&
+               longitude >= -180.0 && longitude <= 180.0;
     }
 
     private static double HaversineDistanceMetres(
@@ -750,123 +679,258 @@ public partial class MainWindow : Window
         var dLat = (latitudeB - latitudeA) * Math.PI / 180.0;
         var dLon = (longitudeB - longitudeA) * Math.PI / 180.0;
 
-        var sinLat = Math.Sin(dLat / 2);
-        var sinLon = Math.Sin(dLon / 2);
+        var sinLat = Math.Sin(dLat / 2.0);
+        var sinLon = Math.Sin(dLon / 2.0);
 
         var a = sinLat * sinLat +
                 Math.Cos(lat1) * Math.Cos(lat2) * sinLon * sinLon;
 
-        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        var c = 2.0 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1.0 - a));
 
         return earthRadiusMetres * c;
     }
 
-    private static double InitialBearingDegrees(
-        double latitudeA,
-        double longitudeA,
-        double latitudeB,
-        double longitudeB)
+    private bool BuildImageToGeoTransform(GpsPoint[] gps)
     {
-        var lat1 = latitudeA * Math.PI / 180.0;
-        var lat2 = latitudeB * Math.PI / 180.0;
-        var dLon = (longitudeB - longitudeA) * Math.PI / 180.0;
+        const double earthRadius = 6371008.8;
 
-        var y = Math.Sin(dLon) * Math.Cos(lat2);
-        var x = Math.Cos(lat1) * Math.Sin(lat2) -
-                Math.Sin(lat1) * Math.Cos(lat2) * Math.Cos(dLon);
+        // Work in a local East/North coordinate system relative to GPS A.
+        var latOriginRadians = gps[0].Latitude * Math.PI / 180.0;
 
-        return NormalizeDegrees(Math.Atan2(y, x) * 180.0 / Math.PI);
+        var rows = new double[CalibrationPointCount][];
+        var east = new double[CalibrationPointCount];
+        var north = new double[CalibrationPointCount];
+
+        for (var i = 0; i < CalibrationPointCount; i++)
+        {
+            var dLon = (gps[i].Longitude - gps[0].Longitude) * Math.PI / 180.0;
+            var dLat = (gps[i].Latitude - gps[0].Latitude) * Math.PI / 180.0;
+
+            east[i] = dLon * Math.Cos(latOriginRadians) * earthRadius;
+            north[i] = dLat * earthRadius;
+
+            rows[i] = new[]
+            {
+                _referencePoints[i]!.Value.X,
+                _referencePoints[i]!.Value.Y,
+                1.0
+            };
+        }
+
+        if (!SolveLeastSquares3(rows, east, out var eastCoefficients) ||
+            !SolveLeastSquares3(rows, north, out var northCoefficients))
+        {
+            return false;
+        }
+
+        _eastPerPixelX = eastCoefficients[0];
+        _eastPerPixelY = eastCoefficients[1];
+        _eastOffset = eastCoefficients[2];
+
+        _northPerPixelX = northCoefficients[0];
+        _northPerPixelY = northCoefficients[1];
+        _northOffset = northCoefficients[2];
+
+        var scaleX = Math.Sqrt(
+            _eastPerPixelX * _eastPerPixelX +
+            _northPerPixelX * _northPerPixelX);
+
+        var scaleY = Math.Sqrt(
+            _eastPerPixelY * _eastPerPixelY +
+            _northPerPixelY * _northPerPixelY);
+
+        if (scaleX < 0.000001 || scaleY < 0.000001)
+            return false;
+
+        _metresPerPixel = (scaleX + scaleY) / 2.0;
+        _transformValid = true;
+        return true;
     }
 
-    private static double NormalizeDegrees(double degrees)
+    private GeoPoint ImageToGeo(Point imagePoint)
     {
-        degrees %= 360.0;
-        if (degrees < 0)
-            degrees += 360.0;
-        return degrees;
+        if (!_transformValid)
+            throw new InvalidOperationException("Map calibration is incomplete.");
+
+        if (!TryReadGps(
+                LatitudeATextBox.Text,
+                LongitudeATextBox.Text,
+                out var latA,
+                out var lonA))
+        {
+            throw new InvalidOperationException("GPS calibration is incomplete.");
+        }
+
+        const double earthRadius = 6371008.8;
+
+        var east =
+            _eastPerPixelX * imagePoint.X +
+            _eastPerPixelY * imagePoint.Y +
+            _eastOffset;
+
+        var north =
+            _northPerPixelX * imagePoint.X +
+            _northPerPixelY * imagePoint.Y +
+            _northOffset;
+
+        var lat = latA + (north / earthRadius) * 180.0 / Math.PI;
+        var lon = lonA +
+                  (east / (earthRadius * Math.Cos(latA * Math.PI / 180.0))) *
+                  180.0 / Math.PI;
+
+        return new GeoPoint(lat, lon);
     }
 
-    private void SetPlayfieldPhysicalSize()
+    private static bool SolveLeastSquares3(
+        double[][] rows,
+        double[] values,
+        out double[] solution)
     {
-        if (_metresPerPixel <= 0)
+        solution = new double[3];
+
+        // Normal equations: (A^T A)x = A^T b.
+        var m = new double[3, 4];
+
+        for (var r = 0; r < rows.Length; r++)
+        {
+            for (var i = 0; i < 3; i++)
+            {
+                for (var j = 0; j < 3; j++)
+                    m[i, j] += rows[r][i] * rows[r][j];
+
+                m[i, 3] += rows[r][i] * values[r];
+            }
+        }
+
+        // Gaussian elimination with partial pivoting.
+        for (var column = 0; column < 3; column++)
+        {
+            var pivot = column;
+            for (var row = column + 1; row < 3; row++)
+            {
+                if (Math.Abs(m[row, column]) > Math.Abs(m[pivot, column]))
+                    pivot = row;
+            }
+
+            if (Math.Abs(m[pivot, column]) < 1e-10)
+                return false;
+
+            if (pivot != column)
+            {
+                for (var j = column; j < 4; j++)
+                    (m[column, j], m[pivot, j]) =
+                        (m[pivot, j], m[column, j]);
+            }
+
+            for (var row = column + 1; row < 3; row++)
+            {
+                var factor = m[row, column] / m[column, column];
+
+                for (var j = column; j < 4; j++)
+                    m[row, j] -= factor * m[column, j];
+            }
+        }
+
+        for (var row = 2; row >= 0; row--)
+        {
+            var value = m[row, 3];
+
+            for (var j = row + 1; j < 3; j++)
+                value -= m[row, j] * solution[j];
+
+            solution[row] = value / m[row, row];
+        }
+
+        return true;
+    }
+
+    private void InitialisePlayfield()
+    {
+        if (_imageWidth <= 0 || _imageHeight <= 0)
             return;
 
-        // Output pixels are converted to source-image pixels using the
-        // calibrated scale.  The source image is assumed to be at its
-        // original pixel density.
-        //
-        // This means the selected source rectangle represents the same
-        // real-world area as a 1280x960 Combatlr image.
-        //
-        // For Stage 2 we keep the output crop dimensions fixed in the
-        // source image as a practical first implementation.  Export uses
-        // the selected area and resamples it to 1280x960.
-        var sourceWidth = OutputWidth;
-        var sourceHeight = OutputHeight;
+        // The playfield is a selectable source-image rectangle.  It always
+        // has the 4:3 aspect ratio of the CombatLR output, but it is NOT
+        // fixed at 1280x960 source pixels.  The selected source area is
+        // resampled to 1280x960 when the map is exported.
+        const double aspectRatio = (double)OutputWidth / OutputHeight;
 
-        if (_imageWidth < sourceWidth || _imageHeight < sourceHeight)
-            return;
+        // The source image is deliberately larger than the 1280x960 output.
+        // Start with a crop which is 50% of the source-image height. This is
+        // intentionally smaller than the output resolution in source pixels:
+        // the selected source area is resampled to exactly 1280x960 when
+        // exported. Starting smaller gives the selector plenty of travel so
+        // its corners can be positioned anywhere inside the source image.
+        const double initialHeightFraction = 0.50;
 
-        _playfieldLeft = Math.Max(0, Math.Min(
-            _playfieldLeft, _imageWidth - sourceWidth));
+        var height = _imageHeight * initialHeightFraction;
+        var width = height * aspectRatio;
 
-        _playfieldTop = Math.Max(0, Math.Min(
-            _playfieldTop, _imageHeight - sourceHeight));
+        // In case a future source image does not have enough width for the
+        // requested 4:3 crop, reduce it until it fits.
+        if (width > _imageWidth)
+        {
+            width = _imageWidth;
+            height = width / aspectRatio;
+        }
 
+        _playfieldLeft = (_imageWidth - width) / 2.0;
+        _playfieldTop = (_imageHeight - height) / 2.0;
+
+        PlayfieldRectangle.Width = width;
+        PlayfieldRectangle.Height = height;
         SetPlayfieldPosition(_playfieldLeft, _playfieldTop);
+        UpdatePlayfieldStatus();
     }
 
     private void SetPlayfieldPosition(double left, double top)
     {
-        var currentWidth = PlayfieldRectangle.Width;
-        var currentHeight = PlayfieldRectangle.Height;
-
-        if (_imageWidth >= currentWidth)
-            left = Math.Max(0, Math.Min(left, _imageWidth - currentWidth));
-        else
-            left = 0;
-
-        if (_imageHeight >= currentHeight)
-            top = Math.Max(0, Math.Min(top, _imageHeight - currentHeight));
-        else
-            top = 0;
-
+        // Position is independent of the source-image dimensions. The
+        // playfield is a 4:3 selection which may be positioned freely.
+        // There is deliberately no 1280x960 or source-image boundary clamp
+        // here. The 1280x960 size applies only to the exported BMP.
         _playfieldLeft = left;
         _playfieldTop = top;
 
         Canvas.SetLeft(PlayfieldRectangle, left);
         Canvas.SetTop(PlayfieldRectangle, top);
 
-        if (_imageWidth < OutputWidth || _imageHeight < OutputHeight)
-        {
-            PlayfieldStatus.Text =
-                "Playfield: source image is smaller than 1280×960";
-        }
+        UpdatePlayfieldStatus();
     }
 
-    private void DrawReferenceLine()
+    private void DrawReferencePoints()
     {
         OverlayCanvas.Children.Clear();
 
-        if (_referencePointA is not null)
-            AddMarker(_referencePointA.Value, "A");
-
-        if (_referencePointB is null)
-            return;
-
-        AddMarker(_referencePointB.Value, "B");
-
-        var line = new Line
+        for (var i = 0; i < CalibrationPointCount; i++)
         {
-            X1 = _referencePointA!.Value.X,
-            Y1 = _referencePointA.Value.Y,
-            X2 = _referencePointB.Value.X,
-            Y2 = _referencePointB.Value.Y,
-            Stroke = Brushes.Red,
-            StrokeThickness = 2
-        };
+            if (_referencePoints[i] is not Point point)
+                continue;
 
-        OverlayCanvas.Children.Add(line);
+            AddMarker(point, CalibrationPointNames[i]);
+        }
+
+        // Connect the calibration points in order. This is only a visual aid;
+        // the affine calibration does not depend on this polygon.
+        var points = _referencePoints
+            .Where(p => p.HasValue)
+            .Select(p => p!.Value)
+            .ToArray();
+
+        for (var i = 1; i < points.Length; i++)
+        {
+            var line = new Line
+            {
+                X1 = points[i - 1].X,
+                Y1 = points[i - 1].Y,
+                X2 = points[i].X,
+                Y2 = points[i].Y,
+                Stroke = Brushes.Red,
+                StrokeThickness = 2
+            };
+
+            OverlayCanvas.Children.Add(line);
+        }
     }
 
     private void AddMarker(Point point, string label)
@@ -900,6 +964,77 @@ public partial class MainWindow : Window
         OverlayCanvas.Children.Add(text);
     }
 
+    private void UpdatePointStatus()
+    {
+        var count = _referencePoints.Count(p => p.HasValue);
+
+        if (count == CalibrationPointCount)
+        {
+            PointStatus.Text =
+                $"A={FormatPoint(0)}  B={FormatPoint(1)}  C={FormatPoint(2)}  D={FormatPoint(3)}";
+        }
+        else
+        {
+            var next = CalibrationPointNames[count];
+            PointStatus.Text =
+                $"Calibration {count}/4 — click reference point {next}";
+        }
+    }
+
+    private string FormatPoint(int index)
+    {
+        return _referencePoints[index] is Point point
+            ? $"{CalibrationPointNames[index]}=({point.X:0.0},{point.Y:0.0})"
+            : $"{CalibrationPointNames[index]}=—";
+    }
+
+    private bool AllCalibrationPointsPresent()
+    {
+        return _referencePoints.All(p => p.HasValue);
+    }
+
+    private void ClearReferencePoints()
+    {
+        for (var i = 0; i < CalibrationPointCount; i++)
+            _referencePoints[i] = null;
+    }
+
+    private void ClearGpsTextBoxes()
+    {
+        LatitudeATextBox.Clear();
+        LongitudeATextBox.Clear();
+        LatitudeBTextBox.Clear();
+        LongitudeBTextBox.Clear();
+        LatitudeCTextBox.Clear();
+        LongitudeCTextBox.Clear();
+        LatitudeDTextBox.Clear();
+        LongitudeDTextBox.Clear();
+    }
+
+    private TextBox GetLatitudeTextBox(int index)
+    {
+        return index switch
+        {
+            0 => LatitudeATextBox,
+            1 => LatitudeBTextBox,
+            2 => LatitudeCTextBox,
+            3 => LatitudeDTextBox,
+            _ => throw new ArgumentOutOfRangeException(nameof(index))
+        };
+    }
+
+    private TextBox GetLongitudeTextBox(int index)
+    {
+        return index switch
+        {
+            0 => LongitudeATextBox,
+            1 => LongitudeBTextBox,
+            2 => LongitudeCTextBox,
+            3 => LongitudeDTextBox,
+            _ => throw new ArgumentOutOfRangeException(nameof(index))
+        };
+    }
+
     private void Playfield_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (MapImage.Source is null || _resizingPlayfield)
@@ -920,22 +1055,43 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private Point GetSourceImagePosition()
+    {
+        if (MapImage.Source is null)
+            return new Point();
+
+        // MapWorkspace is top-left aligned inside the ScrollViewer and is
+        // scaled with LayoutTransform. Convert viewport coordinates back to
+        // original source-image pixels.
+        var mouse = Mouse.GetPosition(MapScrollViewer);
+        var zoom = MapScaleTransform.ScaleX;
+
+        if (zoom <= 0.000001)
+            zoom = 1.0;
+
+        return new Point(
+            (MapScrollViewer.HorizontalOffset + mouse.X) / zoom,
+            (MapScrollViewer.VerticalOffset + mouse.Y) / zoom);
+    }
+
     private void StartPlayfieldDrag(MouseButtonEventArgs e)
     {
-        _dragStartMouse = e.GetPosition(MapWorkspace);
+        // Work directly in MapImage coordinates. These are source-image pixels,
+        // independent of the current display zoom and ScrollViewer offset.
+        _dragStartMouse = GetSourceImagePosition();
         _playfieldStartLeft = _playfieldLeft;
         _playfieldStartTop = _playfieldTop;
 
         if (e.ChangedButton == MouseButton.Right)
         {
             _rightDraggingPlayfield = true;
-            PlayfieldRectangle.CaptureMouse();
         }
         else
         {
             _draggingPlayfield = true;
-            PlayfieldRectangle.CaptureMouse();
         }
+
+        PlayfieldRectangle.CaptureMouse();
     }
 
     private void Playfield_MouseMove(object sender, MouseEventArgs e)
@@ -943,7 +1099,9 @@ public partial class MainWindow : Window
         if (!_draggingPlayfield && !_rightDraggingPlayfield)
             return;
 
-        var current = e.GetPosition(MapWorkspace);
+        // The playfield owns mouse capture, but WPF can still report the mouse
+        // relative to MapImage, keeping drag distances in source-image pixels.
+        var current = GetSourceImagePosition();
         var dx = current.X - _dragStartMouse.X;
         var dy = current.Y - _dragStartMouse.Y;
 
@@ -994,7 +1152,8 @@ public partial class MainWindow : Window
         // Decide once, at the beginning of the drag, whether horizontal or
         // vertical movement controls the resize. This prevents the rectangle
         // from jumping between widths as individual DragDelta events vary.
-        var mouse = Mouse.GetPosition(MapWorkspace);
+        var mouse = GetSourceImagePosition();
+        _resizeStartMouse = mouse;
         var handle = ReferenceEquals(sender, TopLeftHandle)
             ? new Point(_resizeStartLeft, _resizeStartTop)
             : new Point(
@@ -1017,17 +1176,24 @@ public partial class MainWindow : Window
         const double aspectRatio = (double)OutputWidth / (double)OutputHeight; // 4:3
         const double minimumWidth = 320;
 
+        // Thumb DragDelta values are affected by presentation transforms and
+        // are incremental. Instead measure the complete drag in MapImage's
+        // source-pixel coordinate space.
+        var currentMouse = GetSourceImagePosition();
+        var horizontalChange = currentMouse.X - _resizeStartMouse.X;
+        var verticalChange = currentMouse.Y - _resizeStartMouse.Y;
+
         if (ReferenceEquals(sender, TopLeftHandle))
         {
             double width;
 
             if (_resizeUsesWidth)
             {
-                width = _resizeStartWidth - e.HorizontalChange;
+                width = _resizeStartWidth - horizontalChange;
             }
             else
             {
-                var newHeight = _resizeStartHeight - e.VerticalChange;
+                var newHeight = _resizeStartHeight - verticalChange;
                 width = newHeight * aspectRatio;
             }
 
@@ -1049,11 +1215,11 @@ public partial class MainWindow : Window
 
             if (_resizeUsesWidth)
             {
-                width = _resizeStartWidth + e.HorizontalChange;
+                width = _resizeStartWidth + horizontalChange;
             }
             else
             {
-                var newHeight = _resizeStartHeight + e.VerticalChange;
+                var newHeight = _resizeStartHeight + verticalChange;
                 width = newHeight * aspectRatio;
             }
 
@@ -1085,34 +1251,17 @@ public partial class MainWindow : Window
         const double aspectRatio = (double)OutputWidth / (double)OutputHeight; // 4:3
 
         width = Math.Max(minimumWidth, width);
+
+        // Do not limit the playfield to the source-image dimensions.
+        // The source image is only the map background; the selected
+        // playfield may be positioned and sized independently of it.
+        // The only geometric constraint here is the 4:3 aspect ratio.
         height = width / aspectRatio;
-
-        // If the requested size cannot fit, reduce it while preserving 4:3.
-        if (width > _imageWidth)
-        {
-            width = _imageWidth;
-            height = width / aspectRatio;
-        }
-
-        if (height > _imageHeight)
-        {
-            height = _imageHeight;
-            width = height * aspectRatio;
-        }
-
-        // Clamp the fixed/opposite corner into the image without changing
-        // the aspect ratio.
-        left = Math.Max(0, Math.Min(left, _imageWidth - width));
-        top = Math.Max(0, Math.Min(top, _imageHeight - height));
 
         PlayfieldRectangle.Width = width;
         PlayfieldRectangle.Height = height;
 
         SetPlayfieldPosition(left, top);
-
-        var widthMetres = width * _metresPerPixel;
-        var heightMetres = height * _metresPerPixel;
-
         UpdatePlayfieldStatus();
     }
 
@@ -1126,18 +1275,23 @@ public partial class MainWindow : Window
             ? oldZoom * ZoomFactor
             : oldZoom / ZoomFactor;
 
-        newZoom = Math.Max(MinimumZoom, Math.Min(MaximumZoom, newZoom));
+        newZoom = Math.Max(
+            MinimumZoom,
+            Math.Min(MaximumZoom, newZoom));
 
         if (Math.Abs(newZoom - oldZoom) < 0.0001)
             return;
 
-        // MapWorkspace is top-left aligned. Therefore the image coordinate
-        // underneath the mouse is simply the scroll offset plus mouse position,
+        // MapWorkspace is top-left aligned. The source-image coordinate
+        // underneath the mouse is the scroll offset plus mouse position,
         // divided by the current zoom.
         var mouse = e.GetPosition(MapScrollViewer);
 
-        var imageX = (MapScrollViewer.HorizontalOffset + mouse.X) / oldZoom;
-        var imageY = (MapScrollViewer.VerticalOffset + mouse.Y) / oldZoom;
+        var imageX =
+            (MapScrollViewer.HorizontalOffset + mouse.X) / oldZoom;
+
+        var imageY =
+            (MapScrollViewer.VerticalOffset + mouse.Y) / oldZoom;
 
         MapScaleTransform.ScaleX = newZoom;
         MapScaleTransform.ScaleY = newZoom;
@@ -1160,9 +1314,9 @@ public partial class MainWindow : Window
     private void ExportMap_Click(object sender, RoutedEventArgs e)
     {
         if (MapImage.Source is null || string.IsNullOrWhiteSpace(_sourceImagePath) ||
-            _referencePointA is null || _referencePointB is null || !_transformValid || _metresPerPixel <= 0)
+            !AllCalibrationPointsPresent() || !_transformValid || _metresPerPixel <= 0)
         {
-            MessageBox.Show(this, "A source image and complete A/B GPS calibration are required before exporting a site package.", "Combatlr Map Builder", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "A source image and complete A/B/C/D GPS calibration are required before exporting a site package.", "Combatlr Map Builder", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -1195,10 +1349,12 @@ public partial class MainWindow : Window
 
             var metadata = new MapMetadata
             {
-                Version = 1,
+                Version = 2,
                 Image = new ImageMetadata { Width = OutputWidth, Height = OutputHeight },
-                RotationDegrees = ParseRotation(),
-                MetresPerPixel = _metresPerPixel,
+                // The source crop is resampled to the fixed CombatLR output
+                // size, so the exported map's metres-per-pixel is based on
+                // the selected crop, not the original source-image pixels.
+                MetresPerPixel = PlayfieldRectangle.Width * _metresPerPixel / OutputWidth,
                 SourceCrop = new CropMetadata { X = _playfieldLeft, Y = _playfieldTop, Width = cropWidth, Height = cropHeight },
                 Playfield = new PlayfieldMetadata
                 {
@@ -1208,15 +1364,7 @@ public partial class MainWindow : Window
                     BottomLeft = new GpsPoint { Latitude = cropBottomLeft.Latitude, Longitude = cropBottomLeft.Longitude },
                     BottomRight = new GpsPoint { Latitude = cropBottomRight.Latitude, Longitude = cropBottomRight.Longitude }
                 },
-                Reference = new ReferenceMetadata
-                {
-                    PointA = new PixelPoint { X = _referencePointA.Value.X, Y = _referencePointA.Value.Y },
-                    PointB = new PixelPoint { X = _referencePointB.Value.X, Y = _referencePointB.Value.Y },
-                    DistanceMetres = _gpsDistanceMetres!.Value,
-                    GpsA = new GpsPoint { Latitude = double.Parse(LatitudeATextBox.Text, CultureInfo.InvariantCulture), Longitude = double.Parse(LongitudeATextBox.Text, CultureInfo.InvariantCulture) },
-                    GpsB = new GpsPoint { Latitude = double.Parse(LatitudeBTextBox.Text, CultureInfo.InvariantCulture), Longitude = double.Parse(LongitudeBTextBox.Text, CultureInfo.InvariantCulture) },
-                    BearingDegrees = _gpsBearingDegrees!.Value
-                }
+                Reference = BuildReferenceMetadata()!
             };
             var options = new JsonSerializerOptions { WriteIndented = true };
             File.WriteAllText(outputJsonPath, JsonSerializer.Serialize(metadata, options));
@@ -1285,24 +1433,71 @@ public partial class MainWindow : Window
         finally { bitmap.UnlockBits(data); }
     }
 
-    private double ParseRotation()
+    private readonly record struct GeoPoint(double Latitude, double Longitude);
+
+    private ReferenceMetadata? BuildReferenceMetadata()
     {
-        return double.TryParse(
-            RotationTextBox.Text,
-            NumberStyles.Float,
-            CultureInfo.InvariantCulture,
-            out var rotation)
-            ? rotation
-            : 0;
+        var points = new List<CalibrationPointMetadata>();
+
+        for (var i = 0; i < CalibrationPointCount; i++)
+        {
+            if (_referencePoints[i] is not Point point)
+                continue;
+
+            if (!TryReadGps(
+                    GetLatitudeTextBox(i).Text,
+                    GetLongitudeTextBox(i).Text,
+                    out var latitude,
+                    out var longitude))
+            {
+                continue;
+            }
+
+            points.Add(new CalibrationPointMetadata
+            {
+                Name = CalibrationPointNames[i],
+                X = point.X,
+                Y = point.Y,
+                Gps = new GpsPoint
+                {
+                    Latitude = latitude,
+                    Longitude = longitude
+                }
+            });
+        }
+
+        return points.Count == 0
+            ? null
+            : new ReferenceMetadata { Points = points };
     }
 
-    private readonly record struct GeoPoint(double Latitude, double Longitude);
+    private void LoadReferenceMetadata(ReferenceMetadata reference)
+    {
+        ClearReferencePoints();
+        ClearGpsTextBoxes();
+
+        foreach (var point in reference.Points)
+        {
+            var index = Array.IndexOf(CalibrationPointNames, point.Name);
+            if (index < 0 || index >= CalibrationPointCount)
+                continue;
+
+            _referencePoints[index] = new Point(point.X, point.Y);
+
+            GetLatitudeTextBox(index).Text =
+                point.Gps.Latitude.ToString(CultureInfo.InvariantCulture);
+
+            GetLongitudeTextBox(index).Text =
+                point.Gps.Longitude.ToString(CultureInfo.InvariantCulture);
+        }
+
+        UpdatePointStatus();
+    }
 
     private sealed class ProjectMetadata
     {
         public int Version { get; set; }
         public string? SourceImage { get; set; }
-        public double RotationDegrees { get; set; }
         public ReferenceMetadata? Reference { get; set; }
         public ProjectPlayfield Playfield { get; set; } = new();
     }
@@ -1319,7 +1514,6 @@ public partial class MainWindow : Window
     {
         public int Version { get; set; }
         public ImageMetadata Image { get; set; } = new();
-        public double RotationDegrees { get; set; }
         public double MetresPerPixel { get; set; }
         public CropMetadata SourceCrop { get; set; } = new();
         public PlayfieldMetadata Playfield { get; set; } = new();
@@ -1351,12 +1545,15 @@ public partial class MainWindow : Window
 
     private sealed class ReferenceMetadata
     {
-        public PixelPoint PointA { get; set; } = new();
-        public PixelPoint PointB { get; set; } = new();
-        public double DistanceMetres { get; set; }
-        public GpsPoint? GpsA { get; set; }
-        public GpsPoint? GpsB { get; set; }
-        public double BearingDegrees { get; set; }
+        public List<CalibrationPointMetadata> Points { get; set; } = new();
+    }
+
+    private sealed class CalibrationPointMetadata
+    {
+        public string Name { get; set; } = string.Empty;
+        public double X { get; set; }
+        public double Y { get; set; }
+        public GpsPoint Gps { get; set; } = new();
     }
 
     private sealed class GpsPoint
@@ -1365,9 +1562,4 @@ public partial class MainWindow : Window
         public double Longitude { get; set; }
     }
 
-    private sealed class PixelPoint
-    {
-        public double X { get; set; }
-        public double Y { get; set; }
-    }
 }
