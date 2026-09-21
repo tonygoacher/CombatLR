@@ -1,7 +1,9 @@
 #pragma once
 
 #include <Arduino.h>
+#include <TinyGPSPlus.h>
 #include "Navigation.h"
+#include <string>
 
 class NavigationNMEA : public INavigation
 {
@@ -13,50 +15,41 @@ public:
 
     bool Begin() override;
     bool Update() override;
+
     NavigationData GetData() const override;
     double GetGpsTime() const override;
 
-private:
-    static constexpr size_t LINE_BUFFER_SIZE = 128;
 
+
+private:
     HardwareSerial* _serial;
+
     int8_t _rxPin;
     int8_t _txPin;
     uint32_t _baud;
 
-    char _line[LINE_BUFFER_SIZE];
-    size_t _lineLength = 0;
+    TinyGPSPlus _gps;
 
-    NavigationData _data{};
+    NavigationData _data;
+
     double _gpsTime = 0.0;
 
-    bool ProcessSentence(const char* sentence);
-    bool ValidateChecksum(const char* sentence) const;
-
-    void ProcessGGA(const char* fields);
-    void ProcessRMC(const char* fields);
-
-    static double ParseGpsTime(const char* value);
-
-    static double ParseCoordinate(
-        const char* value,
-        const char* hemisphere);
-
-    static bool ParseFloat(
-        const char* text,
-        float& value);
-
-    static bool ParseField(
-        const char*& cursor,
-        char* field,
-        size_t fieldSize);
-
-    bool _havePreviousData = false;
-
+    // Previous position/course used to detect changes
     double _previousLatitude = 0.0;
     double _previousLongitude = 0.0;
-    float _previousHeading = 0.0f;
+    float _previousCourse = 0.0f;
 
     bool _previousPositionValid = false;
-    bool _previousHeadingValid = false;
+    bool _previousCourseValid = false;
+    bool _havePreviousData = false;
+
+    // Filtered course
+    float _filteredCourse = 0.0f;
+    float _filteredX = 0.0f;
+    float _filteredY = 0.0f;
+    bool _haveFilteredCourse = false;
+
+    // Course filtering
+    static constexpr float MIN_COURSE_SPEED = 0.8f;  // m/s
+    static constexpr float COURSE_FILTER_ALPHA = 0.30f;
 };

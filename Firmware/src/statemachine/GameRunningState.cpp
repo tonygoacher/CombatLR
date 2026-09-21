@@ -68,6 +68,11 @@ uint16_t GameRunningState::Run()
     {
         
         NavigationData data = _stateData.navigation.GetData();
+    //    data.latitude =  53.5509289;
+     //   data.longitude = -1.9987657;
+
+      //  data.latitude =  53.5515236;
+    //    data.longitude = -1.9982851;
 
         /*
         * Convert the known C GPS position into the local

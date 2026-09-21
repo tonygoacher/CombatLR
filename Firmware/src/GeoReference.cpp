@@ -51,6 +51,8 @@ GameCoordinate GeoReference::ToGameCoordinate(
 {
     GameCoordinate result;
 
+    Serial.printf("GPS: %.8f, %.8f\n", latitude, longitude);
+
     if (!_set)
         return result;
 

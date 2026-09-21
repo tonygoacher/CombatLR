@@ -1,17 +1,15 @@
 #include "NavigationNMEA.h"
-
-#include <stdlib.h>
-#include <string.h>
+#include <math.h>
 
 NavigationNMEA::NavigationNMEA(
     int8_t rxPin,
     int8_t txPin,
     uint32_t baud)
 {
-
     _baud = baud;
     _rxPin = rxPin;
     _txPin = txPin;
+
     _serial = new HardwareSerial(1);
 }
 
@@ -23,77 +21,258 @@ bool NavigationNMEA::Begin()
         _rxPin,
         _txPin);
 
-    _lineLength = 0;
+    _gps = TinyGPSPlus();
+
     _data = NavigationData{};
 
-    _havePreviousData = false;
+    _gpsTime = 0.0;
 
     _previousLatitude = 0.0;
     _previousLongitude = 0.0;
-    _previousHeading = 0.0f;
+    _previousCourse = 0.0f;
 
     _previousPositionValid = false;
-    _previousHeadingValid = false;
+    _previousCourseValid = false;
+    _havePreviousData = false;
+
+    _filteredCourse = 0.0f;
+    _filteredX = 0.0f;
+    _filteredY = 0.0f;
+    _haveFilteredCourse = false;
 
     return true;
 }
 
 bool NavigationNMEA::Update()
 {
-    bool newPacket = false;
 
-    /*
-     * Non-blocking: only consume bytes already present in the UART
-     * driver's receive buffer. No waiting for a character occurs here.
-     */
+
     while (_serial->available() > 0)
     {
         const char c =
             static_cast<char>(_serial->read());
-
-        if (c == '\n')
-        {
-            _line[_lineLength] = '\0';
-
-            if (_lineLength != 0)
-            {
-                if (ProcessSentence(_line))
-                {
-                    newPacket = true;
-                }                    
-            }
-
-            _lineLength = 0;
-            continue;
-        }
-
-        if (c == '\r')
-            continue;
-
-        if (c == '$')
-        {
-            _lineLength = 0;
-            _line[_lineLength++] = c;
-            continue;
-        }
-
-        if (_lineLength == 0)
-            continue;
-
-        if (_lineLength >= LINE_BUFFER_SIZE - 1)
-        {
-            _lineLength = 0;
-            continue;
-        }
-
-        _line[_lineLength++] = c;
+        _gps.encode(c);
     }
 
-    return newPacket;
+    const bool positionValid =
+        _gps.location.isValid();
+
+    const bool courseValid =
+        _gps.course.isValid();
+
+    /*
+     * Position
+     */
+    if (positionValid)
+    {
+        _data.latitude =
+            _gps.location.lat();
+
+        _data.longitude =
+            _gps.location.lng();
+    }
+
+    /*
+     * Altitude
+     */
+    if (_gps.altitude.isValid())
+    {
+        _data.altitude =
+            static_cast<float>(
+                _gps.altitude.meters());
+    }
+
+    /*
+     * Speed
+     */
+    if (_gps.speed.isValid())
+    {
+        _data.speed =
+            static_cast<float>(
+                _gps.speed.mps());
+    }
+
+    /*
+     * Raw GPS course
+     */
+    if (courseValid)
+    {
+        _data.course =
+            static_cast<float>(
+                _gps.course.deg());
+    }
+
+    /*
+     * Filter GPS course into the game's heading.
+     *
+     * GPS course becomes unreliable at very low speed,
+     * so only accept it once we're moving at walking speed.
+     */
+    const bool moving =
+        _gps.speed.isValid() &&
+        _gps.speed.mps() >= MIN_COURSE_SPEED;
+
+    if (courseValid && moving)
+    {
+        const float course =
+            static_cast<float>(
+                _gps.course.deg());
+
+        const float radians =
+            course * DEG_TO_RAD;
+
+        const float x = cosf(radians);
+        const float y = sinf(radians);
+
+        if (!_haveFilteredCourse)
+        {
+            /*
+             * First valid course establishes the filter.
+             */
+            _filteredX = x;
+            _filteredY = y;
+
+            _haveFilteredCourse = true;
+        }
+        else
+        {
+            /*
+             * Circular exponential filter.
+             *
+             * This avoids problems when crossing 0/360 degrees.
+             */
+            _filteredX =
+                _filteredX * (1.0f - COURSE_FILTER_ALPHA) +
+                x * COURSE_FILTER_ALPHA;
+
+            _filteredY =
+                _filteredY * (1.0f - COURSE_FILTER_ALPHA) +
+                y * COURSE_FILTER_ALPHA;
+        }
+
+        float filtered =
+            atan2f(_filteredY, _filteredX) *
+            RAD_TO_DEG;
+
+        if (filtered < 0.0f)
+            filtered += 360.0f;
+
+        _filteredCourse = filtered;
+
+        /*
+         * The application "heading" is now
+         * the filtered GPS course.
+         */
+        _data.heading = _filteredCourse;
+        _data.headingValid = true;
+    }
+    else
+    {
+        /*
+         * Don't claim a valid heading while stationary.
+         *
+         * We deliberately retain the filtered value so that
+         * when movement resumes the filter continues from
+         * the previous direction.
+         */
+        _data.headingValid = false;
+    }
+
+    /*
+     * Satellites
+     */
+    if (_gps.satellites.isValid())
+    {
+        const uint32_t satellites =
+            _gps.satellites.value();
+
+        _data.satellites =
+            static_cast<uint8_t>(
+                satellites > 255 ? 255 : satellites);
+    }
+
+    /*
+     * Position validity
+     */
+    _data.positionValid = positionValid;
+
+    /*
+     * GPS time
+     */
+    if (_gps.time.isValid())
+    {
+        _gpsTime =
+            static_cast<double>(_gps.time.hour()) * 3600.0 +
+            static_cast<double>(_gps.time.minute()) * 60.0 +
+            static_cast<double>(_gps.time.second()) +
+            static_cast<double>(_gps.time.centisecond()) / 100.0;
+    }
+
+    /*
+     * Detect changes in position/course.
+     */
+    bool changed = false;
+
+    if (!_havePreviousData)
+    {
+        if (positionValid || courseValid)
+        {
+            _previousLatitude = _data.latitude;
+            _previousLongitude = _data.longitude;
+            _previousCourse = _data.course;
+
+            _previousPositionValid = positionValid;
+            _previousCourseValid = courseValid;
+
+            _havePreviousData = true;
+
+            changed = true;
+        }
+    }
+    else
+    {
+        if (positionValid != _previousPositionValid)
+        {
+            changed = true;
+        }
+        else if (positionValid)
+        {
+            if (_data.latitude != _previousLatitude ||
+                _data.longitude != _previousLongitude)
+            {
+                changed = true;
+            }
+        }
+
+        if (courseValid != _previousCourseValid)
+        {
+            changed = true;
+        }
+        else if (courseValid)
+        {
+            if (_data.course != _previousCourse)
+            {
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            _previousLatitude = _data.latitude;
+            _previousLongitude = _data.longitude;
+            _previousCourse = _data.course;
+
+            _previousPositionValid = positionValid;
+            _previousCourseValid = courseValid;
+        }
+    }
+
+    return changed;
 }
 
 NavigationData NavigationNMEA::GetData() const
 {
+
     return _data;
 }
 
@@ -102,400 +281,4 @@ double NavigationNMEA::GetGpsTime() const
     return _gpsTime;
 }
 
-bool NavigationNMEA::ValidateChecksum(
-    const char* sentence) const
-{
-    if (sentence == nullptr || sentence[0] != '$')
-        return false;
 
-    const char* star = strchr(sentence, '*');
-
-    if (star == nullptr ||
-        star[1] == '\0' ||
-        star[2] == '\0')
-        return false;
-
-    uint8_t checksum = 0;
-
-    for (const char* p = sentence + 1;
-         p < star;
-         ++p)
-    {
-        checksum ^=
-            static_cast<uint8_t>(*p);
-    }
-
-    char* end = nullptr;
-    const unsigned long supplied =
-        strtoul(star + 1, &end, 16);
-
-    if (end == star + 1 || supplied > 0xFF)
-        return false;
-
-    return checksum ==
-        static_cast<uint8_t>(supplied);
-}
-bool NavigationNMEA::ProcessSentence(
-    const char* sentence)
-{
-    if (!ValidateChecksum(sentence))
-        return false;
-
-    const char* comma =
-        strchr(sentence, ',');
-
-    if (comma == nullptr)
-        return false;
-
-    const size_t identifierLength =
-        static_cast<size_t>(comma - (sentence + 1));
-
-    if (identifierLength < 3)
-        return false;
-
-    const char* type = comma - 3;
-
-    if (strncmp(type, "GGA", 3) == 0)
-    {
-        ProcessGGA(comma + 1);
-    }
-    else if (strncmp(type, "RMC", 3) == 0)
-    {
-        ProcessRMC(comma + 1);
-    }
-    else
-    {
-        return false;
-    }
-
-    /*
-     * The first valid navigation data is always considered changed.
-     */
-    if (!_havePreviousData)
-    {
-        if (_data.positionValid || _data.headingValid)
-        {
-            _previousLatitude = _data.latitude;
-            _previousLongitude = _data.longitude;
-            _previousHeading = _data.heading;
-
-            _previousPositionValid = _data.positionValid;
-            _previousHeadingValid = _data.headingValid;
-
-            _havePreviousData = true;
-
-            return true;
-        }
-
-        return false;
-    }
-
-    bool changed = false;
-
-    /*
-     * Position validity changing is also considered an update.
-     */
-    if (_data.positionValid != _previousPositionValid)
-    {
-        changed = true;
-    }
-    else if (_data.positionValid)
-    {
-        if (_data.latitude != _previousLatitude ||
-            _data.longitude != _previousLongitude)
-        {
-            changed = true;
-        }
-    }
-
-    /*
-     * Heading validity changing is also considered an update.
-     */
-    if (_data.headingValid != _previousHeadingValid)
-    {
-        changed = true;
-    }
-    else if (_data.headingValid)
-    {
-        if (_data.heading != _previousHeading)
-        {
-            changed = true;
-        }
-    }
-
-    /*
-     * Only update the comparison values when we are actually
-     * going to report a change.
-     */
-    if (changed)
-    {
-        _previousLatitude = _data.latitude;
-        _previousLongitude = _data.longitude;
-        _previousHeading = _data.heading;
-
-        _previousPositionValid = _data.positionValid;
-        _previousHeadingValid = _data.headingValid;
-    }
-
-    return changed;
-}
-
-void NavigationNMEA::ProcessGGA(
-    const char* fields)
-{
-    /*
-     * GGA:
-     * 0 time, 1 lat, 2 N/S, 3 lon, 4 E/W, 5 fix quality
-     */
-    char field[24];
-    char latitude[20] = {};
-    char latitudeHemisphere[4] = {};
-    char longitude[20] = {};
-    char longitudeHemisphere[4] = {};
-    char fixQuality[8] = {};
-
-    const char* cursor = fields;
-
-    for (int index = 0; index <= 5; ++index)
-    {
-        if (!ParseField(cursor, field, sizeof(field)))
-            return;
-
-        switch (index)
-        {
-        case 0:
-            _gpsTime = ParseGpsTime(field);
-            break;
-
-        case 1:
-            strncpy(latitude, field, sizeof(latitude) - 1);
-            break;
-
-        case 2:
-            strncpy(latitudeHemisphere, field,
-                    sizeof(latitudeHemisphere) - 1);
-            break;
-
-        case 3:
-            strncpy(longitude, field, sizeof(longitude) - 1);
-            break;
-
-        case 4:
-            strncpy(longitudeHemisphere, field,
-                    sizeof(longitudeHemisphere) - 1);
-            break;
-
-        case 5:
-            strncpy(fixQuality, field, sizeof(fixQuality) - 1);
-            break;
-
-        default:
-            break;
-        }
-    }
-
-    if (atoi(fixQuality) <= 0)
-    {
-        _data.positionValid = false;
-        return;
-    }
-
-    _data.latitude =
-        ParseCoordinate(latitude, latitudeHemisphere);
-
-    _data.longitude =
-        ParseCoordinate(longitude, longitudeHemisphere);
-
-    _data.positionValid = true;
-}
-
-void NavigationNMEA::ProcessRMC(
-    const char* fields)
-{
-    /*
-     * RMC:
-     * 0 time, 1 status, 2 lat, 3 N/S, 4 lon, 5 E/W,
-     * 6 speed, 7 course over ground
-     */
-    char field[24];
-    char status[4] = {};
-    char latitude[20] = {};
-    char latitudeHemisphere[4] = {};
-    char longitude[20] = {};
-    char longitudeHemisphere[4] = {};
-    char course[20] = {};
-
-    const char* cursor = fields;
-
-    for (int index = 0; index <= 7; ++index)
-    {
-        if (!ParseField(cursor, field, sizeof(field)))
-            return;
-
-        switch (index)
-        {
-        case 0:
-            _gpsTime = ParseGpsTime(field);
-            break;
-
-        case 1:
-            strncpy(status, field, sizeof(status) - 1);
-            break;
-
-        case 2:
-            strncpy(latitude, field, sizeof(latitude) - 1);
-            break;
-
-        case 3:
-            strncpy(latitudeHemisphere, field,
-                    sizeof(latitudeHemisphere) - 1);
-            break;
-
-        case 4:
-            strncpy(longitude, field, sizeof(longitude) - 1);
-            break;
-
-        case 5:
-            strncpy(longitudeHemisphere, field,
-                    sizeof(longitudeHemisphere) - 1);
-            break;
-
-        case 7:
-            strncpy(course, field, sizeof(course) - 1);
-            break;
-
-        default:
-            break;
-        }
-    }
-
-    if (status[0] != 'A')
-    {
-        _data.positionValid = false;
-        _data.headingValid = false;
-        return;
-    }
-
-    _data.latitude =
-        ParseCoordinate(latitude, latitudeHemisphere);
-
-    _data.longitude =
-        ParseCoordinate(longitude, longitudeHemisphere);
-
-    _data.positionValid = true;
-
-    float heading = 0.0f;
-
-    if (ParseFloat(course, heading))
-    {
-        /*
-         * This is NMEA course-over-ground, not magnetometer heading.
-         * It is useful as a temporary heading source while the actual
-         * magnetometer/UBX heading is implemented.
-         */
-        _data.heading = heading;
-        _data.headingValid = true;
-    }
-}
-
-double NavigationNMEA::ParseGpsTime(const char* value)
-{
-    if (value == nullptr || value[0] == '\0')
-        return 0.0;
-
-    char* end = nullptr;
-    const double nmea = strtod(value, &end);
-
-    if (end == value)
-        return 0.0;
-
-    const int hours = static_cast<int>(nmea / 10000.0);
-    const double minutesAndSeconds =
-        nmea - static_cast<double>(hours) * 10000.0;
-    const int minutes = static_cast<int>(minutesAndSeconds / 100.0);
-    const double seconds =
-        minutesAndSeconds - static_cast<double>(minutes) * 100.0;
-
-    return static_cast<double>(hours) * 3600.0 +
-           static_cast<double>(minutes) * 60.0 +
-           seconds;
-}
-
-double NavigationNMEA::ParseCoordinate(
-    const char* value,
-    const char* hemisphere)
-{
-    if (value == nullptr ||
-        hemisphere == nullptr ||
-        value[0] == '\0' ||
-        hemisphere[0] == '\0')
-        return 0.0;
-
-    char* end = nullptr;
-    const double nmea = strtod(value, &end);
-
-    if (end == value)
-        return 0.0;
-
-    const int degrees =
-        static_cast<int>(nmea / 100.0);
-
-    const double minutes =
-        nmea -
-        static_cast<double>(degrees) * 100.0;
-
-    double decimal =
-        static_cast<double>(degrees) +
-        minutes / 60.0;
-
-    if (hemisphere[0] == 'S' ||
-        hemisphere[0] == 'W')
-        decimal = -decimal;
-
-    return decimal;
-}
-
-bool NavigationNMEA::ParseFloat(
-    const char* text,
-    float& value)
-{
-    if (text == nullptr || text[0] == '\0')
-        return false;
-
-    char* end = nullptr;
-    const double parsed = strtod(text, &end);
-
-    if (end == text)
-        return false;
-
-    value = static_cast<float>(parsed);
-    return true;
-}
-
-bool NavigationNMEA::ParseField(
-    const char*& cursor,
-    char* field,
-    size_t fieldSize)
-{
-    if (cursor == nullptr ||
-        field == nullptr ||
-        fieldSize == 0)
-        return false;
-
-    size_t length = 0;
-
-    while (*cursor != '\0' && *cursor != ',')
-    {
-        if (length < fieldSize - 1)
-            field[length++] = *cursor;
-
-        ++cursor;
-    }
-
-    field[length] = '\0';
-
-    if (*cursor == ',')
-        ++cursor;
-
-    return true;
-}

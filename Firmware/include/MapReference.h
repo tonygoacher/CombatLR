@@ -1,96 +1,120 @@
 #pragma once
 
 #include <Arduino.h>
-#include "GeoReference.h"
+#include <ArduinoJson.h>
+#include "GameCoordinate.h"
 
-/*
- * MapReference
- *
- * Loads the map.json A/B calibration and converts GPS coordinates
- * into source-map pixel coordinates.
- *
- * The final map rotation is deliberately NOT taken from map.json.
- * A compass reading will be used later to establish the runtime
- * map rotation.
- */
 class MapReference
 {
 public:
+    MapReference();
+
+    // Load the map reference information from the map JSON file.
     bool Load(const char* filename);
 
-    bool IsValid() const;
+    // Configure the reference for a game whose GameCoordinate origin is
+    // the supplied GPS position.
+    bool Configure(double homeLatitude, double homeLongitude);
 
-    int GetVersion() const;
+    bool IsConfigured() const { return _configured; }
 
-    float GetImageWidth() const;
-    float GetImageHeight() const;
+    // Convert a game coordinate (metres east/north of the game home)
+    // into a pixel coordinate in the exported 1280x960 map.
+    bool GameToMapPixel(const GameCoordinate& coordinate,
+                        float& mapX,
+                        float& mapY) const;
 
-    float GetMetresPerPixel() const;
-    float GetPixelsPerMetre() const;
+    // Direct GPS conversion using the same affine transform as MapBuilder.
+    bool GpsToMapPixel(double latitude,
+                       double longitude,
+                       float& mapX,
+                       float& mapY) const;
 
-    float GetPointAX() const;
-    float GetPointAY() const;
-    float GetPointBX() const;
-    float GetPointBY() const;
-
-    double GetGpsALatitude() const;
-    double GetGpsALongitude() const;
-    double GetGpsBLatitude() const;
-    double GetGpsBLongitude() const;
+    // Heading of "up" in the exported map, in degrees clockwise from
+    // true north.
     float GetMapUpHeading() const;
 
-    /*
-     * Convert a GPS position to source-map pixel coordinates.
-     *
-     * The returned coordinates are in the same coordinate system as
-     * PointA/PointB from map.json.
-     *
-     * SourceCrop is not applied here. Keeping the calibration in the
-     * original/source coordinate system makes the A/B transform explicit.
-     */
-bool GameToMapPixel(
-    const GameCoordinate& position,
-    float& x,
-    float& y) const;
+    // Pixels per metre in the exported map.
+    float GetPixelsPerMetre() const;
 
-        bool Configure(
-    double homeLatitude,
-    double homeLongitude);
+    // Calibration point accessors. These are SOURCE IMAGE coordinates,
+    // not coordinates in the exported 1280x960 image.
+    bool GetPointA(double& x, double& y,
+                   double& latitude, double& longitude) const;
+    bool GetPointB(double& x, double& y,
+                   double& latitude, double& longitude) const;
+    bool GetPointC(double& x, double& y,
+                   double& latitude, double& longitude) const;
+    bool GetPointD(double& x, double& y,
+                   double& latitude, double& longitude) const;
 
 private:
-    int _version = 0;
+    static constexpr int POINT_COUNT = 4;
+    static constexpr double EARTH_RADIUS_METRES = 6371008.8;
+    static constexpr double DEG_TO_RAD_VALUE = 0.01745329251994329576923690768489;
 
-    float _imageWidth = 0.0f;
-    float _imageHeight = 0.0f;
+    struct ReferencePoint
+    {
+        double sourceX = 0.0;
+        double sourceY = 0.0;
+        double latitude = 0.0;
+        double longitude = 0.0;
+        bool valid = false;
+    };
 
-    float _metresPerPixel = 0.0f;
+    ReferencePoint _points[POINT_COUNT];
 
-    float _pointAX = 0.0f;
-    float _pointAY = 0.0f;
-    float _pointBX = 0.0f;
-    float _pointBY = 0.0f;
+    // Source-image -> local east/north affine transform.
+    //
+    // This deliberately mirrors MapBuilder:
+    //
+    //   east  = _eastPerPixelX  * x +
+    //           _eastPerPixelY  * y + _eastOffset
+    //
+    //   north = _northPerPixelX * x +
+    //           _northPerPixelY * y + _northOffset
+    //
+    // where x/y are ORIGINAL SOURCE IMAGE pixels.
+    double _eastPerPixelX = 0.0;
+    double _eastPerPixelY = 0.0;
+    double _eastOffset = 0.0;
 
-    double _gpsALatitude = 0.0;
-    double _gpsALongitude = 0.0;
-    double _gpsBLatitude = 0.0;
-    double _gpsBLongitude = 0.0;
-    float _mapUpHeading = 0.0f;
+    double _northPerPixelX = 0.0;
+    double _northPerPixelY = 0.0;
+    double _northOffset = 0.0;
 
-    /*
-     * GameCoordinate -> map pixel transform.
-     */
-    double _eastToMapX = 0.0;
-    double _eastToMapY = 0.0;
-    double _northToMapX = 0.0;
-    double _northToMapY = 0.0;
+    // Source-image crop which becomes the exported 1280x960 map.
+    double _cropX = 0.0;
+    double _cropY = 0.0;
+    double _cropWidth = 0.0;
+    double _cropHeight = 0.0;
 
-    /*
-     * Map pixel corresponding to GameCoordinate (0,0),
-     * i.e. GamePlan Home.
-     */
-    double _mapOriginX = 0.0;
-    double _mapOriginY = 0.0;
+    int _imageWidth = 1280;
+    int _imageHeight = 960;
 
-    bool _valid = false;
+    // MapBuilder's exported metres-per-pixel value.
+    double _metresPerPixel = 0.0;
+
+    // Local east/north coordinates of GPS point A relative to the
+    // GameCoordinate origin.
+    double _aEastFromHome = 0.0;
+    double _aNorthFromHome = 0.0;
+
+    double _homeLatitude = 0.0;
+    double _homeLongitude = 0.0;
+
+    bool _loaded = false;
     bool _configured = false;
+
+    bool BuildImageToGeoTransform();
+
+    static bool SolveLeastSquares3(const double rows[POINT_COUNT][3],
+                                   const double values[POINT_COUNT],
+                                   double result[3]);
+
+    static double LatitudeScale(double latitudeDegrees);
+
+    bool GetSourcePixelFromGameCoordinate(const GameCoordinate& coordinate,
+                                          double& sourceX,
+                                          double& sourceY) const;
 };
