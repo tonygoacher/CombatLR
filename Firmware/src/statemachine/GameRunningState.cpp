@@ -115,6 +115,7 @@ uint16_t GameRunningState::Run()
     }
 
     uint32_t elapsedTime = uint32_t(_stateData.navigation.GetGpsTime() - _startTime);
+  
     _stateData.zoneEngine.Update(elapsedTime);
 
 

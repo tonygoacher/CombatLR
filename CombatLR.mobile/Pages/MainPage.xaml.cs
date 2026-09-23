@@ -2,6 +2,7 @@
 using CombatLR.mobile.PageModels;
 using CombatLR.mobile.Services;
 using Microsoft.Maui.Controls.Shapes;
+using System.Diagnostics;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 
@@ -66,7 +67,7 @@ namespace CombatLR.mobile.Pages
         private readonly List<Grid> _pickupMarkers = new();
 
 #if ANDROID
-        private Android.Views.View? _nativeMapView;
+        private Android.Views.View? _nativeRootView;
         private MapTouchListener? _mapTouchListener;
 #endif
 
@@ -121,11 +122,14 @@ namespace CombatLR.mobile.Pages
             object? sender,
             EventArgs e)
         {
-            if (MapContainer.Handler?.PlatformView
+            // Install the listener on the page root, not on MapContainer or
+            // MapTouchView.  Android can otherwise route the native touch view
+            // outside its MAUI Grid column on this layout.
+            if (Handler?.PlatformView
                 is not Android.Views.View nativeView)
                 return;
 
-            _nativeMapView = nativeView;
+            _nativeRootView = nativeView;
 
             _mapTouchListener =
                 new MapTouchListener(this);
@@ -137,51 +141,68 @@ namespace CombatLR.mobile.Pages
 
         private async Task LoadMapAsync()
         {
+            long loadMapStart = Environment.TickCount64;
             try
             {
+               
                 // Load the bitmap.
                 await using var input =
                     await FileSystem.OpenAppPackageFileAsync("map.bmp");
 
+                long t0 = Environment.TickCount64 - loadMapStart;
+
                 using var memory = new MemoryStream();
                 await input.CopyToAsync(memory);
+
+                long t1 = Environment.TickCount64 - loadMapStart;
 
                 var bytes = memory.ToArray();
 
                 MapImage.Source = ImageSource.FromStream(
                     () => new MemoryStream(bytes));
+                long t2 = Environment.TickCount64 - loadMapStart;
 
                 MapInfoLabel.Text =
                     "MAP LOADED\nLoading map.json...";
 
                 ResetMapView();
+                long t3 = Environment.TickCount64 - loadMapStart;
+
 
                 // Load map.json.
                 await using var jsonStream =
                     await FileSystem.OpenAppPackageFileAsync("map.json");
 
-                var mapDefinition =
-                    await JsonSerializer.DeserializeAsync<MapDefinition>(
-                        jsonStream);
+                long t4 = Environment.TickCount64 - loadMapStart;
 
+                //            var mapDefinition =
+                //              await JsonSerializer.DeserializeAsync<MapDefinition>(
+                //                jsonStream);
+                var mapDefinition =
+             JsonSerializer.Deserialize<MapDefinition>(jsonStream);
+
+                long t5 = Environment.TickCount64 - loadMapStart;
                 if (mapDefinition is null)
                     throw new InvalidDataException(
                         "map.json produced no MapDefinition.");
 
                 _mapDefinition = mapDefinition;
-
+        
                 _coordinateService =
                     new MapCoordinateService(_mapDefinition);
+                long t6 = Environment.TickCount64 - loadMapStart;
+                long loadMapElapsed = Environment.TickCount64 - loadMapStart;
 
-                MapInfoLabel.Text =
-                    $"MAP LOADED\n" +
-                    $"JSON LOADED\n" +
-                    $"{_mapDefinition.Image.Width} × {_mapDefinition.Image.Height}\n" +
-                    $"{_mapDefinition.MetresPerPixel:F4} m/pixel\n" +
-                    $"Rotation: {_mapDefinition.RotationDegrees:F0}°\n" +
-                    $"Centre:\n" +
-                    $"{_mapDefinition.Playfield.Centre.Latitude:F6}\n" +
-                    $"{_mapDefinition.Playfield.Centre.Longitude:F6}";
+                
+                                MapInfoLabel.Text =
+                                    $"MAP LOADED\n" +
+                                    $"JSON LOADED\n" +
+                                    $"{_mapDefinition.Image.Width} × {_mapDefinition.Image.Height}\n" +
+                                    $"{_mapDefinition.MetresPerPixel:F4} m/pixel\n" +
+                                    $"Rotation: {_mapDefinition.RotationDegrees:F0}°\n" +
+                                    $"Centre:\n" +
+                                    $"{_mapDefinition.Playfield.Centre.Latitude:F6}\n" +
+                                    $"{_mapDefinition.Playfield.Centre.Longitude:F6}"; 
             }
             catch (Exception ex)
             {
@@ -193,6 +214,7 @@ namespace CombatLR.mobile.Pages
                     ex.ToString(),
                     "OK");
             }
+
         }
 
         private async void NewGamePlan_Clicked(
@@ -604,6 +626,7 @@ namespace CombatLR.mobile.Pages
             private bool _pinching;
             private bool _wasPinching;
             private bool _singleTouchMoved;
+            private bool _mapTouchActive;
 
             private double _touchStartX;
             private double _touchStartY;
@@ -629,10 +652,25 @@ namespace CombatLR.mobile.Pages
                 Android.Views.MotionEvent? e)
             {
                 if (v is null || e is null)
-                    return true;
+                    return false;
 
                 var density =
                     v.Resources?.DisplayMetrics?.Density ?? 1.0f;
+
+                // The listener is on the page root.  Only take ownership of
+                // touches whose DOWN event is actually inside MapTouchView.
+                // Returning false for everything else leaves the normal MAUI
+                // hit-testing path alone, so buttons remain clickable.
+                if (e.ActionMasked == Android.Views.MotionEventActions.Down)
+                {
+                    _mapTouchActive = IsInsideMap(e, density);
+
+                    if (!_mapTouchActive)
+                        return false;
+                }
+
+                if (!_mapTouchActive)
+                    return false;
 
                 switch (e.ActionMasked)
                 {
@@ -643,10 +681,10 @@ namespace CombatLR.mobile.Pages
                             _singleTouchMoved = false;
 
                             _touchStartX =
-                                e.GetX(0) / density;
+                                GetMapX(e, 0, density);
 
                             _touchStartY =
-                                e.GetY(0) / density;
+                                GetMapY(e, 0, density);
 
                             _lastX = _touchStartX;
                             _lastY = _touchStartY;
@@ -711,10 +749,10 @@ namespace CombatLR.mobile.Pages
                                      e.PointerCount == 1)
                             {
                                 var x =
-                                    e.GetX(0) / density;
+                                    GetMapX(e, 0, density);
 
                                 var y =
-                                    e.GetY(0) / density;
+                                    GetMapY(e, 0, density);
 
                                 var totalDx =
                                     x - _touchStartX;
@@ -754,10 +792,10 @@ namespace CombatLR.mobile.Pages
                     case Android.Views.MotionEventActions.Up:
                         {
                             var x =
-                                e.GetX(0) / density;
+                                GetMapX(e, 0, density);
 
                             var y =
-                                e.GetY(0) / density;
+                                GetMapY(e, 0, density);
 
                             // A tap is a single-finger touch that
                             // hasn't moved significantly.
@@ -771,6 +809,7 @@ namespace CombatLR.mobile.Pages
                             _pinching = false;
                             _wasPinching = false;
                             _singleTouchMoved = false;
+                            _mapTouchActive = false;
 
                             break;
                         }
@@ -780,6 +819,7 @@ namespace CombatLR.mobile.Pages
                             _pinching = false;
                             _wasPinching = false;
                             _singleTouchMoved = false;
+                            _mapTouchActive = false;
 
                             break;
                         }
@@ -787,6 +827,80 @@ namespace CombatLR.mobile.Pages
 
                 // We own the complete touch sequence.
                 return true;
+            }
+
+            private bool IsInsideMap(
+                Android.Views.MotionEvent e,
+                double density)
+            {
+                if (_page.Handler?.PlatformView
+                    is not Android.Views.View rootView)
+                {
+                    return false;
+                }
+
+                var location = new int[2];
+                rootView.GetLocationOnScreen(location);
+
+                // Convert the Android raw screen position into
+                // MAUI device-independent coordinates relative
+                // to the page root.
+                var x =
+                    e.RawX / density -
+                    location[0] / density;
+
+                var y =
+                    e.RawY / density -
+                    location[1] / density;
+
+                var left =
+                    _page.MapContainer.X;
+
+                var top =
+                    _page.MapContainer.Y;
+
+                var right =
+                    left + _page.MapContainer.Width;
+
+                var bottom =
+                    top + _page.MapContainer.Height;
+
+                return x >= left &&
+                       x < right &&
+                       y >= top &&
+                       y < bottom;
+            }
+
+            private double GetMapX(
+                Android.Views.MotionEvent e,
+                int pointer,
+                double density)
+            {
+                if (_page.MapTouchView.Handler?.PlatformView
+                    is not Android.Views.View mapView)
+                    return 0;
+
+                var location = new int[2];
+                mapView.GetLocationOnScreen(location);
+
+                return e.RawX / density -
+                       location[0] / density;
+            }
+
+            private double GetMapY(
+                Android.Views.MotionEvent e,
+                int pointer,
+                double density)
+            {
+                if (_page.MapTouchView.Handler?.PlatformView
+                    is not Android.Views.View mapView)
+                    return 0;
+
+                var location = new int[2];
+                mapView.GetLocationOnScreen(location);
+
+                return e.RawY / density -
+                       location[1] / density;
             }
 
             private static double GetDistance(

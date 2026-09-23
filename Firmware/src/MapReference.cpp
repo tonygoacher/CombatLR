@@ -491,11 +491,6 @@ bool MapReference::GpsToMapPixel(
         (sourceY - _cropY) *
         ((double)_imageHeight / _cropHeight));
 
-    Serial.printf("MAP TEST GPS %.8f, %.8f\n", latitude, longitude);
-    Serial.printf("  local A: east=%.6f north=%.6f\n", east, north);
-    Serial.printf("  source:  %.6f, %.6f\n", sourceX, sourceY);
-    Serial.printf("  map:     %.6f, %.6f\n", mapX, mapY);
-
     return isfinite(mapX) && isfinite(mapY);
 }
 

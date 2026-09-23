@@ -45,12 +45,11 @@ bool NavigationNMEA::Begin()
 
 bool NavigationNMEA::Update()
 {
-
-
     while (_serial->available() > 0)
     {
         const char c =
             static_cast<char>(_serial->read());
+        Serial.print(c);
         _gps.encode(c);
     }
 

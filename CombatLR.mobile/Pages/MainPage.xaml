@@ -81,7 +81,8 @@
                 BackgroundColor="Transparent"
                 HorizontalOptions="Fill"
                 VerticalOptions="Fill"
-                InputTransparent="True" />
+                InputTransparent="False"
+                ZIndex="20" />
 
         </Grid>
 
