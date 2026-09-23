@@ -49,8 +49,8 @@ private static bool TryParseSeconds(
 }
 
     private async void Ok_Clicked(
-        object? sender,
-        EventArgs e)
+     object? sender,
+     EventArgs e)
     {
         if (!double.TryParse(
                 RadiusEntry.Text,
@@ -101,16 +101,18 @@ private static bool TryParseSeconds(
                 lifespanTime;
         }
 
-        _completionSource.TrySetResult(true);
         await Navigation.PopModalAsync();
+
+        _completionSource.TrySetResult(true);
     }
 
     private async void Cancel_Clicked(
         object? sender,
         EventArgs e)
     {
-        _completionSource.TrySetResult(false);
         await Navigation.PopModalAsync();
+
+        _completionSource.TrySetResult(false);
     }
 
     public Task<bool> Completion =>

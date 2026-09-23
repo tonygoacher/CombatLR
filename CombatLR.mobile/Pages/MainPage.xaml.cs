@@ -403,10 +403,14 @@ namespace CombatLR.mobile.Pages
                 var zone =
                     _gamePlan.Zones[_currentZoneIndex];
 
-                await Navigation.PushModalAsync(
+                var zoneEditPage =
                     new ZoneEditPage(
                         zone,
-                        _currentZoneIndex + 1));
+                        _currentZoneIndex + 1);
+
+                await Navigation.PushModalAsync(zoneEditPage);
+
+                await zoneEditPage.Completion;
 
                 RenderGameObjects();
                 UpdateZoneInfo();
