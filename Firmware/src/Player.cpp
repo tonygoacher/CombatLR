@@ -12,7 +12,7 @@ namespace PlayerStrings
 }
 
 Player::Player(ISounds& sounds, int initialHealth)
-: _sounds(sounds), _health(initialHealth), _outOfZonePacer(true), _outOfZoneHealthDecrement(1), _outOfZoneCount(0)
+: _sounds(sounds), _health(initialHealth / 2), _outOfZonePacer(true), _outOfZoneHealthDecrement(1), _outOfZoneCount(0)
 {
     
 }

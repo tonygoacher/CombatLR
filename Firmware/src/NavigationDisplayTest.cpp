@@ -63,7 +63,7 @@ void SetNavigationPlayerPosition(
 namespace
 {
     //SpoofNavigation navigation;
-    NavigationNMEA  navigation(Ports::GPS_RX,Ports::GPS_TX,115200);
+    NavigationNMEA  navigation(Ports::GPS_RX,Ports::GPS_TX,38400);
     GeoReference geoReference;
    
     IDisplay* theDisplay;
