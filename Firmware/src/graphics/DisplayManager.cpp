@@ -8,6 +8,7 @@
 #include "graphics/AddWidgetCommand.h"
 #include "widgets/MapWidget.h"
 #include "widgets/ZoneWidget.h"
+#include "widgets/SolidMapWidget.h"
 #include "graphics/AddZoneCommand.h"
 #include "graphics/RemoveWidgetCommand.h"
 #include "graphics/SetWidgetColourCommand.h"
@@ -394,7 +395,7 @@ void DisplayManager::AddWidget(const AddWidgetCommand* command)
         case WidgetType::Pickup:
         {
             MapWidget* widget =
-                new MapWidget(
+                new SolidMapWidget(
                     command->GetId(),
                     _textureManager,
                     command->GetPosition(),
