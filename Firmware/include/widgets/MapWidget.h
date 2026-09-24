@@ -32,13 +32,14 @@ public:
 protected:
     Texture* _texture;  
     uint16_t _colour;
+    char    _filename[128];
 private:
 
     GameCoordinate _position;
 
   
     TextureManager& _textureManager;
-    char    _filename[128];
+
     PickupTypes _pickupType;
  
 };

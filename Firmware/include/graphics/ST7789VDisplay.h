@@ -7,6 +7,7 @@
 #include "IDisplay.h"
 #include "widgets/Widget.h"
 #include "graphics/IDisplayContext.h"
+#include "graphics/SpriteManager.h"
 #include "graphics/ConfigureMapCommand.h"
 #include "MapReference.h"
 #include "graphics/Texture.h"
@@ -185,4 +186,5 @@ private:
     MapReference _navigationMap;
     bool _navMapConfigured;
     Texture _backgroundTexture;
+    SpriteManager _spriteManager;
 };

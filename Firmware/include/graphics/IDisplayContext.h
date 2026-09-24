@@ -4,6 +4,7 @@
 
 
 #include "graphics/Texture.h"
+#include "graphics/SpriteManager.h"
 
 
 struct WidgetRenderPosition
@@ -39,4 +40,6 @@ public:
      virtual void DrawTexture(
             const Texture& texture,
             uint16_t transparentColour) = 0;
+
+    virtual SpriteManager&  GetSpriteManager() = 0;
 };
