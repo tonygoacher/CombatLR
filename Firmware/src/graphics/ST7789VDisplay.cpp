@@ -949,11 +949,13 @@ void ST7789VDisplay::RenderWidgets()
                 DisplayContext(
                     TFT_eSprite& canvas,
                     const WidgetRenderPosition& position,
+                    SpriteManager& spriteManager,
                     float mapPixelsPerMetre)
                     :
                     _canvas(canvas),
                     _position(position),
-                    _mapPixelsPerMetre(mapPixelsPerMetre)
+                    _mapPixelsPerMetre(mapPixelsPerMetre),
+                    _spriteManager(spriteManager)
                 {
                 }
 
@@ -968,6 +970,11 @@ void ST7789VDisplay::RenderWidgets()
                     GetPosition() const override
                 {
                     return _position;
+                }
+
+                SpriteManager& GetSpriteManager() override
+                {
+                    return _spriteManager;
                 }
 
 
@@ -1033,6 +1040,7 @@ void ST7789VDisplay::RenderWidgets()
             private:
 
                 TFT_eSprite& _canvas;
+                SpriteManager& _spriteManager;
 
                 const WidgetRenderPosition& _position;
 
@@ -1043,6 +1051,7 @@ void ST7789VDisplay::RenderWidgets()
         DisplayContext context(
             _screenSprite,
             position,
+             _spriteManager,
             _navigationMap.GetPixelsPerMetre());
 
 
