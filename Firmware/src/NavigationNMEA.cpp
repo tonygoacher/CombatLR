@@ -281,3 +281,8 @@ double NavigationNMEA::GetGpsTime() const
 }
 
 
+
+float NavigationNMEA::GetHDOP()  
+{
+    return _gps.hdop.hdop();
+}

@@ -25,7 +25,7 @@ uint16_t PowerUpState::Run()
         Serial.println("Exiting PowerUpState::Run()");
         return SystemStates::GameInit;
     }
-    return SystemStates::PowerUp;
+    return SystemStates::GPSLock;
 }
 
 void PowerUpState::Entry()
@@ -50,5 +50,5 @@ void PowerUpState::Entry()
 }
 void PowerUpState::Exit()
 {
-    
+ 
 }

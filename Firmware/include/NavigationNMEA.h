@@ -15,6 +15,7 @@ public:
 
     bool Begin() override;
     bool Update() override;
+    float GetHDOP() override;
 
     NavigationData GetData() const override;
     double GetGpsTime() const override;

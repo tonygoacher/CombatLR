@@ -53,4 +53,7 @@ public:
     {
         return GetData().headingValid;
     }
+
+    virtual float GetHDOP() = 0;
+
 };
