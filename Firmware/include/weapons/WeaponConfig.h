@@ -30,6 +30,7 @@ public:
     int GetBuildUpTime(WeaponType type) const;
     int GetPostBuildUpShotTime(WeaponType type) const;
     int GetShotPower(WeaponType type) const;
+    int GetMuzzleLEDTime(WeaponType type) const;
     int GetNumWeapons();
     
 
@@ -54,6 +55,7 @@ private:
         int buildUpTime;
         int postBuildUpShotTime;
         int shotPower;
+        int muzzleLedTime;
     };
 
     void PrintDef(WeaponDefinition& def);

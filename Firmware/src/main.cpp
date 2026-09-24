@@ -43,7 +43,8 @@ void setup()
 {
     Serial.begin(115200);
 
-    PrintPSRAM("Before LITTLEFS");
+
+  PrintPSRAM("Before LITTLEFS");
   if(!LittleFS.begin(true)){
     Serial.println("An Error has occurred while mounting LittleFS");
     return;

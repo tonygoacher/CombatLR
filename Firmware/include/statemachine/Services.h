@@ -12,6 +12,7 @@ class PBSwitch;
 class IRLaserTag;
 class WeaponConfig;
 class ESP32LaserTag;
+class PacedLED;
 
 struct CombatLRServices
 {
@@ -32,4 +33,7 @@ struct CombatLRServices
     PBSwitch&   leftSwitch;
     PBSwitch&   zoomSwitch;     
     PBSwitch&   rightSwitch;
+    PacedLED&   muzzleLED;
+
+
 };

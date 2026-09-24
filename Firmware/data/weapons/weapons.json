@@ -15,7 +15,8 @@
 	  "maxAmmoReserve": 200,
 	  "defaultAmmoCount": 40,
 	  "maxReload": 200,
-	  "shotPower": 1
+	  "shotPower": 1,
+	  "muzzleLED": 100
     },
     {
       "type": 1,
@@ -32,7 +33,8 @@
 	  "maxAmmoReserve": 300,
 	  "defaultAmmoCount": 120,
 	  "maxReload": 200,
-	  "shotPower": 2
+	  "shotPower": 2,
+	  "muzzleLED": 30
 	  
     },
     {
@@ -50,10 +52,12 @@
 	  "maxAmmoReserve": 300,
 	  "defaultAmmoCount": 120,
 	  "maxReload": 200,
-	  "shotPower": 3
+	  "shotPower": 3,
+	  "muzzleLED": 30
     },
 	{
       "type": 3,
+	  "burst": 1,
 	  "name": "Blaster",
       "image": "/weapons/blaster.bmp",
       "shoot": "/sounds/blaster.wav",
@@ -66,11 +70,13 @@
 	  "maxAmmoReserve": 200,
 	  "defaultAmmoCount": 100,
 	  "maxReload": 200,
-	  "shotPower": 10
+	  "shotPower": 10,
+	  "muzzleLED": 30
 	  
     },
 	{
       "type": 4,
+	  "burst":1,
 	  "name": "Rocket",
       "image": "/weapons/rocket.bmp",
       "shoot": "/sounds/blaster.wav",
@@ -83,7 +89,8 @@
 	  "maxAmmoReserve": 3,
 	  "defaultAmmoCount": 3,
 	  "maxReload": 3, 
-	  "shotPower": 20
+	  "shotPower": 20,
+	  "muzzleLED": 800
 	  
     },
 	{
@@ -100,7 +107,8 @@
 	  "maxAmmoReserve": 3,
 	  "defaultAmmoCount": 3,
 	  "maxReload": 3, 
-	  "shotPower": 20
+	  "shotPower": 20,
+	  "muzzleLED": 30
 	  
     },
 	{
@@ -119,7 +127,8 @@
 	  "maxAmmoReserve": 3,
 	  "defaultAmmoCount": 3,
 	  "maxReload": 3,
-	  "shotPower": 50
+	  "shotPower": 50,
+	  "muzzleLED": 800
     }
   ]
 }
