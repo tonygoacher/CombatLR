@@ -356,533 +356,550 @@ public sealed class MapDefinition
 {
     public string BitmapPath { get; }
     public string JsonPath { get; }
+
     public int Width { get; }
     public int Height { get; }
-    public double RotationDegrees { get; }
+
     public double MetresPerPixel { get; }
 
     public double SourceCropX { get; }
     public double SourceCropY { get; }
+
     public GpsPoint TopLeft { get; }
     public GpsPoint TopRight { get; }
     public GpsPoint BottomLeft { get; }
     public GpsPoint BottomRight { get; }
 
-    public Point ReferencePixelA { get; }
-    public GpsPoint ReferenceGpsA { get; }
-
-    public Point ReferencePixelB { get; }
-    public GpsPoint ReferenceGpsB { get; }
     public GpsPoint Centre { get; }
-    public double PixelsPerMetre { get; }
 
     public double MapUpHeading { get; }
+
+    // Image/source pixel -> local EN metres
+    //
+    // East  = E0 + Ex * X + Ey * Y
+    // North = N0 + Nx * X + Ny * Y
+    //
+    private double _eastOffset;
+    private double _eastPerPixelX;
+    private double _eastPerPixelY;
+
+    private double _northOffset;
+    private double _northPerPixelX;
+    private double _northPerPixelY;
+
+    private bool _transformValid;
+
+    private const double EarthRadiusMetres = 6371008.8;
+
+    private readonly CalibrationPoint[] _points;
+
     private MapDefinition(
         string bmp,
         string json,
         int width,
         int height,
-        double rotation,
-        double mpp,
-        double mapUpHeading,
+        double metresPerPixel,
         double sourceCropX,
         double sourceCropY,
-        GpsPoint tl,
-        GpsPoint tr,
-        GpsPoint bl,
-        GpsPoint br,
-        Point referencePixelA,
-        GpsPoint referenceGpsA,
-        Point referencePixelB,
-        GpsPoint referenceGpsB)
+        GpsPoint topLeft,
+        GpsPoint topRight,
+        GpsPoint bottomLeft,
+        GpsPoint bottomRight,
+        GpsPoint centre,
+        CalibrationPoint[] points)
     {
         BitmapPath = bmp;
         JsonPath = json;
+
         Width = width;
         Height = height;
-        RotationDegrees = rotation;
-        MetresPerPixel = mpp;
-        MapUpHeading = mapUpHeading;
 
-        TopLeft = tl;
-        TopRight = tr;
-        BottomLeft = bl;
-        BottomRight = br;
+        MetresPerPixel = metresPerPixel;
 
-        ReferencePixelA = referencePixelA;
-        ReferenceGpsA = referenceGpsA;
-        ReferencePixelB = referencePixelB;
-        ReferenceGpsB = referenceGpsB;
         SourceCropX = sourceCropX;
         SourceCropY = sourceCropY;
+
+        TopLeft = topLeft;
+        TopRight = topRight;
+        BottomLeft = bottomLeft;
+        BottomRight = bottomRight;
+
+        Centre = centre;
+
+        _points = points;
+
+        BuildTransform();
+
+        MapUpHeading = CalculateMapUpHeading();
     }
 
-    public static MapDefinition FromJson(string bmp, string jsonPath, string text)
+    public static MapDefinition FromJson(
+        string bmp,
+        string jsonPath,
+        string text)
     {
         using var doc = JsonDocument.Parse(text);
-        var r = doc.RootElement;
-        var img = r.GetProperty("Image");
-        var pf = r.GetProperty("Playfield");
-        var crop = r.GetProperty("SourceCrop");
-        var reference = r.GetProperty("Reference");
-        var pointA = reference.GetProperty("PointA");
-        var gpsA = reference.GetProperty("GpsA");
-        var pointB = reference.GetProperty("PointB");
-        var gpsB = reference.GetProperty("GpsB");
 
-        double dx =
-    pointB.GetProperty("X").GetDouble() -
-    pointA.GetProperty("X").GetDouble();
+        var root = doc.RootElement;
 
-        double dy =
-            pointB.GetProperty("Y").GetDouble() -
-            pointA.GetProperty("Y").GetDouble();
+        var image =
+            root.GetProperty("Image");
 
-        double meanLatitude =
-            (gpsA.GetProperty("Latitude").GetDouble() +
-             gpsB.GetProperty("Latitude").GetDouble()) *
-            0.5 *
-            Math.PI / 180.0;
+        var playfield =
+            root.GetProperty("Playfield");
 
-        double east =
-            (gpsB.GetProperty("Longitude").GetDouble() -
-             gpsA.GetProperty("Longitude").GetDouble()) *
-            Math.PI / 180.0 *
-            Math.Cos(meanLatitude);
+        var crop =
+            root.GetProperty("SourceCrop");
 
-        double north =
-            (gpsB.GetProperty("Latitude").GetDouble() -
-             gpsA.GetProperty("Latitude").GetDouble()) *
-            Math.PI / 180.0;
+        var reference =
+            root.GetProperty("Reference");
 
-        double gpsBearing =
-            Math.Atan2(east, north) *
-            180.0 /
-            Math.PI;
+        var referencePoints =
+            reference.GetProperty("Points");
 
-        double mapAngle =
-            Math.Atan2(dy, dx) *
-            180.0 /
-            Math.PI;
+        var points =
+            new List<CalibrationPoint>();
 
-        double mapUpHeading =
-            gpsBearing -
-            mapAngle -
-            90.0;
+        foreach (var element in referencePoints.EnumerateArray())
+        {
+            var gps =
+                element.GetProperty("Gps");
 
-        mapUpHeading =
-            (mapUpHeading + 360.0) % 360.0;
+            points.Add(
+                new CalibrationPoint(
+                    element.GetProperty("Name").GetString() ?? "",
+                    element.GetProperty("X").GetDouble(),
+                    element.GetProperty("Y").GetDouble(),
+                    gps.GetProperty("Latitude").GetDouble(),
+                    gps.GetProperty("Longitude").GetDouble()));
+        }
 
+        if (points.Count < 3)
+        {
+            throw new InvalidDataException(
+                "map.json must contain at least three calibration points.");
+        }
 
-        static GpsPoint P(JsonElement e) =>
-            new(e.GetProperty("Latitude").GetDouble(), e.GetProperty("Longitude").GetDouble());
+        static GpsPoint ReadGps(JsonElement element)
+        {
+            return new GpsPoint(
+                element.GetProperty("Latitude").GetDouble(),
+                element.GetProperty("Longitude").GetDouble());
+        }
 
         return new MapDefinition(
-            bmp, jsonPath,
-            img.GetProperty("Width").GetInt32(),
-            img.GetProperty("Height").GetInt32(),
-            r.GetProperty("RotationDegrees").GetDouble(),
-            r.GetProperty("MetresPerPixel").GetDouble(),
-            mapUpHeading,
+            bmp,
+            jsonPath,
+
+            image.GetProperty("Width").GetInt32(),
+            image.GetProperty("Height").GetInt32(),
+
+            root.GetProperty("MetresPerPixel").GetDouble(),
+
             crop.GetProperty("X").GetDouble(),
             crop.GetProperty("Y").GetDouble(),
-            P(pf.GetProperty("TopLeft")),
-            P(pf.GetProperty("TopRight")),
-            P(pf.GetProperty("BottomLeft")),
-            P(pf.GetProperty("BottomRight")),
-           new Point(
-            pointA.GetProperty("X").GetDouble(),
-            pointA.GetProperty("Y").GetDouble()),
 
-        new GpsPoint(
-            gpsA.GetProperty("Latitude").GetDouble(),
-            gpsA.GetProperty("Longitude").GetDouble()),
+            ReadGps(playfield.GetProperty("TopLeft")),
+            ReadGps(playfield.GetProperty("TopRight")),
+            ReadGps(playfield.GetProperty("BottomLeft")),
+            ReadGps(playfield.GetProperty("BottomRight")),
 
-        new Point(
-            pointB.GetProperty("X").GetDouble(),
-            pointB.GetProperty("Y").GetDouble()),
+            ReadGps(playfield.GetProperty("Centre")),
 
-        new GpsPoint(
-            gpsB.GetProperty("Latitude").GetDouble(),
-            gpsB.GetProperty("Longitude").GetDouble()));
-
-        new GpsPoint(
-            gpsB.GetProperty("Latitude").GetDouble(),
-            gpsB.GetProperty("Longitude").GetDouble());
+            points.ToArray());
     }
 
-    public GpsPoint PixelToGps(Point p)
+    private void BuildTransform()
     {
-        // map.bmp coordinates are relative to the exported crop.
-        // MapBuilder's calibration points are in source-image coordinates.
-        var imagePoint = new Point(
-            p.X + SourceCropX,
-            p.Y + SourceCropY);
+        _transformValid = false;
 
-        String p2gps=
-    $"PixelToGps: map=({p.X:F3},{p.Y:F3}) " +
-    $"crop=({SourceCropX:F3},{SourceCropY:F3}) " +
-    $"source=({imagePoint.X:F3},{imagePoint.Y:F3})";
+        var first = _points[0];
 
-        p2gps = 
-            $"PixelToGps: A=({ReferencePixelA.X:F3},{ReferencePixelA.Y:F3}) " +
-            $"B=({ReferencePixelB.X:F3},{ReferencePixelB.Y:F3})";
+        var lat0 =
+            first.Latitude *
+            Math.PI / 180.0;
 
-        // This is the same image -> geographic transform used by
-        // CombatlrMapBuilder.BuildImageToGeoTransform().
-        var meanLat =
-            ((ReferenceGpsA.Latitude + ReferenceGpsB.Latitude) / 2.0)
-            * Math.PI / 180.0;
+        var lon0 =
+            first.Longitude *
+            Math.PI / 180.0;
 
-        const double earthRadius = 6371008.8;
+        /*
+         * Build the same least-squares affine transform
+         * used by CombatLR.mobile.
+         *
+         * East  = Ex * X + Ey * Y + E0
+         * North = Nx * X + Ny * Y + N0
+         */
 
-        var dLon =
-            (ReferenceGpsB.Longitude - ReferenceGpsA.Longitude)
-            * Math.PI / 180.0;
+        double sxx = 0;
+        double sxy = 0;
+        double sx = 0;
 
-        var dLat =
-            (ReferenceGpsB.Latitude - ReferenceGpsA.Latitude)
-            * Math.PI / 180.0;
+        double syy = 0;
+        double sy = 0;
+
+        double sn = 0;
+
+        double sxe = 0;
+        double sye = 0;
+        double se = 0;
+
+        double sxn = 0;
+        double syn = 0;
+        double snorth = 0;
+
+        foreach (var point in _points)
+        {
+            var x = point.X;
+            var y = point.Y;
+
+            var lat =
+                point.Latitude *
+                Math.PI / 180.0;
+
+            var lon =
+                point.Longitude *
+                Math.PI / 180.0;
+
+            var east =
+                (lon - lon0) *
+                Math.Cos(lat0) *
+                EarthRadiusMetres;
+
+            var north =
+                (lat - lat0) *
+                EarthRadiusMetres;
+
+            sxx += x * x;
+            sxy += x * y;
+            sx += x;
+
+            syy += y * y;
+            sy += y;
+
+            sn += 1.0;
+
+            sxe += x * east;
+            sye += y * east;
+            se += east;
+
+            sxn += x * north;
+            syn += y * north;
+            snorth += north;
+        }
+
+        var matrix =
+            new double[,]
+            {
+                { sxx, sxy, sx },
+                { sxy, syy, sy },
+                { sx,  sy,  sn }
+            };
+
+        var eastResult =
+            Solve3x3(
+                matrix,
+                new[]
+                {
+                    sxe,
+                    sye,
+                    se
+                });
+
+        var northResult =
+            Solve3x3(
+                matrix,
+                new[]
+                {
+                    sxn,
+                    syn,
+                    snorth
+                });
+
+        if (eastResult is null ||
+            northResult is null)
+        {
+            return;
+        }
+
+        _eastPerPixelX = eastResult[0];
+        _eastPerPixelY = eastResult[1];
+        _eastOffset = eastResult[2];
+
+        _northPerPixelX = northResult[0];
+        _northPerPixelY = northResult[1];
+        _northOffset = northResult[2];
+
+        _transformValid = true;
+    }
+
+    private static double[]? Solve3x3(
+        double[,] input,
+        double[] rhs)
+    {
+        var a =
+            new double[3, 4];
+
+        for (var row = 0; row < 3; row++)
+        {
+            for (var col = 0; col < 3; col++)
+                a[row, col] = input[row, col];
+
+            a[row, 3] = rhs[row];
+        }
+
+        for (var column = 0; column < 3; column++)
+        {
+            var pivot = column;
+
+            for (var row = column + 1;
+                 row < 3;
+                 row++)
+            {
+                if (Math.Abs(a[row, column]) >
+                    Math.Abs(a[pivot, column]))
+                {
+                    pivot = row;
+                }
+            }
+
+            if (Math.Abs(a[pivot, column]) < 1e-12)
+                return null;
+
+            if (pivot != column)
+            {
+                for (var col = column;
+                     col < 4;
+                     col++)
+                {
+                    var temp =
+                        a[column, col];
+
+                    a[column, col] =
+                        a[pivot, col];
+
+                    a[pivot, col] =
+                        temp;
+                }
+            }
+
+            var divisor =
+                a[column, column];
+
+            for (var col = column;
+                 col < 4;
+                 col++)
+            {
+                a[column, col] /= divisor;
+            }
+
+            for (var row = 0;
+                 row < 3;
+                 row++)
+            {
+                if (row == column)
+                    continue;
+
+                var factor =
+                    a[row, column];
+
+                for (var col = column;
+                     col < 4;
+                     col++)
+                {
+                    a[row, col] -=
+                        factor *
+                        a[column, col];
+                }
+            }
+        }
+
+        return new[]
+        {
+            a[0, 3],
+            a[1, 3],
+            a[2, 3]
+        };
+    }
+
+    public GpsPoint PixelToGps(Point mapPixel)
+    {
+        if (!_transformValid)
+            return Centre;
+
+        /*
+         * map.bmp coordinates are relative to the exported crop.
+         *
+         * Calibration points are in source-image coordinates.
+         */
+
+        var sourceX =
+            mapPixel.X +
+            SourceCropX;
+
+        var sourceY =
+            mapPixel.Y +
+            SourceCropY;
 
         var east =
-            dLon * Math.Cos(meanLat) * earthRadius;
+            _eastOffset +
+            _eastPerPixelX * sourceX +
+            _eastPerPixelY * sourceY;
 
         var north =
-            dLat * earthRadius;
-
-        var dx =
-            ReferencePixelB.X - ReferencePixelA.X;
-
-        var dy =
-            ReferencePixelB.Y - ReferencePixelA.Y;
-
-       p2gps = 
-    $"PixelToGps AB: pixel=({dx:F3},{dy:F3}) " +
-    $"geo=({east:F3},{north:F3})";
-
-        var pixelDistance =
-            Math.Sqrt(dx * dx + dy * dy);
-
-        var geoDistance =
-            Math.Sqrt(east * east + north * north);
-
-        if (pixelDistance < 0.000001 || geoDistance < 0.000001)
-            return ReferenceGpsA;
-
-
-
-        var scale = geoDistance / pixelDistance;
+            _northOffset +
+            _northPerPixelX * sourceX +
+            _northPerPixelY * sourceY;
 
         /*
-         * Build the same GameCoordinate -> map-pixel transform
-         * used by CombatLR's MapReference::Configure(), then
-         * invert it for Pixel -> GameCoordinate.
-         *
-         * Image/map coordinates:
-         *   X increases right
-         *   Y increases down
-         *
-         * Game coordinates:
-         *   East  increases east
-         *   North increases north
+         * The affine coefficients are relative to
+         * the GPS coordinate of calibration point A.
          */
 
-        var gameAlongEast =
-            east / geoDistance;
+        var origin =
+            _points[0];
 
-        var gameAlongNorth =
-            north / geoDistance;
+        var lat0 =
+            origin.Latitude *
+            Math.PI / 180.0;
 
-        /*
-         * Perpendicular GameCoordinate vector.
-         */
-        var gameAcrossEast =
-           gameAlongNorth;
+        var lon0 =
+            origin.Longitude *
+            Math.PI / 180.0;
 
-        var gameAcrossNorth =
-            -gameAlongEast;
+        var latitude =
+            lat0 +
+            north / EarthRadiusMetres;
 
-        /*
-         * Unit vector along A -> B in map space.
-         */
-        var mapAlongX =
-            dx / pixelDistance;
+        var longitude =
+            lon0 +
+            east /
+            (EarthRadiusMetres *
+             Math.Cos(lat0));
 
-        var mapAlongY =
-            dy / pixelDistance;
-
-        /*
-         * Perpendicular map vector.
-         */
-        var mapAcrossX =
-            -mapAlongY;
-
-        var mapAcrossY =
-            mapAlongX;
-
-        var pixelsPerMetre =
-            pixelDistance / geoDistance;
-
-        /*
-         * Same transform as MapReference::Configure().
-         *
-         * GameCoordinate -> map pixel:
-         *
-         *   mapX = east  * eastToMapX
-         *        + north * northToMapX
-         *
-         *   mapY = east  * eastToMapY
-         *        + north * northToMapY
-         */
-        var eastToMapX =
-            pixelsPerMetre *
-            (mapAlongX * gameAlongEast +
-             mapAcrossX * gameAcrossEast);
-
-        var eastToMapY =
-            pixelsPerMetre *
-            (mapAlongY * gameAlongEast +
-             mapAcrossY * gameAcrossEast);
-
-        var northToMapX =
-            pixelsPerMetre *
-            (mapAlongX * gameAlongNorth +
-             mapAcrossX * gameAcrossNorth);
-
-        var northToMapY =
-            pixelsPerMetre *
-            (mapAlongY * gameAlongNorth +
-             mapAcrossY * gameAcrossNorth);
-
-        /*
-         * Invert the 2x2 GameCoordinate -> map matrix.
-         */
-        var determinant =
-            eastToMapX * northToMapY -
-            northToMapX * eastToMapY;
-
-        if (Math.Abs(determinant) < 0.000001)
-            return ReferenceGpsA;
-
-        var eastPerPixelX =
-            northToMapY / determinant;
-
-        var eastPerPixelY =
-            -northToMapX / determinant;
-
-        var northPerPixelX =
-            -eastToMapY / determinant;
-
-        var northPerPixelY =
-            eastToMapX / determinant;
-
-        p2gps = 
-    $"PixelToGps transform: " +
-    $"E/X={eastPerPixelX:F6} " +
-    $"E/Y={eastPerPixelY:F6} " +
-    $"N/X={northPerPixelX:F6} " +
-    $"N/Y={northPerPixelY:F6}";
-    
-
-
-        var sourceDx =
-            imagePoint.X - ReferencePixelA.X;
-
-        var sourceDy =
-            imagePoint.Y - ReferencePixelA.Y;
-
-        var localEast =
-            eastPerPixelX * sourceDx +
-            eastPerPixelY * sourceDy;
-
-        var localNorth =
-            northPerPixelX * sourceDx +
-            northPerPixelY * sourceDy;
-        p2gps = 
-    $"PixelToGps: sourceDelta=({sourceDx:F3},{sourceDy:F3}) " +
-    $"local EN=({localEast:F3},{localNorth:F3})";
-
-
-        var lat =
-            ReferenceGpsA.Latitude +
-            (localNorth / earthRadius) *
-            180.0 / Math.PI;
-
-        var lon =
-            ReferenceGpsA.Longitude +
-            (localEast /
-             (earthRadius *
-              Math.Cos(ReferenceGpsA.Latitude * Math.PI / 180.0))) *
-            180.0 / Math.PI;
-
-        return new GpsPoint(lat, lon);
+        return new GpsPoint(
+            latitude * 180.0 / Math.PI,
+            longitude * 180.0 / Math.PI);
     }
 
     public Point GpsToPixel(GpsPoint gps)
     {
-        /*
-         * Convert GPS position into local east/north metres relative
-         * to ReferenceGpsA.
-         */
-        const double earthRadius = 6371008.8;
+        if (!_transformValid)
+            return new Point(
+                Width / 2.0,
+                Height / 2.0);
 
-        var meanLat =
-            ((ReferenceGpsA.Latitude + gps.Latitude) / 2.0)
-            * Math.PI / 180.0;
+        var origin =
+            _points[0];
 
-        var dLat =
-            (gps.Latitude - ReferenceGpsA.Latitude)
-            * Math.PI / 180.0;
+        var lat0 =
+            origin.Latitude *
+            Math.PI / 180.0;
 
-        var dLon =
-            (gps.Longitude - ReferenceGpsA.Longitude)
-            * Math.PI / 180.0;
+        var lon0 =
+            origin.Longitude *
+            Math.PI / 180.0;
 
-        var north =
-            dLat * earthRadius;
+        var latitude =
+            gps.Latitude *
+            Math.PI / 180.0;
+
+        var longitude =
+            gps.Longitude *
+            Math.PI / 180.0;
 
         var east =
-            dLon * Math.Cos(meanLat) * earthRadius;
+            (longitude - lon0) *
+            Math.Cos(lat0) *
+            EarthRadiusMetres;
+
+        var north =
+            (latitude - lat0) *
+            EarthRadiusMetres;
 
         /*
-         * Reconstruct the same A->B geometry used by PixelToGps().
+         * Invert:
+         *
+         * East  = Ex*X + Ey*Y + E0
+         * North = Nx*X + Ny*Y + N0
          */
-        var dx =
-            ReferencePixelB.X -
-            ReferencePixelA.X;
 
-        var dy =
-            ReferencePixelB.Y -
-            ReferencePixelA.Y;
+        var eastValue =
+            east - _eastOffset;
 
-        var pixelDistance =
-            Math.Sqrt(dx * dx + dy * dy);
+        var northValue =
+            north - _northOffset;
 
-        /*
-         * A->B geographic vector.
-         */
-        var refMeanLat =
-            ((ReferenceGpsA.Latitude +
-              ReferenceGpsB.Latitude) / 2.0)
-            * Math.PI / 180.0;
+        var determinant =
+            _eastPerPixelX *
+            _northPerPixelY -
+            _eastPerPixelY *
+            _northPerPixelX;
 
-        var refDLon =
-            (ReferenceGpsB.Longitude -
-             ReferenceGpsA.Longitude)
-            * Math.PI / 180.0;
-
-        var refDLat =
-            (ReferenceGpsB.Latitude -
-             ReferenceGpsA.Latitude)
-            * Math.PI / 180.0;
-
-        var refEast =
-            refDLon *
-            Math.Cos(refMeanLat) *
-            earthRadius;
-
-        var refNorth =
-            refDLat *
-            earthRadius;
-
-        var geoDistance =
-            Math.Sqrt(
-                refEast * refEast +
-                refNorth * refNorth);
-
-        if (pixelDistance < 0.000001 ||
-            geoDistance < 0.000001)
+        if (Math.Abs(determinant) < 1e-12)
         {
-            return ReferencePixelA;
+            return new Point(
+                Width / 2.0,
+                Height / 2.0);
         }
 
-        /*
-         * Same unit vectors as PixelToGps().
-         */
-        var gameAlongEast =
-            refEast / geoDistance;
-
-        var gameAlongNorth =
-            refNorth / geoDistance;
-
-        var gameAcrossEast =
-           gameAlongNorth;
-
-        var gameAcrossNorth =
-            -gameAlongEast;
-
-        var mapAlongX =
-            dx / pixelDistance;
-
-        var mapAlongY =
-            dy / pixelDistance;
-
-        var mapAcrossX =
-            -mapAlongY;
-
-        var mapAcrossY =
-            mapAlongX;
-
-        var pixelsPerMetre =
-            pixelDistance / geoDistance;
-
-        /*
-         * Same GameCoordinate -> map-pixel matrix as
-         * MapReference::Configure().
-         */
-        var eastToMapX =
-            pixelsPerMetre *
-            (mapAlongX * gameAlongEast +
-             mapAcrossX * gameAcrossEast);
-
-        var eastToMapY =
-            pixelsPerMetre *
-            (mapAlongY * gameAlongEast +
-             mapAcrossY * gameAcrossEast);
-
-        var northToMapX =
-            pixelsPerMetre *
-            (mapAlongX * gameAlongNorth +
-             mapAcrossX * gameAcrossNorth);
-
-        var northToMapY =
-            pixelsPerMetre *
-            (mapAlongY * gameAlongNorth +
-             mapAcrossY * gameAcrossNorth);
-
-        /*
-         * Convert the local EN position to source-image pixels.
-         *
-         * ReferencePixelA/B are in source-image coordinates.
-         */
         var sourceX =
-            ReferencePixelA.X +
-            east * eastToMapX +
-            north * northToMapX;
+            (eastValue *
+             _northPerPixelY -
+             _eastPerPixelY *
+             northValue) /
+            determinant;
 
         var sourceY =
-            ReferencePixelA.Y +
-            east * eastToMapY +
-            north * northToMapY;
+            (_eastPerPixelX *
+             northValue -
+             eastValue *
+             _northPerPixelX) /
+            determinant;
 
-        /*
-         * Convert source-image coordinates back to map.bmp
-         * coordinates by removing the exported crop offset.
-         */
         return new Point(
             sourceX - SourceCropX,
             sourceY - SourceCropY);
     }
 
-    public double PixelDistanceMetres(Point a, Point b)
+    public double PixelDistanceMetres(
+        Point a,
+        Point b)
     {
-        double dx = b.X - a.X, dy = b.Y - a.Y;
-        return Math.Sqrt(dx * dx + dy * dy) * MetresPerPixel;
+        var dx =
+            b.X - a.X;
+
+        var dy =
+            b.Y - a.Y;
+
+        /*
+         * Use the affine transform rather than the
+         * single MetresPerPixel value. This correctly
+         * handles the map's rotation/shear.
+         */
+
+        var east =
+            _eastPerPixelX * dx +
+            _eastPerPixelY * dy;
+
+        var north =
+            _northPerPixelX * dx +
+            _northPerPixelY * dy;
+
+        return Math.Sqrt(
+            east * east +
+            north * north);
     }
-    public double BearingDegrees(Point a, Point b)
+
+    public double BearingDegrees(
+        Point a,
+        Point b)
     {
-        double dx = b.X - a.X;
-        double dy = b.Y - a.Y;
+        var dx =
+            b.X - a.X;
+
+        var dy =
+            b.Y - a.Y;
 
         if (Math.Abs(dx) < 0.000001 &&
             Math.Abs(dy) < 0.000001)
@@ -891,26 +908,59 @@ public sealed class MapDefinition
         }
 
         /*
-         * Bitmap coordinates:
-         *
-         *   right =   0°
-         *   down  =  90°
-         *   left  = 180°
-         *   up    = 270°
-         *
-         * MapUpHeading is the compass bearing of bitmap-up.
+         * Convert the pixel movement directly into
+         * local east/north movement.
          */
-        double pixelAngle =
-            Math.Atan2(dy, dx) *
+
+        var east =
+            _eastPerPixelX * dx +
+            _eastPerPixelY * dy;
+
+        var north =
+            _northPerPixelX * dx +
+            _northPerPixelY * dy;
+
+        var bearing =
+            Math.Atan2(east, north) *
             180.0 /
             Math.PI;
 
-        double bearing =
-            MapUpHeading +
-            (pixelAngle - 270.0);
-
         return (bearing + 360.0) % 360.0;
     }
+
+    private double CalculateMapUpHeading()
+    {
+        if (!_transformValid)
+            return 0.0;
+
+        /*
+         * Bitmap up is pixel movement (0,-1).
+         * Convert that to EN and calculate its
+         * compass bearing.
+         */
+
+        var east =
+            -_eastPerPixelY;
+
+        var north =
+            -_northPerPixelY;
+
+        var heading =
+            Math.Atan2(east, north) *
+            180.0 /
+            Math.PI;
+
+        return (heading + 360.0) % 360.0;
+    }
+
+    private sealed record CalibrationPoint(
+        string Name,
+        double X,
+        double Y,
+        double Latitude,
+        double Longitude);
 }
 
-public readonly record struct GpsPoint(double Latitude, double Longitude);
+public readonly record struct GpsPoint(
+    double Latitude,
+    double Longitude);
