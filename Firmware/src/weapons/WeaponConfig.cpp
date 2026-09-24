@@ -140,6 +140,9 @@ bool WeaponConfig::Load()
         definition.postBuildUpShotTime = 
             weaponJson["postBuildUpShotTime"] | 0;               
 
+        definition.muzzleLedTime = 
+            weaponJson["muzzleLED"] | 0;   
+
         definition.magCapacity = weaponJson["magCapacity"] | 0;
 
         definition.maxAmmoReserve = weaponJson["maxAmmoReserve"] | 0;
@@ -319,4 +322,12 @@ int WeaponConfig::GetShotPower(WeaponType type) const
 {
     const WeaponDefinition* weapon = Find(type);
     return weapon == nullptr ? 0 : weapon->shotPower;  
+}
+
+
+
+int WeaponConfig::GetMuzzleLEDTime(WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? 0 : weapon->muzzleLedTime;  
 }

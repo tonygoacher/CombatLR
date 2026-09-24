@@ -7,6 +7,7 @@
 #include "graphics/DisplayManager.h"
 #include "weapons/WeaponConfig.h"
 #include "countof.h"
+#include "PacedLED.h"
 
 
 
@@ -41,8 +42,8 @@ bool AssaultRifle::IdleAction()
                     _magAmmo--;
 
                 
-                    _state = ARState::Shooting;
-                    _rpmPacer.PacerReset();
+                    _state = ARState::Shoot;
+                
                     actionTaken = true;
                 } 
                 else
@@ -83,8 +84,18 @@ void AssaultRifle::StartReload()
     _services.sounds.Play(GetMagInsertFilename());
 }
 
+void AssaultRifle::Shoot()
+{
+    _rpmPacer.PacerReset();
+    int muzzleLEDTime = _weaponConfig.GetMuzzleLEDTime(_type);
+    if(muzzleLEDTime)
+    {
+        _services.muzzleLED.Fire(muzzleLEDTime);
+    }     
+    _state = ARState::ShootWait;  
+}
 
-void AssaultRifle::ShootingAction()
+void AssaultRifle::ShootWait()
 {
     if(_rpmPacer.Pace())
     {
@@ -102,7 +113,7 @@ bool AssaultRifle::BuildUpAction()
         _magAmmo--;
 
     
-        _state = ARState::Shooting;
+        _state = ARState::Shoot;
         _rpmPacer.SetPace(_weaponConfig.GetPostBuildUpShotTime(_type));
         actionTaken = true;
     }
@@ -174,9 +185,15 @@ bool AssaultRifle::Run()
         }
         break;
 
-        case ARState::Shooting:
+        case ARState::ShootWait:
         {
-            ShootingAction();
+            ShootWait();
+        }
+        break;
+
+        case ARState::Shoot:
+        {
+            Shoot();
         }
         break;
 

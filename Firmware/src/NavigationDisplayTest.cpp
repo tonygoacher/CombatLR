@@ -34,6 +34,7 @@
 #include "IRLaserTag.h"
 #include "weapons/WeaponManager.h"
 #include "ESP32LaserTag.h"
+#include "PacedLED.h"
 
 
 
@@ -110,11 +111,17 @@ namespace
     PBSwitch zoomSwitch(Ports::ZOOM, true);
     PBSwitch rightSwitch(Ports::RIGHT, true);
     SteppedZoom zoom(zoomSwitch);
+    PacedLED muzzleLED(MUZZLE_LED);
 
     PacerTime gameTime;
     WeaponConfig weaponConfig;
     ESP32LaserTag laserTag(IR_TXPORT, IR_RXPORT);
-    CombatLRServices stateData{displayManager, navigation, zoneEngine, sounds, zoom, geoReference, laserTag, gameTime, weaponConfig, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch};
+    CombatLRServices stateData{displayManager, navigation, 
+                                zoneEngine, sounds, zoom, geoReference, laserTag, gameTime,
+                                 weaponConfig, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch,
+                                 muzzleLED};
+
+
     WeaponManager weaponManager(stateData);
     CombatLRStateMachine stateMachine(stateData,weaponManager);
 
@@ -123,6 +130,8 @@ namespace
 
   void UpdateNavigationDisplay()
 {  
+
+    muzzleLED.Run();
     stateMachine.Run();
     return;
    
@@ -181,7 +190,7 @@ void NavigationDisplayTestBegin()
     displayManager.Begin();
     gameTime.Reset();
     weaponConfig.Init();
-   
+  
     if(!gamePlan.Load("/gameplan.json"))
     {
         Serial.println("Failed to load gameplan");

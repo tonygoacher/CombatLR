@@ -49,7 +49,6 @@ bool NavigationNMEA::Update()
     {
         const char c =
             static_cast<char>(_serial->read());
-        Serial.print(c);
         _gps.encode(c);
     }
 

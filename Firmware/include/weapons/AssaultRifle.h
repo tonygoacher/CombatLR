@@ -27,7 +27,8 @@ protected:
     virtual bool CockingAction();
     virtual void MagInsertAction();
     virtual void EmptyAction();
-    virtual void ShootingAction();  // While shooting, use this for inter round dely
+    virtual void Shoot();
+    virtual void ShootWait();  // While shooting, use this for inter round dely
     virtual void StartReload();
     virtual bool IdleAction();     // Check the trigger and reload, start the shot
     virtual void EquippingAction();
@@ -48,7 +49,8 @@ private:
     {
         Idle,
         BuildUp,
-        Shooting,
+        Shoot,
+        ShootWait,
         Empty,
         StartReload,
         MagInsert,
