@@ -56,5 +56,8 @@ private:
     static const int HealthW = 40 ;
     static const int HealthH = 15;
 
+    static const int ShotHitLedTime = 300;  // Time hit led is on when shot
+    static const int ZoneHitLedTime = 1000; // Time hit LED is on when outside zone
+
 };
 

@@ -22,6 +22,7 @@
 #include "graphics/RemoveWidgetCommand.h"
 #include "widgets/UIWidgetIds.h"
 #include "ESP32Lasertag.h"
+#include "PacedLED.h"
 
 
 
@@ -43,17 +44,17 @@ uint16_t GameRunningState::Run()
     if(_stateData.laserTag.GetLasertagData(ltData))
     {
         Serial.println("Got LT data");
-        Serial.printf("Shot weapon: %d\n", ltData.weapon);
+        Serial.printf("Shot weapon: %d\n", ltData.shotPowerIndex);
 
   
-        int shotPower = _stateData.weaponConfig.GetShotPower(ltData.weapon);
-        Serial.printf("Shot weapon %d\n", ltData.weapon);
+        int shotPower = _stateData.weaponConfig.GetShotPower(ltData.shotPowerIndex);
         Serial.printf("Shot power %d\n", shotPower);
         if(shotPower)
         {
             int newHealth = _player.TakeHealth(shotPower);
             if(newHealth)
             {
+                _stateData.hitLED.Fire(ShotHitLedTime);
                 _stateData.sounds.Play("/sounds/hit.wav");  
             }
             else
@@ -123,9 +124,10 @@ uint16_t GameRunningState::Run()
 
     CheckPickups();
 
-  //  if(_player.CheckInZone(_stateData.zoneEngine.InZone(_player.Position())))
+    if(_player.CheckInZone(_stateData.zoneEngine.InZone(_player.Position())))
     {
-    //    _stateData.sounds.Play("/sounds/hit.wav");
+        _stateData.sounds.Play("/sounds/hit.wav");
+        _stateData.hitLED.Fire(ZoneHitLedTime);
     }
 
     

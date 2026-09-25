@@ -20,7 +20,8 @@ public:
 
     ESP32LaserTag(
         uint8_t transmitPin,
-        uint8_t receivePin);
+        uint8_t receivePin,
+        uint8_t irLowPort, uint8_t irMedPort, uint8_t irHighPort);
 
     void Init() override;
 
@@ -32,6 +33,7 @@ public:
     void SendLasertagData(
         LaserTagData& dataToSend) override;
 
+    void SetIRPower(IRPowerLevel powerLevel) override;
 
 private:
 
@@ -40,6 +42,10 @@ private:
      */
     uint8_t _transmitPin;
     uint8_t _receivePin;
+
+    uint8_t _irLowPort;
+    uint8_t _irMedPort;
+    uint8_t _irHighPort;
 
     static constexpr uint8_t TX_LEDC_CHANNEL = 0;
 
@@ -120,6 +126,8 @@ private:
     void CarrierOff();
 
     void TransmitBit(bool bit);
+
+    void AllOff();
 
 
     /*

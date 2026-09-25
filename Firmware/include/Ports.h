@@ -27,9 +27,9 @@
 
     TX_UART2    =   9,
     RX_UART2    =   10,
-    IR_POWER1   =   42,
-    IR_POWER2   =   41,
-    IR_POWER3   =   40,
+    IR_POWERLOW   =   40,
+    IR_POWERMED   =   41,
+    IR_POWERHIGH   =   42,
 
 
     GPS_TX =        15,

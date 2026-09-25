@@ -798,36 +798,6 @@ const float sourceX =
                 lroundf(
                     canvasCentreY + rotatedY));
 
- Serial.printf(
-    "Canvas %dx%d  ScreenSprite %dx%d  playerScreen=(%d,%d)\n",
-    CANVAS_WIDTH,
-    CANVAS_HEIGHT,
-    _screenSprite.width(),
-    _screenSprite.height(),
-    playerScreenX,
-    playerScreenY);
-
-    Serial.printf(
-    "Canvas centre=(%.1f,%.1f)\n",
-    canvasCentreX,
-    canvasCentreY);
-
-
- Serial.printf(
-    "GPS -> Game: %.3f, %.3f\n",
-    _playerPosition.east,
-    _playerPosition.north);
-
-Serial.printf(
-    "Player map: %.3f, %.3f\n",
-    playerMapX,
-    playerMapY);
-
-Serial.printf(
-    "Camera map: %.3f, %.3f scale %.3f\n",
-    cameraMapX,
-    cameraMapY,
-    effectiveScale);
 
 
         RenderNavigationPlayer(

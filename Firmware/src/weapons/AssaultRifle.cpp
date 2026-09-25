@@ -29,7 +29,7 @@ bool AssaultRifle::IdleAction()
 {
     bool actionTaken = false;
     if(_services.triggerSwitch.Pressed())
-    {   Serial.printf("Shots taken %d Burst %d\n", _shotsTaken, _burst);             
+    {           
         if(_burst==-1 ||    ( _shotsTaken < _burst))
         {
             if(_magAmmo)
@@ -86,6 +86,15 @@ void AssaultRifle::StartReload()
 
 void AssaultRifle::Shoot()
 {
+    LaserTagData tagData;
+
+    tagData.team = 0;
+    tagData.playerId = 0;
+    tagData.shotPowerIndex = 0;     // This is an index into shot power table in weapons.json
+    _services.laserTag.SetIRPower(_weaponConfig.GetIRPowerLevel(_type));
+
+    _services.laserTag.SendLasertagData(tagData);
+
     _rpmPacer.PacerReset();
     int muzzleLEDTime = _weaponConfig.GetMuzzleLEDTime(_type);
     if(muzzleLEDTime)
