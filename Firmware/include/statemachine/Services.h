@@ -34,6 +34,5 @@ struct CombatLRServices
     PBSwitch&   zoomSwitch;     
     PBSwitch&   rightSwitch;
     PacedLED&   muzzleLED;
-
-
+    PacedLED&   hitLED;
 };

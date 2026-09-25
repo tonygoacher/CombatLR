@@ -1,6 +1,7 @@
 #pragma once
 
 #include "weapons/Weapon.h"
+#include "IRPowerLevel.h"
 
 #include <stdint.h>
 #include <string>
@@ -32,6 +33,7 @@ public:
     int GetShotPower(WeaponType type) const;
     int GetMuzzleLEDTime(WeaponType type) const;
     int GetNumWeapons();
+    IRPowerLevel GetIRPowerLevel(WeaponType type) const;
     
 
 private:
@@ -56,6 +58,7 @@ private:
         int postBuildUpShotTime;
         int shotPower;
         int muzzleLedTime;
+        IRPowerLevel irPowerLevel;
     };
 
     void PrintDef(WeaponDefinition& def);
@@ -64,4 +67,7 @@ private:
 
     bool Load();
     const WeaponDefinition* Find(WeaponType type) const;
+
+    IRPowerLevel ConvertToPowerLevel(int powerLevel) const;
 };
+

@@ -14,7 +14,10 @@ ESP32LaserTag*
  */
 ESP32LaserTag::ESP32LaserTag(
     uint8_t transmitPin,
-    uint8_t receivePin)
+    uint8_t receivePin,
+    uint8_t irLowPort,
+    uint8_t irMedPort,
+    uint8_t irHighPort)
     :
     _transmitPin(transmitPin),
     _receivePin(receivePin),
@@ -24,8 +27,15 @@ ESP32LaserTag::ESP32LaserTag(
     _rxData(0),
     _lastEdgeTime(0),
     _receivedData{},
-    _dataAvailable(false)
+    _dataAvailable(false),
+    _irLowPort(irLowPort),
+    _irMedPort(irMedPort),
+    _irHighPort(irHighPort)
 {
+    pinMode(_irLowPort, OUTPUT);
+    pinMode(_irMedPort, OUTPUT);
+    pinMode(_irHighPort, OUTPUT);
+    AllOff();
 }
 
 
@@ -563,7 +573,7 @@ LaserTagData ESP32LaserTag::DecodePacket(
         (packet >> 4) & 0x03;
 
 
-    data.weapon =
+    data.shotPowerIndex =
         packet & 0x0F;
 
 
@@ -664,7 +674,7 @@ void ESP32LaserTag::SendLasertagData(
 
     packet |=
         static_cast<uint16_t>(
-            dataToSend.weapon & 0x0F);
+            dataToSend.shotPowerIndex & 0x0F);
 
 
     /*
@@ -694,5 +704,45 @@ void ESP32LaserTag::SendLasertagData(
     {
         TransmitBit(
             (packet >> bit) & 1);
+    }
+}
+
+void ESP32LaserTag::AllOff()
+{
+    digitalWrite(_irLowPort, LOW);
+    digitalWrite(_irMedPort, LOW);
+    digitalWrite(_irHighPort, LOW);        
+}
+
+void ESP32LaserTag::SetIRPower(IRPowerLevel powerLevel)
+{
+    Serial.printf("Setting IR power to %d\n", static_cast<int>(powerLevel));
+    AllOff();
+    switch(powerLevel)
+    {
+        case IRPowerLevel::IRPowerLow:
+        {
+            digitalWrite(_irLowPort, HIGH);
+        }
+        break;
+        
+        case IRPowerLevel::IRPowerMedium:
+        {
+            digitalWrite(_irMedPort, HIGH);
+        }
+        break;
+                
+        
+        case IRPowerLevel::IRPowerHigh:
+        {
+            digitalWrite(_irHighPort, HIGH);
+        }
+        break;
+
+        default:
+        {
+            Serial.printf("Invalid ir power value\n");
+            digitalWrite(_irLowPort, HIGH);
+        }
     }
 }

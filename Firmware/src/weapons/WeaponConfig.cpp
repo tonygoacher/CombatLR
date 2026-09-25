@@ -151,7 +151,9 @@ bool WeaponConfig::Load()
 
         definition.maxReload = weaponJson["maxReload"] | 0;
 
-        definition.shotPower = weaponJson["shotPower"] | 0;
+        definition.shotPower = weaponJson["shotPower"] | 0; // This is the power level that will be sent in the IR packet
+
+        definition.irPowerLevel = ConvertToPowerLevel(weaponJson["irPower"] | 0);
 
         PrintDef(definition);
         _weapons.push_back(
@@ -164,6 +166,41 @@ bool WeaponConfig::Load()
 
     return true;
 }
+
+IRPowerLevel WeaponConfig::ConvertToPowerLevel(int powerLevel) const
+{
+    IRPowerLevel irPowerLevel = IRPowerLevel::IRPowerLow;
+
+    switch(powerLevel)
+    {
+        case    0:
+        {
+            irPowerLevel = IRPowerLevel::IRPowerLow;
+        }
+        break;
+
+        case    1:
+        {
+            irPowerLevel = IRPowerLevel::IRPowerMedium;
+        }
+        break;
+
+        case    2:
+        {
+            irPowerLevel = IRPowerLevel::IRPowerHigh;
+        }
+        break;
+
+        default:
+        {
+            Serial.printf("WeaponConfig Invalid IR power level %d\n", powerLevel);
+        }            
+       
+    }
+
+    return irPowerLevel;
+}
+
 
 const WeaponConfig::WeaponDefinition*
 WeaponConfig::Find(WeaponType type) const
@@ -330,4 +367,12 @@ int WeaponConfig::GetMuzzleLEDTime(WeaponType type) const
 {
     const WeaponDefinition* weapon = Find(type);
     return weapon == nullptr ? 0 : weapon->muzzleLedTime;  
+}
+
+
+
+IRPowerLevel WeaponConfig::GetIRPowerLevel(WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? IRPowerLevel::IRPowerLow : weapon->irPowerLevel;
 }

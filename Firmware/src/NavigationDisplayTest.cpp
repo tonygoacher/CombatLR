@@ -112,14 +112,14 @@ namespace
     PBSwitch rightSwitch(Ports::RIGHT, true);
     SteppedZoom zoom(zoomSwitch);
     PacedLED muzzleLED(MUZZLE_LED);
-
+    PacedLED hitLED(HIT_LED);
     PacerTime gameTime;
     WeaponConfig weaponConfig;
-    ESP32LaserTag laserTag(IR_TXPORT, IR_RXPORT);
+    ESP32LaserTag laserTag(IR_TXPORT, IR_RXPORT, IR_POWERLOW, IR_POWERMED ,IR_POWERHIGH);
     CombatLRServices stateData{displayManager, navigation, 
                                 zoneEngine, sounds, zoom, geoReference, laserTag, gameTime,
                                  weaponConfig, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch,
-                                 muzzleLED};
+                                 muzzleLED, hitLED};
 
 
     WeaponManager weaponManager(stateData);
@@ -132,6 +132,7 @@ namespace
 {  
 
     muzzleLED.Run();
+    hitLED.Run();
     stateMachine.Run();
     return;
    
@@ -184,6 +185,7 @@ void NavigationDisplayTestBegin()
     Serial.println(F("Navigation display integration test"));
     Serial.println(F("===================================="));
 
+    hitLED.Fire(3000);
    
     sounds.Begin();
 
