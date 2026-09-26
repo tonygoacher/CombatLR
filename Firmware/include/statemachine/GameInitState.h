@@ -9,13 +9,14 @@
 #include "Navigation.h"
 #include "GameCoordinate.h"
 #include "widgets/TextWidget.h"
+#include "GamePlan.h"
 
 
 class GameInitState : public State
 {
 public:
        
-    GameInitState(uint32_t timeToGameStart /*secs*/, CombatLRServices& stateData);
+    GameInitState(CombatLRServices& stateData);
     uint16_t Run() override;
     void Entry() override;
     void Exit() override;

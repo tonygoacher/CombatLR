@@ -59,7 +59,7 @@ uint16_t GameRunningState::Run()
             }
             else
             {
-                Serial.println("DEAD");
+                return SystemStates::Dead;
             }
         }
     }
@@ -126,8 +126,13 @@ uint16_t GameRunningState::Run()
 
     if(_player.CheckInZone(_stateData.zoneEngine.InZone(_player.Position())))
     {
+        Serial.printf("AAAAAAAAAAA%d\n", _player.GetHealth());
         _stateData.sounds.Play("/sounds/hit.wav");
         _stateData.hitLED.Fire(ZoneHitLedTime);
+        if(_player.GetHealth() <= 0)
+        {
+            return SystemStates::Dead;
+        }
     }
 
     
@@ -153,6 +158,7 @@ void GameRunningState::Entry()
     _startTime = _stateData.navigation.GetGpsTime();            
     
     _stateData.zoneEngine.AddZoneEventListener(this);
+    _stateData.zoneEngine.AddPickupEventListener(this);
 
     _weaponManager.AddWeapon(5);
 
@@ -170,6 +176,7 @@ void GameRunningState::Exit()
 
     _stateData.zoneEngine.RemoveZoneEventListener(this);    
     _stateData.zoneEngine.RemoveObjectsInCurrentZone();
+    _stateData.zoneEngine.RemovePickupEventListener(this);
 
     _stateData.displayManager.Send(
         std::unique_ptr<IDisplayCommand>(
@@ -186,7 +193,6 @@ void GameRunningState::CheckPickups()
 {
     std::vector<ZoneEngine::PickupInfo> nearbyPickups;
 
-  //  Serial.printf("Player E: %.3f N: %.3f\n", _playerPosition.east, _playerPosition.north);
     if(_stateData.zoneEngine.GetPickupsWithin(_player.Position(), 2.0f,nearbyPickups))
     {
         Serial.printf("Nearby %d\n", nearbyPickups.size());
@@ -276,7 +282,7 @@ void GameRunningState::NewZoneActive(GameCoordinate newZonePos,int zoneIndexInGa
 
 void GameRunningState::PickupActivated(uint32_t pickupId)
 {
-    Serial.printf("Pickup activated %d\n", pickupId);
+    _stateData.sounds.Play("/sounds/supplydrp.wav");
 }
 
 

@@ -9,13 +9,12 @@
 #include "IPickupEvent.h"
 #include "IZoneEvent.h"
 #include "widgets/Widget.h"
-#include "Pacer.h"
 #include "ActiveGameObject.h"
+#include "Pacer.h"
 
 class ZoneEngine
 {
 public:
-
     struct PickupInfo
     {
         uint32_t id;
@@ -30,13 +29,15 @@ public:
     void Update(
         uint32_t gameTimeSeconds);
 
+    bool InZone(
+        const GameCoordinate& position) const;
+
+    float GetProgress();
+
     bool GetPickupsWithin(
         const GameCoordinate& playerPosition,
         float radiusMetres,
         std::vector<PickupInfo>& results) const;
-
-    bool InZone(
-        const GameCoordinate& position) const;
 
     bool ClaimPickup(
         uint32_t pickupId);
@@ -53,15 +54,14 @@ public:
     void RemoveZoneEventListener(
         IZoneEvent* listener);
 
-    float GetProgress();    
-    
-    void RemoveObjectsInCurrentZone();
-
+   
+    void RemoveObjectsInCurrentZone();        
 private:
-
     static const int UpdateRate = 1000;
     static constexpr uint32_t ZoneTransitionUpdateMs = 100;
 
+    // Preserve the existing transition colour behaviour.
+    static constexpr uint8_t RedshiftMin = 8;
 
 
     struct ZoneTransition
@@ -71,12 +71,10 @@ private:
     };
 
     Pacer _pacer;
-
     uint32_t _lastGameTimeSecond = UINT32_MAX;
 
     const GamePlan& _gamePlan;
     DisplayManager& _displayManager;
-    GameCoordinate _movingZoneGameCoord;
 
     std::vector<ActiveGameObject> _activeObjects;
 
@@ -94,8 +92,6 @@ private:
     uint32_t _transitionStartMillis = 0;
     uint32_t _transitionDurationMillis = 0;
 
-    static const uint8_t RedshiftMin = 7;
-
     uint8_t _redshift = RedshiftMin;
 
     void UpdateZones(
@@ -105,6 +101,10 @@ private:
         uint32_t gameTimeSeconds);
 
     void UpdateZoneTransition();
+
+    bool GetCurrentZoneGeometry(
+        GameCoordinate& centre,
+        double& radius) const;
 
     bool IsZoneActive(
         const Zone& zone,
@@ -129,6 +129,7 @@ private:
 
     void RemoveZoneObjects(
         uint32_t zoneId);
+
 
     void RemoveActiveObject(
         uint32_t objectId);

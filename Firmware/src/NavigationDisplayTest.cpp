@@ -117,7 +117,7 @@ namespace
     WeaponConfig weaponConfig;
     ESP32LaserTag laserTag(IR_TXPORT, IR_RXPORT, IR_POWERLOW, IR_POWERMED ,IR_POWERHIGH);
     CombatLRServices stateData{displayManager, navigation, 
-                                zoneEngine, sounds, zoom, geoReference, laserTag, gameTime,
+                                zoneEngine, sounds, zoom,gamePlan, geoReference, laserTag, gameTime,
                                  weaponConfig, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch,
                                  muzzleLED, hitLED};
 
@@ -192,6 +192,8 @@ void NavigationDisplayTestBegin()
     displayManager.Begin();
     gameTime.Reset();
     weaponConfig.Init();
+
+    sounds.SetVolume(1.0);
   
     if(!gamePlan.Load("/gameplan.json"))
     {

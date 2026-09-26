@@ -476,6 +476,12 @@ bool GamePlan::Load(const char* filename)
     _homeLongitude =
         home["longitude"].as<double>();
 
+        
+    _gameStartTime =
+        document["gameStartTime"].as<int>();
+
+    Serial.printf("Game Start timer: %d\n", _gameStartTime);        
+
     _valid = true;
 
     JsonArray zones =
@@ -596,4 +602,11 @@ double GamePlan::GetHomeLongitude() const
 const std::vector<Zone>& GamePlan::GetZones() const
 {
     return _zones;
+}
+
+
+
+const int GamePlan::GetGameStartTime() const
+{
+    return _gameStartTime;
 }

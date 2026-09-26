@@ -16,16 +16,18 @@
 #include "graphics/SetTextCommand.h"
 #include "graphics/EnableWidgetCommand.h"
 #include "ISounds.h"
+#include "GamePlan.h"
 #include <format>
 
 
 
 
-GameInitState::GameInitState(uint32_t timeToGameStart,CombatLRServices& stateData)
+GameInitState::GameInitState(CombatLRServices& stateData)
 :
- _stateData(stateData), _timeToGameStart(timeToGameStart),  _textPacer(true)
+ _stateData(stateData), _textPacer(true)
 {
     Serial.println("GameInitState::GameInitState");
+    _timeToGameStart = stateData.gamePlan.GetGameStartTime();
     _textPacer.SetPace(1000);
 }
 
@@ -94,7 +96,7 @@ uint16_t GameInitState::Run()
 
         if(_timeToGameStart <= 5 && _timeToGameStart)
         {
-       //     _stateData.sounds.Play("/sounds/countd.wav");
+            _stateData.sounds.Play("/sounds/countd.wav");
         }
 
         if(_timeToGameStart)
