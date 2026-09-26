@@ -41,7 +41,7 @@ void CombatLRStateMachine::Init()
 
     _states.insert(StateMapEntry(SystemStates::PowerUp, *new PowerUpState(_stateData.displayManager,_stateData.navigation)));
     _states.insert(StateMapEntry(SystemStates::GPSLock, *new GPSLockState(_stateData.displayManager,_stateData.navigation)));
-    _states.insert(StateMapEntry(SystemStates::GameInit,*new GameInitState(5, _stateData)));
+    _states.insert(StateMapEntry(SystemStates::GameInit,*new GameInitState(_stateData)));
     _states.insert(StateMapEntry(SystemStates::GameRunning,*new GameRunningState(12000, _stateData, _weaponManager)));
     _states.insert(StateMapEntry(SystemStates::Dead,*new DeadState(_stateData)));
 }

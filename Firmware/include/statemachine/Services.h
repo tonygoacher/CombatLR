@@ -13,6 +13,7 @@ class IRLaserTag;
 class WeaponConfig;
 class ESP32LaserTag;
 class PacedLED;
+class GamePlan;
 
 struct CombatLRServices
 {
@@ -22,6 +23,7 @@ struct CombatLRServices
     ZoneEngine& zoneEngine;
     ISounds& sounds;
     IZoom& zoom;
+    GamePlan& gamePlan;
 
     GeoReference& geoReference;
     IRLaserTag& laserTag;

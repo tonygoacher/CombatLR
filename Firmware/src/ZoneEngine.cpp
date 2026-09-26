@@ -8,7 +8,6 @@
 #include "graphics/RemoveWidgetCommand.h"
 #include "graphics/SetWidgetColourCommand.h"
 #include "graphics/SetZoneGeometryCommand.h"
-#include "ActiveGameObject.h"
 
 namespace
 {
@@ -514,15 +513,33 @@ void ZoneEngine::UpdatePickups(
     }
 }
 
-void ZoneEngine::UpdateZoneTransition()
+bool ZoneEngine::GetCurrentZoneGeometry(
+    GameCoordinate& centre,
+    double& radius) const
 {
-    if (!_zoneTransitionActive)
-    {
-        return;
-    }
-
     const std::vector<Zone>& zones =
         _gamePlan.GetZones();
+
+    if (_currentZoneIndex < 0 ||
+        _currentZoneIndex >=
+            static_cast<int>(zones.size()))
+    {
+        return false;
+    }
+
+    const Zone& zone =
+        zones[
+            static_cast<size_t>(
+                _currentZoneIndex)];
+
+    if (!_zoneTransitionActive)
+    {
+        centre = GameCoordinate(
+            zone.eastMetres,
+            zone.northMetres);
+        radius = zone.radiusMetres;
+        return true;
+    }
 
     if (_zoneTransition.fromZoneIndex < 0 ||
         _zoneTransition.toZoneIndex < 0 ||
@@ -531,8 +548,7 @@ void ZoneEngine::UpdateZoneTransition()
         _zoneTransition.toZoneIndex >=
             static_cast<int>(zones.size()))
     {
-        _zoneTransitionActive = false;
-        return;
+        return false;
     }
 
     const Zone& fromZone =
@@ -565,44 +581,76 @@ void ZoneEngine::UpdateZoneTransition()
         }
     }
 
-    const double east =
+    centre = GameCoordinate(
         fromZone.eastMetres +
-        (toZone.eastMetres -
-         fromZone.eastMetres) *
-        progress;
-
-    const double north =
+            (toZone.eastMetres -
+             fromZone.eastMetres) *
+            progress,
         fromZone.northMetres +
-        (toZone.northMetres -
-         fromZone.northMetres) *
-        progress;
+            (toZone.northMetres -
+             fromZone.northMetres) *
+            progress);
 
-    const double radius =
+    radius =
         fromZone.radiusMetres +
         (toZone.radiusMetres -
          fromZone.radiusMetres) *
         progress;
 
-    _movingZoneGameCoord =  GameCoordinate(east, north);
+    return true;
+}
+
+void ZoneEngine::UpdateZoneTransition()
+{
+    if (!_zoneTransitionActive)
+    {
+        return;
+    }
+
+    const std::vector<Zone>& zones =
+        _gamePlan.GetZones();
+
+    if (_zoneTransition.fromZoneIndex < 0 ||
+        _zoneTransition.toZoneIndex < 0 ||
+        _zoneTransition.fromZoneIndex >=
+            static_cast<int>(zones.size()) ||
+        _zoneTransition.toZoneIndex >=
+            static_cast<int>(zones.size()))
+    {
+        _zoneTransitionActive = false;
+        return;
+    }
+
+    const Zone& fromZone =
+        zones[
+            static_cast<size_t>(
+                _zoneTransition.fromZoneIndex)];
+
+    GameCoordinate centre;
+    double radius;
+
+    if (!GetCurrentZoneGeometry(
+            centre,
+            radius))
+    {
+        return;
+    }
 
     _displayManager.Send(
         std::unique_ptr<IDisplayCommand>(
             new SetZoneGeometryCommand(
                 fromZone.id,
-                GameCoordinate(
-                    east,
-                    north),
+                centre,
                 radius)));
 
-
-
-    _redshift+=2;
-    if(_redshift > 0x1f)
+    _redshift += 2;
+    if (_redshift > 0x1f)
     {
         _redshift = RedshiftMin;
     }
-    uint32_t colour = _redshift << 11;
 
+    const uint32_t colour =
+        _redshift << 11;
 
     _displayManager.Send(
         std::unique_ptr<IDisplayCommand>(
@@ -1368,27 +1416,15 @@ float ZoneEngine::GetProgress()
 bool ZoneEngine::InZone(
     const GameCoordinate& position) const
 {
-    const std::vector<Zone>& zones =
-        _gamePlan.GetZones();
+    GameCoordinate centre;
+    double radius;
 
-    if (_currentZoneIndex < 0 ||
-        _currentZoneIndex >=
-            static_cast<int>(zones.size()))
+    if (!GetCurrentZoneGeometry(
+            centre,
+            radius))
     {
         return false;
     }
-
-    const Zone& zone =
-        zones[
-            static_cast<size_t>(
-                _currentZoneIndex)];
-
-    const GameCoordinate& centre =
-        _zoneTransitionActive
-            ? _movingZoneGameCoord
-            : GameCoordinate(
-                zone.eastMetres,
-                zone.northMetres);
 
     const double east =
         position.east - centre.east;
@@ -1398,6 +1434,5 @@ bool ZoneEngine::InZone(
 
     return (east * east +
             north * north) <=
-        zone.radiusMetres *
-        zone.radiusMetres;
+        radius * radius;
 }

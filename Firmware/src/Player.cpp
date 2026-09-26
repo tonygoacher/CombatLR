@@ -76,7 +76,6 @@ bool Player::CheckInZone(bool inZone)
     }
     else
     {
-        Serial.println("Out of zone");
         if(_outOfZonePacer.Pace())
         {
             TakeHealth(_outOfZoneHealthDecrement);
