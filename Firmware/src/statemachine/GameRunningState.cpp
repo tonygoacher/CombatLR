@@ -33,7 +33,8 @@ GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, CombatLRServices&
  _ammoPickup(weaponManager),
  _weaponPickupTable("/wtable.json"),
  _startTime(0),
- _weaponPickup(weaponManager, stateData.zoneEngine, _weaponPickupTable)
+ _weaponPickup(weaponManager, stateData.zoneEngine, _weaponPickupTable),
+ _systemTime(stateData.navigation)
 {
 }
 
@@ -69,11 +70,6 @@ uint16_t GameRunningState::Run()
     {
         
         NavigationData data = _stateData.navigation.GetData();
-    //    data.latitude =  53.5509289;
-     //   data.longitude = -1.9987657;
-
-      //  data.latitude =  53.5515236;
-    //    data.longitude = -1.9982851;
 
         /*
         * Convert the known C GPS position into the local
@@ -99,9 +95,7 @@ uint16_t GameRunningState::Run()
         _stateData.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new TurnMapToHeadingCommand(
-                    data.heading)));
-
-                
+                    data.heading)));                
     }   
     
     float zoom = 1.0f;
@@ -115,7 +109,8 @@ uint16_t GameRunningState::Run()
                 zoom)));    
     }
 
-    uint32_t elapsedTime = uint32_t(_stateData.navigation.GetGpsTime() - _startTime);
+    uint32_t elapsedTime = _systemTime.GetSeconds();
+    Serial.printf("Elapsed %d\n", elapsedTime);
   
     _stateData.zoneEngine.Update(elapsedTime);
 
@@ -126,7 +121,6 @@ uint16_t GameRunningState::Run()
 
     if(_player.CheckInZone(_stateData.zoneEngine.InZone(_player.Position())))
     {
-        Serial.printf("AAAAAAAAAAA%d\n", _player.GetHealth());
         _stateData.sounds.Play("/sounds/hit.wav");
         _stateData.hitLED.Fire(ZoneHitLedTime);
         if(_player.GetHealth() <= 0)
