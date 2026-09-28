@@ -17,6 +17,7 @@
 #include "weapons/JSONWeaponPickupTable.h"
 #include "IZoneEvent.h"
 #include "IPickupEvent.h"
+#include "SystemTime.h"
 
 class GameRunningState : public State, public IZoneEvent,  public IPickupEvent
 {
@@ -43,6 +44,7 @@ private:
     AmmoPickup _ammoPickup;
     WeaponPickup _weaponPickup;
     JsonWeaponPickupTable _weaponPickupTable;
+    SystemTime _systemTime;
                 
     double _startTime;
     void CheckPickups();
