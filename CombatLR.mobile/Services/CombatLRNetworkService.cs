@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.ComponentModel;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.NetworkInformation;
@@ -230,6 +231,131 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 return false;
 
             device.PlayerId = playerId;
+            device.LastSeen = DateTimeOffset.UtcNow;
+
+            return true;
+        }
+        finally
+        {
+            _pendingCommands.TryRemove(
+                sequence,
+                out _);
+        }
+    }
+
+    public async Task<StartGameResult> StartGameAsync()
+    {
+        if (_udp is null)
+        {
+            return new StartGameResult(
+                "",
+                Array.Empty<CombatLRDevice>(),
+                _devices.Values.ToArray());
+        }
+
+        var devices = _devices.Values.ToArray();
+
+        if (devices.Length == 0)
+        {
+            return new StartGameResult(
+                "",
+                Array.Empty<CombatLRDevice>(),
+                Array.Empty<CombatLRDevice>());
+        }
+
+        // Capture the mobile device time once. Every ESP32 receives
+        // exactly the same game start time.
+        string gameStart =
+            DateTime.Now.ToString(
+                "HH:mm:ss",
+                CultureInfo.InvariantCulture);
+
+        var results = await Task.WhenAll(
+            devices.Select(async device =>
+                new
+                {
+                    Device = device,
+                    Success = await SendStartGameAsync(
+                        device,
+                        gameStart)
+                }));
+
+        var successfulDevices = results
+            .Where(result => result.Success)
+            .Select(result => result.Device)
+            .ToArray();
+
+        var failedDevices = results
+            .Where(result => !result.Success)
+            .Select(result => result.Device)
+            .ToArray();
+
+        return new StartGameResult(
+            gameStart,
+            successfulDevices,
+            failedDevices);
+    }
+
+    private async Task<bool> SendStartGameAsync(
+        CombatLRDevice device,
+        string gameStart)
+    {
+        if (_udp is null)
+            return false;
+
+        int sequence =
+            Interlocked.Increment(ref _nextSequence);
+
+        var command = new StartGameCommand
+        {
+            Type = "startGame",
+            Version = ProtocolVersion,
+            Sequence = sequence,
+            GameStart = gameStart
+        };
+
+        string json =
+            JsonSerializer.Serialize(command);
+
+        var completion =
+            new TaskCompletionSource<CombatLRAck>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _pendingCommands[sequence] = completion;
+
+        try
+        {
+            byte[] data =
+                Encoding.UTF8.GetBytes(json);
+
+            var endpoint = new IPEndPoint(
+                IPAddress.Parse(device.IpAddress),
+                DiscoveryPort);
+
+            await _udp.SendAsync(
+                data,
+                data.Length,
+                endpoint);
+
+            using var timeout =
+                new CancellationTokenSource(
+                    CommandTimeoutMilliseconds);
+
+            CombatLRAck ack;
+
+            try
+            {
+                ack = await completion.Task.WaitAsync(
+                    timeout.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
+
+            if (!ack.Success)
+                return false;
+
             device.LastSeen = DateTimeOffset.UtcNow;
 
             return true;
@@ -610,6 +736,42 @@ public sealed class SetPlayerCommand
 
     [JsonPropertyName("playerId")]
     public int PlayerId { get; init; }
+}
+
+public sealed class StartGameCommand
+{
+    [JsonPropertyName("type")]
+    public string Type { get; init; } = "";
+
+    [JsonPropertyName("version")]
+    public int Version { get; init; }
+
+    [JsonPropertyName("sequence")]
+    public int Sequence { get; init; }
+
+    [JsonPropertyName("gameStart")]
+    public string GameStart { get; init; } = "";
+}
+
+public sealed class StartGameResult
+{
+    public StartGameResult(
+        string gameStart,
+        IReadOnlyList<CombatLRDevice> successfulDevices,
+        IReadOnlyList<CombatLRDevice> failedDevices)
+    {
+        GameStart = gameStart;
+        SuccessfulDevices = successfulDevices;
+        FailedDevices = failedDevices;
+    }
+
+    public string GameStart { get; }
+    public IReadOnlyList<CombatLRDevice> SuccessfulDevices { get; }
+    public IReadOnlyList<CombatLRDevice> FailedDevices { get; }
+
+    public bool AllSucceeded =>
+        FailedDevices.Count == 0 &&
+        SuccessfulDevices.Count > 0;
 }
 
 public sealed class CombatLRAck

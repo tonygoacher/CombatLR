@@ -30,12 +30,12 @@
 #include "MAX98357ASounds.h"
 #include "statemachine/CombatLRStateMachine.h"
 #include "stateMachine/Services.h"
-#include "PacerTime.h"
 #include "IRLaserTag.h"
 #include "weapons/WeaponManager.h"
 #include "ESP32LaserTag.h"
 #include "PacedLED.h"
 #include "SystemConfig.h"
+#include "SystemTime.h"
 
 
 
@@ -115,12 +115,12 @@ namespace
     SteppedZoom zoom(zoomSwitch);
     PacedLED muzzleLED(MUZZLE_LED);
     PacedLED hitLED(HIT_LED);
-    PacerTime gameTime;
+    SystemTime systemTime(navigation);
     WeaponConfig weaponConfig;
     SystemConfig systemConfig;
     ESP32LaserTag laserTag(IR_TXPORT, IR_RXPORT, IR_POWERLOW, IR_POWERMED ,IR_POWERHIGH);
     CombatLRServices stateData{systemConfig,displayManager, navigation, 
-                                zoneEngine, sounds, zoom,gamePlan, geoReference, laserTag, gameTime,
+                                zoneEngine, sounds, zoom,gamePlan, geoReference, laserTag, systemTime,
                                  weaponConfig, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch,
                                  muzzleLED, hitLED};
 
@@ -177,7 +177,7 @@ namespace
     }       
     
 
-    zoneEngine.Update(gameTime.GetGameTime());
+    zoneEngine.Update(systemTime.GetSeconds());
 
 }
 
@@ -195,7 +195,6 @@ void NavigationDisplayTestBegin()
     sounds.Begin();
 
     displayManager.Begin();
-    gameTime.Reset();
     weaponConfig.Init();
 
     sounds.SetVolume(1.0);
