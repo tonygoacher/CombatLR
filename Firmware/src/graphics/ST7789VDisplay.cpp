@@ -2,6 +2,7 @@
 #include "MapCoordinate.h"
 #include "MapReference.h"
 #include "widgets/TextWidget.h"
+#include "widgets/TextureWidget.h"
 
 
 #include <math.h>
@@ -1202,7 +1203,7 @@ void ST7789VDisplay::SetZoneGeometry(uint32_t zoneId, GameCoordinate newPos, flo
 
 void ST7789VDisplay::SetText(uint32_t widgetId,  const std::string& newText)
 {
-        WidgetCollection::iterator widgetIterator = _widgets.find(widgetId);
+      WidgetCollection::iterator widgetIterator = _widgets.find(widgetId);
       if(widgetIterator != _widgets.end())
       {           
             if(widgetIterator->second->GetType() == WidgetType::Text)
@@ -1231,5 +1232,29 @@ void ST7789VDisplay::EnableWidget(uint32_t widgetId, bool enable)
         widgetIterator->second->SetVisible(enable);
     }
 
+}
+
+
+
+
+void ST7789VDisplay::SetWidgetTexture(uint32_t widgetId, const char * const filename)
+{
+      WidgetCollection::iterator widgetIterator = _widgets.find(widgetId);
+      if(widgetIterator != _widgets.end())
+      {           
+            if(widgetIterator->second->GetType() == WidgetType::Texture)
+            {
+                 TextureWidget* textureWidget = static_cast<TextureWidget*> (widgetIterator->second);
+                 textureWidget->SetTexture(filename);
+            }
+            else
+            {
+                Serial.printf("Widget 0x%lx is not a TextureWidget\n", widgetId);
+            }
+      } 
+      else
+      {
+        Serial.printf("SetText could not find textureWidget %lx\n", widgetId);
+      }  
 }
 

@@ -15,6 +15,7 @@
 #include "graphics/SetZoneGeometryCommand.h"
 #include "graphics/SetTextCommand.h"
 #include "graphics/EnableWidgetCommand.h"
+#include "graphics/SetTextureCommand.h"
 
 DisplayManager::DisplayManager(
     TextureManager& textureManager)
@@ -322,6 +323,15 @@ void DisplayManager::ProcessCommand(const IDisplayCommand* command)
         }
         break;   
 
+        case DisplayCommandType::SetWidgetTexture:
+        {
+            SetWidgetTexture(
+                static_cast<
+                    const SetWidgetTextureCommand*>(
+                        command));
+        }
+        break;
+
         default:
             Serial.printf("Unknown display command %d\n", command->GetType());
             break;
@@ -471,4 +481,17 @@ void DisplayManager::SetText(const SetTextCommand* command)
 void DisplayManager::EnableWidget(const EnableWidgetCommand* command)
 {
     _display->EnableWidget(command->GetWidgetId(), command->Enabled());
+}
+
+
+void DisplayManager::SetWidgetTexture(
+    const SetWidgetTextureCommand* command)
+{
+    Serial.println("DisplayManager::SetWidgetTexture");
+    if (command == nullptr)
+        return;
+    Serial.printf("New filename %s\n",command->GetTextureFilename().c_str() );
+    _display->SetWidgetTexture(
+        command->GetWidgetId(),
+        command->GetTextureFilename().c_str());
 }

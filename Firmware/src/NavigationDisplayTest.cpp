@@ -35,6 +35,8 @@
 #include "weapons/WeaponManager.h"
 #include "ESP32LaserTag.h"
 #include "PacedLED.h"
+#include "SystemConfig.h"
+
 
 
 
@@ -115,8 +117,9 @@ namespace
     PacedLED hitLED(HIT_LED);
     PacerTime gameTime;
     WeaponConfig weaponConfig;
+    SystemConfig systemConfig;
     ESP32LaserTag laserTag(IR_TXPORT, IR_RXPORT, IR_POWERLOW, IR_POWERMED ,IR_POWERHIGH);
-    CombatLRServices stateData{displayManager, navigation, 
+    CombatLRServices stateData{systemConfig,displayManager, navigation, 
                                 zoneEngine, sounds, zoom,gamePlan, geoReference, laserTag, gameTime,
                                  weaponConfig, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch,
                                  muzzleLED, hitLED};
@@ -186,6 +189,8 @@ void NavigationDisplayTestBegin()
     Serial.println(F("===================================="));
 
     hitLED.Fire(3000);
+
+    systemConfig.Begin();
    
     sounds.Begin();
 

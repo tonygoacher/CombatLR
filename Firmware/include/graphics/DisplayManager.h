@@ -22,8 +22,10 @@ class AddZoneCommand;
 class RemoveWidgetCommand;
 class SetWidgetColourCommand;
 class SetZoneGeometryCommand;
+class SetZoneGeometryCommand;
 class SetTextCommand;
 class EnableWidgetCommand;
+class SetWidgetTextureCommand;
 
 
 class DisplayManager
@@ -63,6 +65,7 @@ private:
     void SetZoneGeometry(const SetZoneGeometryCommand* command);
     void SetText(const SetTextCommand* command);
     void EnableWidget(const EnableWidgetCommand* command);
+    void SetWidgetTexture(const SetWidgetTextureCommand* command);
 
 
 std::deque<

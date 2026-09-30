@@ -14,10 +14,11 @@ class WeaponConfig;
 class ESP32LaserTag;
 class PacedLED;
 class GamePlan;
+class SystemConfig;
 
 struct CombatLRServices
 {
-
+    SystemConfig& systemConfig;
     DisplayManager& displayManager;
     INavigation& navigation;
     ZoneEngine& zoneEngine;

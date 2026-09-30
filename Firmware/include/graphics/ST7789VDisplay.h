@@ -66,6 +66,8 @@ public:
 
     void SetWidgetColour(uint32_t widgetId, uint32_t colour) override;
 
+    void SetWidgetTexture(uint32_t widgetId, const char * const filenmame) override;
+
     void SetZoneGeometry(uint32_t zoneId, GameCoordinate newPos, float radius) override;
 
      

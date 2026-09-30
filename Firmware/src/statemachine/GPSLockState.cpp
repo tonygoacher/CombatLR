@@ -34,7 +34,7 @@ uint16_t GPSLockState::Run()
     }
     if(_navigation.HasPosition())
     {
-        return SystemStates::GameInit;
+        return SystemStates::AwaitingStart;
     }
     return SystemStates::GPSLock;
 }
