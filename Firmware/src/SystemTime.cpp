@@ -8,7 +8,6 @@ SystemTime::SystemTime(INavigation& navigation)
 {
 }
 
-
 void SystemTime::Reset()
 {
     _baseMillis = millis();
@@ -18,21 +17,23 @@ void SystemTime::Reset()
     _baseGpsTime = 0.0;
     _lastGpsTime = 0.0;
 
-    _waitingForStart = false;
     _startGpsTime = 0.0;
+    _waitingForStart = false;
 }
-
 
 bool SystemTime::Reset(const char* startTime)
 {
     double startGpsTime = 0.0;
-    if(startTime == nullptr)
+
+    if (startTime == nullptr)
     {
         Serial.println("SystemTime::Reset start time is null");
         return false;
     }
 
-    if(strnlen(startTime, MaxTimeLen+1) != MaxTimeLen)
+    Serial.printf("SystemTime::Reset %s\n", startTime);
+
+    if (strnlen(startTime, 9) != 8)
     {
         Serial.println("SystemTime::Reset Invalid reset time");
         return false;
@@ -42,7 +43,7 @@ bool SystemTime::Reset(const char* startTime)
     {
         Serial.printf("Invalid Reset time %s\n", startTime);
         return false;
-    }        
+    }
 
     _baseMillis = millis();
     _baseSystemMilliseconds = 0;
@@ -55,13 +56,12 @@ bool SystemTime::Reset(const char* startTime)
     _waitingForStart = true;
 
     /*
-     * If GPS is already available, determine immediately
-     * whether the requested start time has been reached.
+     * If GPS is already available and the start time has passed,
+     * establish the clock immediately. This handles late players.
      */
     if (_navigation.HasPosition())
     {
-        const double gpsTime =
-            _navigation.GetGpsTime();
+        const double gpsTime = _navigation.GetGpsTime();
 
         if (gpsTime > 0.0)
         {
@@ -70,11 +70,6 @@ bool SystemTime::Reset(const char* startTime)
 
             if (delta >= 0.0)
             {
-                /*
-                 * The game has already started. Establish
-                 * T=delta immediately so a late player joins
-                 * at the correct point in the game.
-                 */
                 _baseSystemMilliseconds =
                     static_cast<uint64_t>(delta * 1000.0);
 
@@ -83,6 +78,11 @@ bool SystemTime::Reset(const char* startTime)
                 _lastGpsTime = gpsTime;
                 _gpsSynchronized = true;
                 _waitingForStart = false;
+
+                Serial.printf(
+                    "SystemTime started at %lu seconds\n",
+                    static_cast<unsigned long>(
+                        _baseSystemMilliseconds / 1000));
             }
         }
     }
@@ -90,23 +90,27 @@ bool SystemTime::Reset(const char* startTime)
     return true;
 }
 
-
 void SystemTime::Update()
 {
     const uint32_t nowMillis = millis();
 
+    /*
+     * No GPS: leave the base untouched. GetMilliseconds()
+     * continues using millis(), so the clock keeps running.
+     */
     if (!_navigation.HasPosition())
+    {
+        Serial.println("No position");
         return;
-
-    const double gpsTime =
-        _navigation.GetGpsTime();
+    }    
+    const double gpsTime = _navigation.GetGpsTime();
 
     if (gpsTime <= 0.0)
         return;
 
     /*
-     * The configured start time is an absolute GPS wall-clock
-     * time. Until GPS reaches it, game time remains exactly zero.
+     * Waiting for the absolute game start. Establish T=0
+     * as soon as GPS reaches it.
      */
     if (_waitingForStart)
     {
@@ -116,11 +120,6 @@ void SystemTime::Update()
         if (delta < 0.0)
             return;
 
-        /*
-         * GPS has reached the start time. Establish T=0 here.
-         * millis() then provides the smooth progression between
-         * GPS updates.
-         */
         _baseSystemMilliseconds = 0;
         _baseMillis = nowMillis;
         _baseGpsTime = gpsTime;
@@ -132,41 +131,72 @@ void SystemTime::Update()
     }
 
     /*
-     * Once the game has started, GPS is the absolute calibration
-     * reference. Calculate the true elapsed time directly from
-     * the original start time, rather than accumulating GPS
-     * deltas.
-     *
-     * This is important for late players: Reset() may be called
-     * long after the original game start, and the same original
-     * start time must produce the same game T on every device.
+     * Absolute game start mode. Re-anchor directly to the
+     * original start time. This gives late players the same
+     * game time as everyone else and avoids accumulated drift.
      */
-    const double gameDelta =
-        TimeDifference(gpsTime, _startGpsTime);
+    if (_startGpsTime != 0.0)
+    {
+        const double gameDelta =
+            TimeDifference(gpsTime, _startGpsTime);
 
-    if (gameDelta < 0.0)
+        if (gameDelta < 0.0)
+            return;
+
+        _baseSystemMilliseconds =
+            static_cast<uint64_t>(gameDelta * 1000.0);
+
+        _baseMillis = nowMillis;
+        _baseGpsTime = gpsTime;
+        _lastGpsTime = gpsTime;
+        _gpsSynchronized = true;
+        return;
+    }
+
+    /*
+     * Local Reset() mode. GPS is used as an occasional
+     * synchronisation reference while millis() provides
+     * smooth progression between fixes.
+     */
+    if (!_gpsSynchronized)
+    {
+        const uint32_t elapsedMillis =
+            nowMillis - _baseMillis;
+
+        _baseSystemMilliseconds += elapsedMillis;
+
+        _baseGpsTime = gpsTime;
+        _lastGpsTime = gpsTime;
+        _baseMillis = nowMillis;
+        _gpsSynchronized = true;
+        return;
+    }
+
+    const double gpsDelta =
+        TimeDifference(gpsTime, _lastGpsTime);
+
+    if (gpsDelta <= 0.0)
         return;
 
-    /*
-     * Re-anchor the millis() clock at the GPS measurement.
-     * GetMilliseconds() will add the millis() elapsed since
-     * this point, giving smooth time between GPS updates.
-     */
-    _baseSystemMilliseconds =
-        static_cast<uint64_t>(gameDelta * 1000.0);
+    const uint32_t elapsedMillis =
+        nowMillis - _baseMillis;
 
-    _baseMillis = nowMillis;
-    _baseGpsTime = gpsTime;
+    const double localSeconds =
+        static_cast<double>(elapsedMillis) / 1000.0;
+
+    if (fabs((gpsDelta - localSeconds) * 1000.0) >= 100.0)
+    {
+        _baseSystemMilliseconds +=
+            static_cast<uint64_t>(gpsDelta * 1000.0);
+
+        _baseMillis = nowMillis;
+    }
+
     _lastGpsTime = gpsTime;
-    _gpsSynchronized = true;
 }
 
-
-uint32_t SystemTime::GetMilliseconds()
+uint32_t SystemTime::GetMilliseconds() const
 {
-    /*
-     * Before the configured GPS start time, game time is zero.
-     */
     if (_waitingForStart)
         return 0;
 
@@ -174,16 +204,13 @@ uint32_t SystemTime::GetMilliseconds()
         millis() - _baseMillis;
 
     return static_cast<uint32_t>(
-        _baseSystemMilliseconds +
-        elapsedMillis);
+        _baseSystemMilliseconds + elapsedMillis);
 }
-
 
 uint32_t SystemTime::GetSeconds()
 {
     return GetMilliseconds() / 1000;
 }
-
 
 bool SystemTime::ParseTime(
     const char* time,
@@ -208,33 +235,22 @@ bool SystemTime::ParseTime(
     }
 
     const int hours =
-        (time[0] - '0') * 10 +
-        (time[1] - '0');
+        (time[0] - '0') * 10 + (time[1] - '0');
 
     const int minutes =
-        (time[3] - '0') * 10 +
-        (time[4] - '0');
+        (time[3] - '0') * 10 + (time[4] - '0');
 
     const int secs =
-        (time[6] - '0') * 10 +
-        (time[7] - '0');
+        (time[6] - '0') * 10 + (time[7] - '0');
 
-    if (hours > 23 ||
-        minutes > 59 ||
-        secs > 59)
-    {
+    if (hours > 23 || minutes > 59 || secs > 59)
         return false;
-    }
 
-    seconds =
-        static_cast<double>(
-            hours * 3600 +
-            minutes * 60 +
-            secs);
+    seconds = static_cast<double>(
+        hours * 3600 + minutes * 60 + secs);
 
     return true;
 }
-
 
 double SystemTime::TimeDifference(
     double current,
@@ -242,10 +258,6 @@ double SystemTime::TimeDifference(
 {
     double delta = current - reference;
 
-    /*
-     * GPS time is seconds since midnight. Choose the
-     * shortest signed distance, allowing for midnight.
-     */
     if (delta < -43200.0)
         delta += 86400.0;
     else if (delta > 43200.0)

@@ -31,7 +31,6 @@ private:
     static const int TextZoom = 2;
     static const int TextFont = 2;      // Must include appropriate -D LOAD_FONT2  if this changes
 
-    uint16_t _timeToGameStart;
     GameCoordinate _playerPosition;
     TextWidget* _textWidget;
 

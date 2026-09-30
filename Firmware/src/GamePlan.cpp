@@ -477,10 +477,10 @@ bool GamePlan::Load(const char* filename)
         home["longitude"].as<double>();
 
         
-    _gameStartTime =
-        document["gameStartTime"].as<int>();
+    _gameDelayTime =
+        document["gameDelayTime"].as<int>();
 
-    Serial.printf("Game Start timer: %d\n", _gameStartTime);        
+    Serial.printf("Game Delay time: %d\n", _gameDelayTime);        
 
     _valid = true;
 
@@ -606,7 +606,7 @@ const std::vector<Zone>& GamePlan::GetZones() const
 
 
 
-const int GamePlan::GetGameStartTime() const
+const int GamePlan::GetGameDelayTime() const
 {
-    return _gameStartTime;
+    return _gameDelayTime;
 }

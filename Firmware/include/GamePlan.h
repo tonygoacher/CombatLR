@@ -38,13 +38,13 @@ public:
     double GetHomeLatitude() const;
     double GetHomeLongitude() const;
     const std::vector<Zone>& GetZones() const;
-    const int GetGameStartTime() const;
+    const int GetGameDelayTime() const;
 
     static constexpr int ZoneWidgetIdBase = 0x80000;
 private:
 
     int _version = 0;
-    int _gameStartTime = 600;   // Default of 5 mins
+    int _gameDelayTime = 600;   // Default of 5 mins
 
     double _homeLatitude = 0.0;
     double _homeLongitude = 0.0;

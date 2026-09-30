@@ -42,6 +42,9 @@ GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, CombatLRServices&
 uint16_t GameRunningState::Run()
 {
     LaserTagData ltData;
+
+    _stateData.systemTime.Update();
+
     if(_stateData.laserTag.GetLasertagData(ltData))
     {
         Serial.println("Got LT data");
@@ -109,7 +112,7 @@ uint16_t GameRunningState::Run()
                 zoom)));    
     }
 
-    uint32_t elapsedTime = _systemTime.GetSeconds();
+    uint32_t elapsedTime = _systemTime.GetSeconds() - _stateData.gamePlan.GetGameDelayTime();
     Serial.printf("Elapsed %d\n", elapsedTime);
   
     _stateData.zoneEngine.Update(elapsedTime);

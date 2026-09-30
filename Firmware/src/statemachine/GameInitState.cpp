@@ -17,6 +17,7 @@
 #include "graphics/EnableWidgetCommand.h"
 #include "ISounds.h"
 #include "GamePlan.h"
+#include "SystemTime.h"
 #include <format>
 
 
@@ -27,7 +28,6 @@ GameInitState::GameInitState(CombatLRServices& stateData)
  _stateData(stateData), _textPacer(true)
 {
     Serial.println("GameInitState::GameInitState");
-    _timeToGameStart = stateData.gamePlan.GetGameStartTime();
     _textPacer.SetPace(1000);
 }
 
@@ -57,8 +57,7 @@ void GameInitState::Entry()
                 new AddWidgetCommand(
                     _textWidget)));
 
-    _textPacer.SetPace(1000);   
-             
+    _textPacer.SetPace(1000);            
 }
 
 
@@ -66,44 +65,43 @@ void GameInitState::Entry()
 
 uint16_t GameInitState::Run()
 {
+    _stateData.systemTime.Update();
+    
+    if(_stateData.systemTime.GetSeconds() >= _stateData.gamePlan.GetGameDelayTime())
+    {
+        return SystemStates::GameRunning;
+    }
 
     if(_textPacer.Pace())
     {
 
-        if(_timeToGameStart == 0)
-        {
-            return SystemStates::GameRunning;
-        }
+        Serial.printf("GameInitState T:%d\n", (int)_stateData.systemTime.GetSeconds());
 
+        uint32_t timeToGameStart = _stateData.gamePlan.GetGameDelayTime() - _stateData.systemTime.GetSeconds();
+ 
         char newText[64];
 
-        sprintf(newText,"%02d:%02d", _timeToGameStart/60 , _timeToGameStart%60);
+        sprintf(newText,"%02d:%02d", timeToGameStart/60 , timeToGameStart%60);
 
         _stateData.displayManager.Send(std::unique_ptr<IDisplayCommand>(new SetTextCommand(UIWidgetIds::CountdownTimer,newText)));
         
             
-        if(_timeToGameStart == 60)
+        if(timeToGameStart == 60)
         {
             Serial.println("T60");
             _stateData.sounds.Play("/sounds/t60.wav");
         }
 
-        if(_timeToGameStart == 10)
+        if(timeToGameStart == 10)
         {
             Serial.println("T10");
             _stateData.sounds.Play("/sounds/t10.wav");
         }
 
-        if(_timeToGameStart <= 5 && _timeToGameStart)
+        if(timeToGameStart <= 5 && timeToGameStart)
         {
             _stateData.sounds.Play("/sounds/countd.wav");
         }
-
-        if(_timeToGameStart)
-        {
-            _timeToGameStart--;
-        }  
-
     }
 
 

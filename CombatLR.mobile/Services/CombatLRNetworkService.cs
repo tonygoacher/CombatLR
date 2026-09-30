@@ -266,7 +266,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         // Capture the mobile device time once. Every ESP32 receives
         // exactly the same game start time.
         string gameStart =
-            DateTime.Now.ToString(
+            DateTime.UtcNow.ToString(
                 "HH:mm:ss",
                 CultureInfo.InvariantCulture);
 
