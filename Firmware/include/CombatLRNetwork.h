@@ -12,7 +12,6 @@ enum class CombatLRNetworkEventType
 {
     TeamChanged,
     PlayerChanged,
-    StartTimeChanged,
     StartGame
 };
 
@@ -76,34 +75,32 @@ private:
     uint8_t _playerId;
 };
 
-class StartTimeChangedEvent : public CombatLRNetworkEvent
+class StartGameCommand : public CombatLRNetworkEvent
 {
 public:
-    explicit StartTimeChangedEvent(
-        uint32_t startTime)
+    StartGameCommand(
+        int sequence,
+        const char* gameStart)
         : CombatLRNetworkEvent(
-              CombatLRNetworkEventType::StartTimeChanged),
-          _startTime(startTime)
+              CombatLRNetworkEventType::StartGame),
+          _sequence(sequence),
+          _gameStart(gameStart)
     {
     }
 
-    uint32_t GetStartTime() const
+    int GetSequence() const
     {
-        return _startTime;
+        return _sequence;
+    }
+
+    const String& GetGameStart() const
+    {
+        return _gameStart;
     }
 
 private:
-    uint32_t _startTime;
-};
-
-class StartGameEvent : public CombatLRNetworkEvent
-{
-public:
-    StartGameEvent()
-        : CombatLRNetworkEvent(
-              CombatLRNetworkEventType::StartGame)
-    {
-    }
+    int _sequence;
+    String _gameStart;
 };
 
 class CombatLRNetwork
@@ -135,10 +132,6 @@ private:
 
     std::unique_ptr<CombatLRNetworkEvent>
     HandleSetPlayer(
-        JsonDocument& request);
-
-    std::unique_ptr<CombatLRNetworkEvent>
-    HandleSetStartTime(
         JsonDocument& request);
 
     std::unique_ptr<CombatLRNetworkEvent>

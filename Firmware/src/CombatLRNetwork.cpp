@@ -1,5 +1,7 @@
 #include "CombatLRNetwork.h"
 
+#include <cctype>
+
 #include <WiFi.h>
 
 CombatLRNetwork::CombatLRNetwork(
@@ -155,13 +157,6 @@ CombatLRNetwork::HandleJson(
 
     if (strcmp(
             type,
-            "setStartTime") == 0)
-    {
-        return HandleSetStartTime(request);
-    }
-
-    if (strcmp(
-            type,
             "startGame") == 0)
     {
         return HandleStartGame(request);
@@ -273,47 +268,76 @@ CombatLRNetwork::HandleSetPlayer(
 }
 
 std::unique_ptr<CombatLRNetworkEvent>
-CombatLRNetwork::HandleSetStartTime(
-    JsonDocument& request)
-{
-    int sequence =
-        request["sequence"] | 0;
-
-    if (!request["startTime"].is<uint32_t>())
-    {
-        SendAck(
-            sequence,
-            false,
-            "Invalid startTime");
-
-        return nullptr;
-    }
-
-    uint32_t startTime =
-        request["startTime"].as<uint32_t>();
-
-    SendAck(
-        sequence,
-        true,
-        "Start time set");
-
-    return std::make_unique<StartTimeChangedEvent>(
-        startTime);
-}
-
-std::unique_ptr<CombatLRNetworkEvent>
 CombatLRNetwork::HandleStartGame(
     JsonDocument& request)
 {
     int sequence =
         request["sequence"] | 0;
 
+    if (!request["sequence"].is<int>())
+    {
+        SendAck(
+            sequence,
+            false,
+            "Invalid sequence");
+
+        return nullptr;
+    }
+
+    const char* gameStart =
+        request["gameStart"] | "";
+
+    // Expected format is exactly HH:mm:ss.
+    if (strlen(gameStart) != 8 ||
+        gameStart[2] != ':' ||
+        gameStart[5] != ':' ||
+        !isdigit(gameStart[0]) ||
+        !isdigit(gameStart[1]) ||
+        !isdigit(gameStart[3]) ||
+        !isdigit(gameStart[4]) ||
+        !isdigit(gameStart[6]) ||
+        !isdigit(gameStart[7]))
+    {
+        SendAck(
+            sequence,
+            false,
+            "Invalid gameStart");
+
+        return nullptr;
+    }
+
+    const int hours =
+        (gameStart[0] - '0') * 10 +
+        (gameStart[1] - '0');
+
+    const int minutes =
+        (gameStart[3] - '0') * 10 +
+        (gameStart[4] - '0');
+
+    const int seconds =
+        (gameStart[6] - '0') * 10 +
+        (gameStart[7] - '0');
+
+    if (hours > 23 ||
+        minutes > 59 ||
+        seconds > 59)
+    {
+        SendAck(
+            sequence,
+            false,
+            "Invalid gameStart");
+
+        return nullptr;
+    }
+
     SendAck(
         sequence,
         true,
         "Game start received");
 
-    return std::make_unique<StartGameEvent>();
+    return std::make_unique<StartGameCommand>(
+        sequence,
+        gameStart);
 }
 
 void CombatLRNetwork::HandleDiscovery(

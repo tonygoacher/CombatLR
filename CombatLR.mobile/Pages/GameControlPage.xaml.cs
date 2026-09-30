@@ -41,6 +41,8 @@ public partial class GameControlPage : ContentPage
         _networkService.ClearDevices();
         _devices.Clear();
 
+        StartGameButton.IsEnabled = false;
+
         await StartDiscoveryAsync();
     }
 
@@ -86,6 +88,9 @@ public partial class GameControlPage : ContentPage
         }
 
         UpdateDuplicatePlayerIds();
+
+        StartGameButton.IsEnabled =
+            _devices.Count > 0;
     }
 
     private void UpdateDuplicatePlayerIds()
@@ -98,6 +103,64 @@ public partial class GameControlPage : ContentPage
 
         foreach (var device in _devices)
             device.IsDuplicatePlayerId = duplicateIds.Contains(device.PlayerId);
+    }
+
+    private async void StartGameButton_Clicked(
+        object? sender,
+        EventArgs e)
+    {
+        if (_devices.Count == 0)
+        {
+            return;
+        }
+
+        StartGameButton.IsEnabled = false;
+        DiscoverButton.IsEnabled = false;
+
+        try
+        {
+            var result =
+                await _networkService.StartGameAsync();
+
+            if (result.SuccessfulDevices.Count == 0)
+            {
+                await DisplayAlert(
+                    "Start Game",
+                    "No CombatLR devices acknowledged the start command.",
+                    "OK");
+
+                return;
+            }
+
+            if (result.FailedDevices.Count == 0)
+            {
+                await DisplayAlert(
+                    "Start Game",
+                    $"Game start sent to {result.SuccessfulDevices.Count} device(s) for {result.GameStart}.",
+                    "OK");
+
+                return;
+            }
+
+            string failed =
+                string.Join(
+                    ", ",
+                    result.FailedDevices.Select(
+                        device => device.DeviceId));
+
+            await DisplayAlert(
+                "Start Game",
+                $"Game start {result.GameStart} was acknowledged by " +
+                $"{result.SuccessfulDevices.Count} device(s), but failed on: {failed}.",
+                "OK");
+        }
+        finally
+        {
+            StartGameButton.IsEnabled =
+                _devices.Count > 0;
+
+            DiscoverButton.IsEnabled = true;
+        }
     }
 
     private async void PlayerIdEntry_Completed(

@@ -17,6 +17,7 @@
 #include "widgets/TextureWidget.h"
 #include "TeamIDs.h"
 #include "widgets/TextWidget.h"
+#include "SystemTime.h"
 
 
 
@@ -214,7 +215,20 @@ uint16_t AwaitingStartState::Run()
                 UIWidgetIds::TeamID,
                 GetTeamFile(team))); 
         }
-    }
 
+        if(event->GetType() == CombatLRNetworkEventType::StartGame)
+        {
+            auto* startCommand =
+                static_cast<StartGameCommand*>(event.get());
+
+            if(_services.systemTime.Reset(startCommand->GetGameStart().c_str()))
+            {
+                return SystemStates::GameInit;
+            }           
+        }
+
+
+       
+    }        
     return SystemStates::AwaitingStart;
 }

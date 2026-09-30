@@ -14,19 +14,29 @@
                 FontAttributes="Bold"
                 HorizontalOptions="Center" />
 
-            <HorizontalStackLayout Spacing="12">
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+
                 <Button
                     x:Name="DiscoverButton"
+                    Grid.Column="0"
                     Text="DISCOVER"
-                    Clicked="DiscoverButton_Clicked"
-                    HorizontalOptions="FillAndExpand" />
+                    Clicked="DiscoverButton_Clicked" />
 
-                <ActivityIndicator
-                    x:Name="DiscoveryActivity"
-                    IsVisible="False"
-                    IsRunning="False"
-                    VerticalOptions="Center" />
-            </HorizontalStackLayout>
+                <Button
+                    x:Name="StartGameButton"
+                    Grid.Column="1"
+                    Text="START GAME"
+                    Clicked="StartGameButton_Clicked"
+                    IsEnabled="False" />
+
+            </Grid>
+
+            <ActivityIndicator
+                x:Name="DiscoveryActivity"
+                IsVisible="False"
+                IsRunning="False"
+                HorizontalOptions="Center"
+                VerticalOptions="Center" />
 
             <Label
                 Text="COMBATLR DEVICES"

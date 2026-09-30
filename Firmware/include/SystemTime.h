@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include "Navigation.h"
+#include "ISystemTime.h"
 
 /*
  * SystemTime
@@ -14,23 +15,37 @@
  * millis() is used to continue the clock between GPS
  * synchronisations and when GPS is unavailable.
  *
- * Call Reset() to define time zero.
+ * Reset("HH:MM:SS") defines the GPS wall-clock time at which
+ * game time T=0 occurs.  If the requested start time is still
+ * in the future, the clock remains at zero until GPS reaches it.
  */
-class SystemTime
+class SystemTime : public ISystemTime
 {
 public:
 
     explicit SystemTime(INavigation& navigation);
 
     /*
-     * Reset the system clock to zero.
+     * Reset the system clock to zero immediately.
      *
-     * If GPS is currently available, GPS time becomes the
-     * reference point.
-     *
-     * Otherwise millis() is used until GPS becomes available.
+     * Retained for callers which simply want a local zero.
      */
     void Reset();
+
+    /*
+     * Reset the system clock using a GPS wall-clock start time.
+     *
+     * startTime must be in HH:MM:SS format.
+     *
+     * If the start time is in the future, GetSeconds() 
+     * return zero until GPS reaches it.
+     *
+     * If the start time has already passed, the clock starts
+     * at the corresponding elapsed time. This is important for
+     * players joining an already-running game: they can use the
+     * original game start time and immediately obtain T+n.
+     */
+    bool Reset(const char* startTime) override;
 
     /*
      * Update the clock.
@@ -41,19 +56,23 @@ public:
     void Update();
 
     /*
-     * Return seconds elapsed since Reset().
+     * Return seconds elapsed since the configured game start.
      */
-    uint32_t GetSeconds() const;
+    uint32_t GetSeconds();
 
-    /*
-     * Return elapsed time with millisecond resolution.
-     *
-     * Useful internally and for anything that needs finer
-     * resolution than whole seconds.
-     */
-    uint32_t GetMilliseconds() const;
+
 
 private:
+
+    static bool ParseTime(
+        const char* time,
+        double& seconds);
+
+    static double TimeDifference(
+        double current,
+        double reference);
+
+    uint32_t GetMilliseconds();
 
     INavigation& _navigation;
 
@@ -61,8 +80,6 @@ private:
 
     /*
      * System time, in milliseconds, at _baseMillis.
-     *
-     * This is the accumulated time since Reset().
      */
     uint64_t _baseSystemMilliseconds = 0;
 
@@ -76,8 +93,21 @@ private:
     double _lastGpsTime = 0.0;
 
     /*
+     * When true, GPS has not yet reached the configured
+     * game start time.
+     */
+    bool _waitingForStart = false;
+
+    /*
+     * Game start time, in seconds since midnight.
+     */
+    double _startGpsTime = 0.0;
+
+    /*
      * Prevent a GPS update from causing the clock to jump
      * backwards because of GPS/NMEA timing jitter.
      */
     static constexpr uint32_t GPS_RESYNC_THRESHOLD_MS = 100;
+
+    static const int MaxTimeLen = 8;//HH:MM:SS
 };
