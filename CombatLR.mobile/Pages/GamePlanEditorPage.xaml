@@ -190,6 +190,25 @@
                     Style="{StaticResource PanelButton}"
                     Clicked="LoadGamePlan_Clicked" />
 
+                <Label
+                    Text="Start Delay (s)"
+                    TextColor="White"
+                    FontSize="12"
+                    Margin="0,4,0,0" />
+
+                <Entry
+                    x:Name="GameDelayTimeEntry"
+                    Text="0"
+                    Keyboard="Numeric"
+                    TextColor="White"
+                    BackgroundColor="#44000000"
+                    FontSize="13"
+                    HeightRequest="34"
+                    HorizontalTextAlignment="Center"
+                    Placeholder="0"
+                    PlaceholderColor="LightGray"
+                    Margin="0" />
+
                 <BoxView
                     HeightRequest="1"
                     Margin="0,4"
