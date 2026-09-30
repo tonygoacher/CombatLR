@@ -20,12 +20,13 @@ TextureManager::GetTexture(
 
     if (textureIterator != _textures.end())
     {
+        Serial.printf("Got texture %s\n",filename);
         return textureIterator->second;
     }
 
     Texture* texture =
         new Texture();
-
+    Serial.printf("Loading texture %s\n",filename);       
     if (!texture->Load(
             _filesystem,
             filename))
@@ -34,7 +35,7 @@ TextureManager::GetTexture(
         delete texture;
         return nullptr;
     }
-
+    Serial.printf("Loaded texture %s\n",filename);
     _textures.insert(
         std::pair<std::string, Texture*>(
             filename,

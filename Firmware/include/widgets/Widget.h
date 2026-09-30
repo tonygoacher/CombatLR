@@ -27,6 +27,7 @@ enum class WidgetType
     GPS,
     UI,
     Text,
+    Texture,
 };
 
 

@@ -1,401 +1,65 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     x:Class="CombatLR.mobile.Pages.MainPage"
-    BackgroundColor="Black">
+    BackgroundColor="Black"
+    NavigationPage.HasNavigationBar="False">
 
-    <Grid>
+    <Grid
+        Padding="24"
+        RowDefinitions="Auto,*,Auto">
 
-        <!-- ========================================================= -->
-        <!-- MAP                                                       -->
-        <!-- ========================================================= -->
-
-        <Grid
-            x:Name="MapContainer"
-            HorizontalOptions="Fill"
-            VerticalOptions="Fill">
-
-            <Button
-    Text="☰"
-    FontSize="24"
-    TextColor="White"
-    BackgroundColor="#CC000000"
-    BorderColor="White"
-    BorderWidth="1"
-    CornerRadius="18"
-    WidthRequest="44"
-    HeightRequest="44"
-    Padding="0"
-    HorizontalOptions="Start"
-    VerticalOptions="Start"
-    Margin="8,2,0,0"
-    ZIndex="30"
-    Clicked="Hamburger_Clicked" />
-
-            <Image
-                x:Name="MapImage"
-                Aspect="AspectFit"
-                HorizontalOptions="Fill"
-                VerticalOptions="Fill"
-                InputTransparent="True" />
-
-            <Grid
-                x:Name="MapVisualLayer"
-                HorizontalOptions="Fill"
-                VerticalOptions="Fill"
-                InputTransparent="True">
-
-                <!-- Home marker -->
-                <Grid
-                    x:Name="HomeMarker"
-                    WidthRequest="36"
-                    HeightRequest="36"
-                    HorizontalOptions="Start"
-                    VerticalOptions="Start"
-                    IsVisible="False"
-                    InputTransparent="True">
-
-                    <Label
-                        Text="⌂"
-                        FontSize="32"
-                        TextColor="Red"
-                        HorizontalOptions="Center"
-                        VerticalOptions="Center" />
-
-                    <Label
-                        Text="+"
-                        FontSize="16"
-                        FontAttributes="Bold"
-                        TextColor="White"
-                        HorizontalOptions="Center"
-                        VerticalOptions="Center" />
-
-                </Grid>
-
-            </Grid>
-
-            <BoxView
-                x:Name="MapTouchView"
-                BackgroundColor="Transparent"
-                HorizontalOptions="Fill"
-                VerticalOptions="Fill"
-                InputTransparent="False"
-                ZIndex="20" />
-
-        </Grid>
-
-
-        <!-- ========================================================= -->
-        <!-- MAP INFORMATION                                           -->
-        <!-- ========================================================= -->
-
-        <Border
-    HorizontalOptions="Start"
-    VerticalOptions="End"
-    Margin="150,0,0,8"
-    Padding="8"
-    BackgroundColor="#DD000000"
-    Stroke="White"
-    StrokeThickness="1"
-    ZIndex="10">
+        <VerticalStackLayout
+            Grid.Row="0"
+            Spacing="4"
+            HorizontalOptions="Center"
+            Margin="0,30,0,0">
 
             <Label
-        x:Name="MapInfoLabel"
-        Text="Starting..."
-        TextColor="White"
-        FontSize="13">
+                Text="COMBATLR"
+                TextColor="White"
+                FontSize="36"
+                FontAttributes="Bold"
+                HorizontalTextAlignment="Center" />
 
-                <Label.GestureRecognizers>
-                    <TapGestureRecognizer
-                Tapped="MapInfoLabel_Tapped" />
-                </Label.GestureRecognizers>
+            <Label
+                Text="Combat control"
+                TextColor="LightGray"
+                FontSize="16"
+                HorizontalTextAlignment="Center" />
 
-            </Label>
+        </VerticalStackLayout>
 
-        </Border>
-
-
-        <!-- ========================================================= -->
-        <!-- LEFT PANEL - GAME PLAN                                    -->
-        <!-- ========================================================= -->
-
-        <Border
-            HorizontalOptions="Start"
+        <VerticalStackLayout
+            Grid.Row="1"
+            Spacing="20"
             VerticalOptions="Center"
-            WidthRequest="135"
-            Margin="8"
-            Padding="8"
-            BackgroundColor="#DD000000"
-            Stroke="White"
-            StrokeThickness="1"
-            ZIndex="20">
-
-            <Border.Resources>
-
-                <Style
-                    x:Key="PanelButton"
-                    TargetType="Button">
-
-                    <Setter
-                        Property="HeightRequest"
-                        Value="32" />
-
-                    <Setter
-                        Property="FontSize"
-                        Value="13" />
-
-                    <Setter
-                        Property="Padding"
-                        Value="4,0" />
-
-                    <Setter
-                        Property="Margin"
-                        Value="0" />
-
-                </Style>
-
-            </Border.Resources>
-
-            <VerticalStackLayout
-                Spacing="6">
-
-                <Label
-                    Text="GAME PLAN"
-                    TextColor="White"
-                    FontSize="15"
-                    FontAttributes="Bold"
-                    HorizontalOptions="Center" />
-
-                <BoxView
-                    HeightRequest="1"
-                    BackgroundColor="White" />
-
-                <Button
-    x:Name="NewButton"
-    Text="New"
-    Style="{StaticResource PanelButton}"
-    Clicked="NewGamePlan_Clicked" />
-
-                <Button
-                    x:Name="SaveButton"
-                    Text="Save"
-                    Style="{StaticResource PanelButton}"
-                    Clicked="SaveGamePlan_Clicked" />
-
-                <Button
-                    x:Name="LoadButton"
-                    Text="Load"
-                    Style="{StaticResource PanelButton}"
-                    Clicked="LoadGamePlan_Clicked" />
-
-                <BoxView
-                    HeightRequest="1"
-                    Margin="0,4"
-                    BackgroundColor="White" />
-
-                <Button
-                    x:Name="SetHomeButton"
-                    Text="Set Home"
-                    Style="{StaticResource PanelButton}"
-                    Clicked="SetHome_Clicked" />
-
-            </VerticalStackLayout>
-
-        </Border>
-
-
-        <!-- ========================================================= -->
-        <!-- RIGHT PANEL - GAME OBJECT                                 -->
-        <!-- ========================================================= -->
-
-        <!-- ========================================================= -->
-        <!-- RIGHT PANEL - GAME OBJECT                                 -->
-        <!-- ========================================================= -->
-
-        <Border
-    HorizontalOptions="End"
-    VerticalOptions="Center"
-    WidthRequest="145"
-    Margin="8"
-    Padding="8"
-    BackgroundColor="#DD000000"
-    Stroke="White"
-    StrokeThickness="1"
-    ZIndex="20">
-
-            <Border.Resources>
-
-                <Style
-            x:Key="ObjectPanelButton"
-            TargetType="Button">
-
-                    <Setter
-                Property="HeightRequest"
-                Value="34" />
-
-                    <Setter
-                Property="FontSize"
-                Value="12" />
-
-                    <Setter
-                Property="Padding"
-                Value="2,0" />
-
-                    <Setter
-                Property="Margin"
-                Value="0" />
-
-                </Style>
-
-            </Border.Resources>
-
-            <VerticalStackLayout
-        Spacing="5">
-
-                <Label
-            Text="GAME OBJECT"
-            TextColor="White"
-            FontSize="15"
-            FontAttributes="Bold"
-            HorizontalOptions="Center" />
-
-                <BoxView
-            HeightRequest="1"
-            BackgroundColor="White" />
-
-
-                <!-- Object type -->
-
-                <Label
-            Text="Object"
-            TextColor="White"
-            FontSize="11" />
-
-            <Picker
-                x:Name="GameObjectTypePicker"
-                Title="Object"
-                SelectedItem="Zone"
-                HeightRequest="32"
-                FontSize="12"
-                TextColor="White"
-                Margin="0">
-
-                <Picker.Items>
-                    <x:String>Zone</x:String>
-                    <x:String>Pickups</x:String>
-                 </Picker.Items>
-
-            </Picker>
-
-                <!-- Coordinate input -->
-
-                <Label
-            Text="Position"
-            TextColor="White"
-            FontSize="11"
-            Margin="0,2,0,0" />
-
-                <Button
-            x:Name="CoordinateModeButton"
-            Text="TAP"
-            Style="{StaticResource ObjectPanelButton}"
-            Clicked="CoordinateMode_Clicked" />
-
-
-                <BoxView
-            HeightRequest="1"
-            Margin="0,2"
-            BackgroundColor="White" />
-
-
-                <!-- Object operations -->
-
-                <Grid
-            ColumnDefinitions="*,*"
-            RowDefinitions="Auto,Auto"
-            ColumnSpacing="4"
-            RowSpacing="4">
-
-                    <Button
-                x:Name="AddObjectButton"
-                Grid.Row="0"
-                Grid.Column="0"
-                Text="Add"
-                Style="{StaticResource ObjectPanelButton}"
-                Clicked="AddObject_Clicked" />
-
-                    <Button
-                x:Name="DeleteObjectButton"
-                Text="Delete"
-                Grid.Row="0"
-                Grid.Column="1"
-                Style="{StaticResource ObjectPanelButton}"
-                Clicked="DeleteObject_Clicked" />       
-
-                    <Button
-                x:Name="EditObjectButton"
-                Grid.Row="1"
-                Grid.Column="0"
-                Text="Edit"
-                Style="{StaticResource ObjectPanelButton}"
-                Clicked="EditObject_Clicked" />
-
-                    <Button
-                x:Name="ShowAllObjectsButton"
-                Grid.Row="1"
-                Grid.Column="1"
-                Text="All"
-                Style="{StaticResource ObjectPanelButton}"
-                Clicked="ShowAllObjects_Clicked" />
-
-                </Grid>
-
-
-                <!-- Object navigation -->
-
-                <BoxView
-            HeightRequest="1"
-            Margin="0,2"
-            BackgroundColor="White" />
-
-                <HorizontalStackLayout
             HorizontalOptions="Center"
-            Spacing="2">
+            WidthRequest="280">
 
-                    <Button
-                x:Name="PreviousZoneButton"
-                Text="◀"
-                WidthRequest="34"
-                HeightRequest="32"
-                FontSize="12"
-                Padding="0"
-                Clicked="PreviousZone_Clicked" />
+            <Button
+                Text="GAME PLAN EDITOR"
+                FontSize="20"
+                HeightRequest="70"
+                Clicked="GamePlanEditor_Clicked" />
 
-                    <Label
-                x:Name="CurrentObjectLabel"
-                Text="0 / 0"
-                TextColor="White"
-                FontSize="11"
-                WidthRequest="42"
-                HorizontalTextAlignment="Center"
-                VerticalTextAlignment="Center" />
+            <Button
+                Text="GAME CONTROL"
+                FontSize="20"
+                HeightRequest="70"
+                Clicked="GameControl_Clicked" />
 
-                    <Button
-                x:Name="NextZoneButton"
-                Text="▶"
-                WidthRequest="34"
-                HeightRequest="32"
-                FontSize="12"
-                Padding="0"
-                Clicked="NextZone_Clicked" />
+        </VerticalStackLayout>
 
-                </HorizontalStackLayout>
-
-            </VerticalStackLayout>
-
-        </Border>
+        <Label
+            Grid.Row="2"
+            Text="CombatLR"
+            TextColor="Gray"
+            FontSize="12"
+            HorizontalTextAlignment="Center"
+            Margin="0,0,0,10" />
 
     </Grid>
 

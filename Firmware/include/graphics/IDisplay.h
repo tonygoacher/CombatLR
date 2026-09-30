@@ -46,6 +46,8 @@ public:
 
     virtual void SetWidgetColour(uint32_t widgetId, uint32_t colour) = 0;
 
+    virtual void SetWidgetTexture(uint32_t widgetId, const char * const filenmame) = 0;
+
     virtual void SetZoneGeometry( uint32_t zoneId,  GameCoordinate newPos,  float radius) = 0;
 
     virtual void SetText( uint32_t widgetId, const std::string& newText) = 0;

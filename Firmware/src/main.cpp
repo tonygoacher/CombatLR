@@ -17,6 +17,8 @@
 #include "graphics/DisplayBackgroundCommand.h"
 #include "LittleFS.h"
 
+#include "WiFi.h"
+
 
 
 
@@ -44,21 +46,33 @@ void setup()
     Serial.begin(115200);
 
 
-  PrintPSRAM("Before LITTLEFS");
-  if(!LittleFS.begin(true)){
-    Serial.println("An Error has occurred while mounting LittleFS");
-    return;
-  }
-  PrintPSRAM("After LITTLEFS");
+    PrintPSRAM("Before LITTLEFS");
+    if(!LittleFS.begin(true)){
+      Serial.println("An Error has occurred while mounting LittleFS");
+      return;
+    }
+    PrintPSRAM("After LITTLEFS");
 
  
     PrintPSRAM("After mapdata.load");
+/*
+       WiFi.mode(
+        WIFI_STA);
+
+    WiFi.begin(
+        "TGTABLET",
+        "OiTheGah");
 
 
-  
+    while (WiFi.status() != WL_CONNECTED)
+    {   
+        delay(500);
+        Serial.print(".");
 
-
-
+    }
+    Serial.println("WifiConnected");
+    while(1)
+    {}*/
 
     PrintPSRAM("Before NavigationDisplayTestBegin");
     NavigationDisplayTestBegin();
