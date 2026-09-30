@@ -1,4 +1,6 @@
-﻿namespace CombatLR.mobile.Models;
+﻿using System.Text.Json.Serialization;
+
+namespace CombatLR.mobile.Models;
 
 public class GamePlan
 {
@@ -8,6 +10,9 @@ public class GamePlan
     }
 
     public int Version { get; set; } = 1;
+
+    [JsonPropertyName("gameDelayTime")]
+    public int GameDelayTime { get; set; } = 0;
 
     public HomePosition? Home { get; set; }
 

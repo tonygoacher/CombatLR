@@ -220,6 +220,7 @@ namespace CombatLR.mobile.Pages
         EventArgs e)
         {
             _gamePlan = _gamePlanService.CreateNew();
+            GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
             ClearZoneMarkers();
             ClearPickupMarkers();   
 
@@ -241,6 +242,20 @@ namespace CombatLR.mobile.Pages
         {
             try
             {
+                if (!int.TryParse(
+                        GameDelayTimeEntry.Text,
+                        out var gameDelayTime) ||
+                    gameDelayTime < 0)
+                {
+                    await DisplayAlert(
+                        "Save Game Plan",
+                        "Start Delay must be a whole number of seconds (0 or greater).",
+                        "OK");
+                    return;
+                }
+
+                _gamePlan.GameDelayTime = gameDelayTime;
+
                 var fileName = "gameplan.json";
 
                 var filePath =
@@ -291,6 +306,8 @@ namespace CombatLR.mobile.Pages
                     await _gamePlanService.LoadAsync(
                         filePath);
                 _gamePlan.InitialisePickupIdAllocator();
+                GameDelayTimeEntry.Text =
+                    _gamePlan.GameDelayTime.ToString();
                 UpdateGameObjectControls();
                 UpdateHomeMarker();
                 _currentZoneIndex =
