@@ -6,9 +6,7 @@
     Title="Game Control">
 
     <ScrollView>
-        <VerticalStackLayout
-            Padding="24"
-            Spacing="16">
+        <VerticalStackLayout Padding="24" Spacing="16">
 
             <Label
                 Text="GAME CONTROL"
@@ -55,58 +53,87 @@
                             StrokeShape="RoundRectangle 10"
                             BackgroundColor="{Binding TeamBackgroundColor}">
 
-                            <VerticalStackLayout Spacing="8">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
 
-                                <Label
-                                    Text="{Binding DeviceId}"
-                                    FontSize="17"
-                                    FontAttributes="Bold"
-                                    TextColor="{Binding TeamTextColor}" />
-
-                                <Label
-                                    Text="{Binding IpAddress}"
-                                    TextColor="{Binding TeamTextColor}" />
-
-                                <Label
-                                    Text="{Binding State}"
-                                    TextColor="{Binding TeamTextColor}" />
-
-                                <HorizontalStackLayout Spacing="8">
+                                <!-- Controls and state -->
+                                <VerticalStackLayout
+                                    Grid.Column="0"
+                                    Spacing="8">
 
                                     <Label
-                                        Text="Team:"
-                                        VerticalOptions="Center"
+                                        Text="{Binding State}"
                                         TextColor="{Binding TeamTextColor}" />
 
-                                    <Picker
-                                        WidthRequest="110"
-                                        Title="Team"
+                                    <HorizontalStackLayout Spacing="8">
+                                        <Label
+                                            Text="Player ID:"
+                                            VerticalOptions="Center"
+                                            TextColor="{Binding TeamTextColor}" />
+
+                                        <Entry
+                                            WidthRequest="70"
+                                            Keyboard="Numeric"
+                                            HorizontalTextAlignment="Center"
+                                            Text="{Binding PlayerId, Mode=OneWay}"
+                                            BackgroundColor="{Binding PlayerIdBackgroundColor}"
+                                            TextColor="{Binding PlayerIdTextColor}"
+                                            Completed="PlayerIdEntry_Completed" />
+                                    </HorizontalStackLayout>
+
+                                    <HorizontalStackLayout Spacing="8">
+                                        <Label
+                                            Text="Team:"
+                                            VerticalOptions="Center"
+                                            TextColor="{Binding TeamTextColor}" />
+
+                                        <Picker
+                                            WidthRequest="110"
+                                            Title="Team"
+                                            TextColor="{Binding TeamTextColor}"
+                                            SelectedItem="{Binding TeamName, Mode=OneWay}"
+                                            SelectedIndexChanged="TeamPicker_SelectedIndexChanged">
+
+                                            <Picker.ItemsSource>
+                                                <x:Array Type="{x:Type x:String}">
+                                                    <x:String>Red</x:String>
+                                                    <x:String>Blue</x:String>
+                                                    <x:String>Yellow</x:String>
+                                                    <x:String>Green</x:String>
+                                                </x:Array>
+                                            </Picker.ItemsSource>
+
+                                        </Picker>
+                                    </HorizontalStackLayout>
+
+                                </VerticalStackLayout>
+
+                                <!-- Network information -->
+                                <VerticalStackLayout
+                                    Grid.Column="1"
+                                    Spacing="4"
+                                    VerticalOptions="Start"
+                                    HorizontalOptions="End">
+
+                                    <Label
+                                        Text="{Binding DeviceId}"
+                                        FontSize="17"
+                                        FontAttributes="Bold"
                                         TextColor="{Binding TeamTextColor}"
-                                        SelectedItem="{Binding TeamName, Mode=OneWay}"
-                                        SelectedIndexChanged="TeamPicker_SelectedIndexChanged">
+                                        HorizontalTextAlignment="End" />
 
-                                        <Picker.ItemsSource>
-                                            <x:Array Type="{x:Type x:String}">
-                                                <x:String>Red</x:String>
-                                                <x:String>Blue</x:String>
-                                                <x:String>Yellow</x:String>
-                                                <x:String>Green</x:String>
-                                            </x:Array>
-                                        </Picker.ItemsSource>
+                                    <Label
+                                        Text="{Binding IpAddress}"
+                                        TextColor="{Binding TeamTextColor}"
+                                        HorizontalTextAlignment="End" />
 
-                                    </Picker>
+                                </VerticalStackLayout>
 
-                                </HorizontalStackLayout>
-
-                            </VerticalStackLayout>
-
+                            </Grid>
                         </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
 
             </CollectionView>
-
         </VerticalStackLayout>
     </ScrollView>
-
 </ContentPage>

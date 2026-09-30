@@ -15,6 +15,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
     public const int DiscoveryPort = 4210;
     public const int ProtocolVersion = 1;
     public const int MaxTeamId = 3;
+    public const int MaxPlayerId = 127;
 
     private const int DiscoveryIntervalMilliseconds = 2000;
     private const int CommandTimeoutMilliseconds = 2000;
@@ -152,6 +153,83 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 return false;
 
             device.TeamId = teamId;
+            device.LastSeen = DateTimeOffset.UtcNow;
+
+            return true;
+        }
+        finally
+        {
+            _pendingCommands.TryRemove(
+                sequence,
+                out _);
+        }
+    }
+
+    public async Task<bool> SetPlayerIdAsync(
+        CombatLRDevice device,
+        int playerId)
+    {
+        if (_udp is null ||
+            playerId < 0 ||
+            playerId > MaxPlayerId)
+        {
+            return false;
+        }
+
+        int sequence =
+            Interlocked.Increment(ref _nextSequence);
+
+        var command = new SetPlayerCommand
+        {
+            Type = "setPlayer",
+            Version = ProtocolVersion,
+            Sequence = sequence,
+            PlayerId = playerId
+        };
+
+        string json =
+            JsonSerializer.Serialize(command);
+
+        var completion =
+            new TaskCompletionSource<CombatLRAck>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _pendingCommands[sequence] = completion;
+
+        try
+        {
+            byte[] data =
+                Encoding.UTF8.GetBytes(json);
+
+            var endpoint = new IPEndPoint(
+                IPAddress.Parse(device.IpAddress),
+                DiscoveryPort);
+
+            await _udp.SendAsync(
+                data,
+                data.Length,
+                endpoint);
+
+            using var timeout =
+                new CancellationTokenSource(
+                    CommandTimeoutMilliseconds);
+
+            CombatLRAck ack;
+
+            try
+            {
+                ack = await completion.Task.WaitAsync(
+                    timeout.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
+
+            if (!ack.Success)
+                return false;
+
+            device.PlayerId = playerId;
             device.LastSeen = DateTimeOffset.UtcNow;
 
             return true;
@@ -396,6 +474,19 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             return;
         }
 
+        int playerId =
+            root.TryGetProperty(
+                "playerId",
+                out var playerProperty)
+                ? playerProperty.GetInt32()
+                : 0;
+
+        if (playerId < 0 ||
+            playerId > MaxPlayerId)
+        {
+            return;
+        }
+
         string state =
             root.TryGetProperty(
                 "state",
@@ -410,9 +501,11 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             existing.Update(
                 remoteAddress.ToString(),
                 teamId,
+                playerId,
                 state,
                 version);
 
+            DevicesChanged?.Invoke(this, EventArgs.Empty);
             return;
         }
 
@@ -421,6 +514,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             DeviceId = deviceId,
             IpAddress = remoteAddress.ToString(),
             TeamId = teamId,
+            PlayerId = playerId,
             State = state,
             ProtocolVersion = version,
             LastSeen = DateTimeOffset.UtcNow
@@ -503,6 +597,21 @@ public sealed class SetTeamCommand
     public int TeamId { get; init; }
 }
 
+public sealed class SetPlayerCommand
+{
+    [JsonPropertyName("type")]
+    public string Type { get; init; } = "";
+
+    [JsonPropertyName("version")]
+    public int Version { get; init; }
+
+    [JsonPropertyName("sequence")]
+    public int Sequence { get; init; }
+
+    [JsonPropertyName("playerId")]
+    public int PlayerId { get; init; }
+}
+
 public sealed class CombatLRAck
 {
     public int Sequence { get; init; }
@@ -514,6 +623,8 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
 {
     private string _ipAddress = "";
     private int _teamId;
+    private int _playerId;
+    private bool _isDuplicatePlayerId;
     private string _state = "";
     private int _protocolVersion;
     private DateTimeOffset _lastSeen;
@@ -565,6 +676,38 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
             _ => ""
         };
 
+    public int PlayerId
+    {
+        get => _playerId;
+        set => SetField(ref _playerId, value);
+    }
+
+    [JsonIgnore]
+    public bool IsDuplicatePlayerId
+    {
+        get => _isDuplicatePlayerId;
+        set
+        {
+            if (SetField(ref _isDuplicatePlayerId, value))
+            {
+                OnPropertyChanged(nameof(PlayerIdBackgroundColor));
+                OnPropertyChanged(nameof(PlayerIdTextColor));
+            }
+        }
+    }
+
+    [JsonIgnore]
+    public Color PlayerIdBackgroundColor =>
+        IsDuplicatePlayerId
+            ? Color.FromArgb("#FFCDD2")
+            : Colors.White;
+
+    [JsonIgnore]
+    public Color PlayerIdTextColor =>
+        IsDuplicatePlayerId
+            ? Color.FromArgb("#B00020")
+            : Colors.Black;
+
     public string State
     {
         get => _state;
@@ -603,11 +746,13 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     public void Update(
         string ipAddress,
         int teamId,
+        int playerId,
         string state,
         int protocolVersion)
     {
         IpAddress = ipAddress;
         TeamId = teamId;
+        PlayerId = playerId;
         State = state;
         ProtocolVersion = protocolVersion;
         LastSeen = DateTimeOffset.UtcNow;

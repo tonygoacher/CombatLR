@@ -84,6 +84,68 @@ public partial class GameControlPage : ContentPage
             if (!_devices.Contains(device))
                 _devices.Add(device);
         }
+
+        UpdateDuplicatePlayerIds();
+    }
+
+    private void UpdateDuplicatePlayerIds()
+    {
+        var duplicateIds = _devices
+            .GroupBy(device => device.PlayerId)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet();
+
+        foreach (var device in _devices)
+            device.IsDuplicatePlayerId = duplicateIds.Contains(device.PlayerId);
+    }
+
+    private async void PlayerIdEntry_Completed(
+        object? sender,
+        EventArgs e)
+    {
+        if (sender is not Entry entry ||
+            entry.BindingContext is not CombatLRDevice device)
+        {
+            return;
+        }
+
+        if (!int.TryParse(entry.Text, out int playerId) ||
+            playerId < 0 ||
+            playerId > CombatLRNetworkService.MaxPlayerId)
+        {
+            entry.Text = device.PlayerId.ToString();
+            return;
+        }
+
+        if (playerId == device.PlayerId)
+            return;
+
+        entry.IsEnabled = false;
+
+        try
+        {
+            bool success =
+                await _networkService.SetPlayerIdAsync(
+                    device,
+                    playerId);
+
+            if (!success)
+            {
+                await DisplayAlert(
+                    "Player ID",
+                    $"Could not set Player ID {playerId} on {device.DeviceId}.",
+                    "OK");
+
+                entry.Text = device.PlayerId.ToString();
+            }
+
+            UpdateDuplicatePlayerIds();
+        }
+        finally
+        {
+            entry.IsEnabled = true;
+        }
     }
 
     private async void TeamPicker_SelectedIndexChanged(
