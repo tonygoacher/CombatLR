@@ -12,12 +12,16 @@ public:
 
     uint8_t GetPlayerId() const;
     bool SetPlayerId(uint8_t playerId);
+    
+    bool  GetFriendlyFire() const;
+    bool  SetFriendlyFire(bool enabled);
 
 private:
     static constexpr const char* ConfigFile = "/system.json";
 
     uint8_t _teamId = 0;
     uint8_t _playerId = 0;
+    bool    _friendlyFire;
 
     bool Load();
     bool Save() const;

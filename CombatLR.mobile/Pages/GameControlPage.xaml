@@ -14,7 +14,7 @@
                 FontAttributes="Bold"
                 HorizontalOptions="Center" />
 
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
 
                 <Button
                     x:Name="DiscoverButton"
@@ -23,8 +23,22 @@
                     Clicked="DiscoverButton_Clicked" />
 
                 <Button
-                    x:Name="StartGameButton"
+                    x:Name="FriendlyFireOnButton"
                     Grid.Column="1"
+                    Text="FRIENDLY FIRE ON"
+                    Clicked="FriendlyFireOnButton_Clicked"
+                    IsEnabled="False" />
+
+                <Button
+                    x:Name="FriendlyFireOffButton"
+                    Grid.Column="2"
+                    Text="FRIENDLY FIRE OFF"
+                    Clicked="FriendlyFireOffButton_Clicked"
+                    IsEnabled="False" />
+
+                <Button
+                    x:Name="StartGameButton"
+                    Grid.Column="3"
                     Text="START GAME"
                     Clicked="StartGameButton_Clicked"
                     IsEnabled="False" />
@@ -111,6 +125,19 @@
                                     Grid.Column="0"
                                     Grid.ColumnSpan="2"
                                     Spacing="6">
+
+                                    <Image
+                                        Source="{Binding FriendlyFireIcon}"
+                                        WidthRequest="48"
+                                        HeightRequest="48"
+                                        Aspect="AspectFit"
+                                        VerticalOptions="Center"
+                                        SemanticProperties.Description="Friendly fire status">
+                                        <Image.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Tapped="FriendlyFireIcon_Tapped" />
+                                        </Image.GestureRecognizers>
+                                    </Image>
 
                                     <Label
                                         Text="ID:"
