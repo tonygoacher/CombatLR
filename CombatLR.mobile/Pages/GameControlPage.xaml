@@ -113,7 +113,7 @@
                                 <Label
                                     Grid.Row="1"
                                     Grid.Column="1"
-                                    Text="{Binding State}"
+                                    Text="{Binding DisplayState}"
                                     FontSize="13"
                                     TextColor="{Binding TeamTextColor}"
                                     HorizontalTextAlignment="End"
@@ -132,6 +132,8 @@
                                         HeightRequest="48"
                                         Aspect="AspectFit"
                                         VerticalOptions="Center"
+                                        IsEnabled="{Binding FriendlyFireButtonEnabled}"
+                                        Opacity="{Binding FriendlyFireButtonOpacity}"
                                         SemanticProperties.Description="Friendly fire status">
                                         <Image.GestureRecognizers>
                                             <TapGestureRecognizer
