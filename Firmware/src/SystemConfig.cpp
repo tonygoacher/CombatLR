@@ -66,12 +66,16 @@ bool SystemConfig::Load()
 
     _teamId = static_cast<uint8_t>(teamId);
     _playerId = static_cast<uint8_t>(playerId);
+    _friendlyFire = document["friendlyFire"] | false;
 
     Serial.print("SystemConfig: Team ID = ");
     Serial.println(_teamId);
 
     Serial.print("SystemConfig: Player ID = ");
     Serial.println(_playerId);
+
+    Serial.print("SystemConfig: Friendly Fire = ");
+    Serial.println(_friendlyFire);
 
     return true;
 }
@@ -87,6 +91,7 @@ bool SystemConfig::Save() const
 
     document["teamId"] = _teamId;
     document["playerId"] = _playerId;
+    document["friendlyFire"] = _friendlyFire;
 
     if (serializeJson(document, file) == 0)
     {
@@ -99,7 +104,9 @@ bool SystemConfig::Save() const
     Serial.print("SystemConfig: saved Team ID = ");
     Serial.print(_teamId);
     Serial.print(", Player ID = ");
-    Serial.println(_playerId);
+    Serial.print(_playerId);
+    Serial.print(", Friendly fire = ");
+    Serial.println(_friendlyFire);    
 
     return true;
 }
@@ -144,5 +151,27 @@ bool SystemConfig::SetPlayerId(uint8_t playerId)
         return true;
 
     _playerId = oldPlayerId;
+    return false;
+}
+
+
+
+bool SystemConfig::GetFriendlyFire() const
+{
+    return _friendlyFire;
+}
+
+
+
+bool SystemConfig::SetFriendlyFire(bool enabled)
+{
+    bool oldFF = _friendlyFire;
+    _friendlyFire = enabled;
+    Serial.printf("Config setting FF to %d\n", enabled);
+    if(Save())
+    {
+        return true;
+    }
+    _friendlyFire = oldFF;
     return false;
 }

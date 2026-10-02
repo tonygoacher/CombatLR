@@ -41,7 +41,7 @@ public partial class GameControlPage : ContentPage
         _networkService.ClearDevices();
         _devices.Clear();
 
-        StartGameButton.IsEnabled = false;
+        SetControlButtonsEnabled(false);
 
         await StartDiscoveryAsync();
     }
@@ -68,6 +68,8 @@ public partial class GameControlPage : ContentPage
             DiscoverButton.IsEnabled = true;
             DiscoveryActivity.IsVisible = false;
             DiscoveryActivity.IsRunning = false;
+
+            SetControlButtonsEnabled(_devices.Count > 0);
         }
     }
 
@@ -89,8 +91,14 @@ public partial class GameControlPage : ContentPage
 
         UpdateDuplicatePlayerIds();
 
-        StartGameButton.IsEnabled =
-            _devices.Count > 0;
+        SetControlButtonsEnabled(_devices.Count > 0);
+    }
+
+    private void SetControlButtonsEnabled(bool enabled)
+    {
+        FriendlyFireOnButton.IsEnabled = enabled;
+        FriendlyFireOffButton.IsEnabled = enabled;
+        StartGameButton.IsEnabled = enabled;
     }
 
     private void UpdateDuplicatePlayerIds()
@@ -105,6 +113,106 @@ public partial class GameControlPage : ContentPage
             device.IsDuplicatePlayerId = duplicateIds.Contains(device.PlayerId);
     }
 
+    private async void FriendlyFireOnButton_Clicked(
+        object? sender,
+        EventArgs e)
+    {
+        await SetFriendlyFireAsync(true);
+    }
+
+    private async void FriendlyFireOffButton_Clicked(
+        object? sender,
+        EventArgs e)
+    {
+        await SetFriendlyFireAsync(false);
+    }
+
+    private async void FriendlyFireIcon_Tapped(
+        object? sender,
+        TappedEventArgs e)
+    {
+        if (sender is not Image image ||
+            image.BindingContext is not CombatLRDevice device)
+        {
+            return;
+        }
+
+        bool newState = !device.FriendlyFire;
+
+        // Prevent double taps while the command is in flight.
+        image.IsEnabled = false;
+
+        try
+        {
+            bool success =
+                await _networkService.SetFriendlyFireAsync(
+                    device,
+                    newState);
+
+            if (!success)
+            {
+                string action =
+                    newState
+                        ? "enable"
+                        : "disable";
+
+                await DisplayAlert(
+                    "Friendly Fire",
+                    $"Could not {action} friendly fire on {device.DeviceId}.",
+                    "OK");
+            }
+        }
+        finally
+        {
+            image.IsEnabled = true;
+        }
+    }
+
+    private async Task SetFriendlyFireAsync(bool enabled)
+    {
+        if (_devices.Count == 0)
+            return;
+
+        SetControlButtonsEnabled(false);
+
+        try
+        {
+            var results = await Task.WhenAll(
+                _devices.Select(async device =>
+                    new
+                    {
+                        Device = device,
+                        Success =
+                            await _networkService.SetFriendlyFireAsync(
+                                device,
+                                enabled)
+                    }));
+
+            var failed = results
+                .Where(result => !result.Success)
+                .Select(result => result.Device.DeviceId)
+                .ToArray();
+
+            if (failed.Length > 0)
+            {
+                string action =
+                    enabled
+                        ? "enable"
+                        : "disable";
+
+                await DisplayAlert(
+                    "Friendly Fire",
+                    $"Could not {action} friendly fire on: " +
+                    string.Join(", ", failed),
+                    "OK");
+            }
+        }
+        finally
+        {
+            SetControlButtonsEnabled(_devices.Count > 0);
+        }
+    }
+
     private async void StartGameButton_Clicked(
         object? sender,
         EventArgs e)
@@ -114,7 +222,7 @@ public partial class GameControlPage : ContentPage
             return;
         }
 
-        StartGameButton.IsEnabled = false;
+        SetControlButtonsEnabled(false);
         DiscoverButton.IsEnabled = false;
 
         try
@@ -134,11 +242,6 @@ public partial class GameControlPage : ContentPage
 
             if (result.FailedDevices.Count == 0)
             {
-                await DisplayAlert(
-                    "Start Game",
-                    $"Game start sent to {result.SuccessfulDevices.Count} device(s) for {result.GameStart}.",
-                    "OK");
-
                 return;
             }
 
@@ -156,10 +259,8 @@ public partial class GameControlPage : ContentPage
         }
         finally
         {
-            StartGameButton.IsEnabled =
-                _devices.Count > 0;
-
             DiscoverButton.IsEnabled = true;
+            SetControlButtonsEnabled(_devices.Count > 0);
         }
     }
 

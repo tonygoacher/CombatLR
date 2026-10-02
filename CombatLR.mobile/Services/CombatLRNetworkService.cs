@@ -188,6 +188,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             return false;
         }
 
+        device.FriendlyFire = friendlyFire;
         device.LastSeen = DateTimeOffset.UtcNow;
 
         return true;
@@ -674,6 +675,12 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             return;
         }
 
+        bool friendlyFire =
+            root.TryGetProperty(
+                "friendlyFire",
+                out var friendlyFireProperty) &&
+            friendlyFireProperty.ValueKind == JsonValueKind.True;
+
         string state =
             root.TryGetProperty(
                 "state",
@@ -702,6 +709,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 remoteAddress.ToString(),
                 teamId,
                 playerId,
+                friendlyFire,
                 state,
                 version);
 
@@ -715,6 +723,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             IpAddress = remoteAddress.ToString(),
             TeamId = teamId,
             PlayerId = playerId,
+            FriendlyFire = friendlyFire,
             State = state,
             ProtocolVersion = version,
             CommandPort = commandPort,
@@ -857,6 +866,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     private string _ipAddress = "";
     private int _teamId;
     private int _playerId;
+    private bool _friendlyFire;
     private bool _isDuplicatePlayerId;
     private string _state = "";
     private int _protocolVersion;
@@ -915,6 +925,22 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
         get => _playerId;
         set => SetField(ref _playerId, value);
     }
+
+    public bool FriendlyFire
+    {
+        get => _friendlyFire;
+        set
+        {
+            if (SetField(ref _friendlyFire, value))
+                OnPropertyChanged(nameof(FriendlyFireIcon));
+        }
+    }
+
+    [JsonIgnore]
+    public string FriendlyFireIcon =>
+        FriendlyFire
+            ? "friendly_fire_on.png"
+            : "friendly_fire_off.png";
 
     [JsonIgnore]
     public bool IsDuplicatePlayerId
@@ -988,6 +1014,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
         string ipAddress,
         int teamId,
         int playerId,
+        bool friendlyFire,
         string state,
         int protocolVersion,
         int commandPort = 4211)
@@ -995,6 +1022,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
         IpAddress = ipAddress;
         TeamId = teamId;
         PlayerId = playerId;
+        FriendlyFire = friendlyFire;
         State = state;
         ProtocolVersion = protocolVersion;
         CommandPort = commandPort;

@@ -498,6 +498,16 @@ CombatLRNetwork::HandleSetFriendlyFire(
     bool friendlyFire =
         request["friendlyFire"].as<bool>();
 
+    if (!_config.SetFriendlyFire(friendlyFire))
+    {
+        SendAck(
+            sequence,
+            false,
+            "Failed to save friendly fire");
+
+        return nullptr;
+    }
+
     SendAck(
         sequence,
         true,
@@ -533,6 +543,9 @@ void CombatLRNetwork::SendDeviceResponse()
 
     response["playerId"] =
         _config.GetPlayerId();
+
+    response["friendlyFire"] =
+        _config.GetFriendlyFire();        
 
     response["tcpPort"] =
         TcpPort;
@@ -601,7 +614,7 @@ void CombatLRNetwork::SendTcpJson(
     serializeJson(response, json);
 
     _tcpClient.println(json);
-    _tcpClient.flush();
+    _tcpClient.clear();
 
     Serial.print("TCP RESPONSE: ");
     Serial.println(json);

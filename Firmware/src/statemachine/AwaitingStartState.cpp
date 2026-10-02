@@ -226,9 +226,7 @@ uint16_t AwaitingStartState::Run()
                 return SystemStates::GameInit;
             }           
         }
-
-
-       
+      
     }        
     return SystemStates::AwaitingStart;
 }
