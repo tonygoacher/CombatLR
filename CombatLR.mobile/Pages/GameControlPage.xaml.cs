@@ -18,6 +18,9 @@ public partial class GameControlPage : ContentPage
 
         _networkService.DevicesChanged +=
             NetworkService_DevicesChanged;
+
+        _networkService.StartGameAcknowledged +=
+            NetworkService_StartGameAcknowledged;
     }
 
     protected override async void OnAppearing()
@@ -29,6 +32,9 @@ public partial class GameControlPage : ContentPage
 
     protected override async void OnDisappearing()
     {
+        _networkService.StartGameAcknowledged -=
+            NetworkService_StartGameAcknowledged;
+
         await _networkService.StopDiscoveryAsync();
 
         base.OnDisappearing();
@@ -79,6 +85,23 @@ public partial class GameControlPage : ContentPage
     {
         MainThread.BeginInvokeOnMainThread(
             AddNewDevices);
+    }
+
+    private void NetworkService_StartGameAcknowledged(
+        object? sender,
+        CombatLRDevice device)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            var existing = _devices.FirstOrDefault(
+                d => d.DeviceId == device.DeviceId);
+
+            if (existing is not null)
+                _devices.Remove(existing);
+
+            UpdateDuplicatePlayerIds();
+            SetControlButtonsEnabled(_devices.Count > 0);
+        });
     }
 
     private void AddNewDevices()
