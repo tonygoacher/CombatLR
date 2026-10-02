@@ -37,6 +37,8 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
 
     public event EventHandler? DevicesChanged;
 
+    public event EventHandler<CombatLRDevice>? StartGameAcknowledged;
+
     public Task StartDiscoveryAsync()
     {
         if (_discoveryTask is not null)
@@ -270,6 +272,10 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         {
             return false;
         }
+
+        StartGameAcknowledged?.Invoke(
+            this,
+            device);
 
         return true;
     }
