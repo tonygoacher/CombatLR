@@ -3,6 +3,8 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <WiFiUdp.h>
+#include <WiFiServer.h>
+#include <WiFiClient.h>
 
 #include <memory>
 
@@ -12,7 +14,8 @@ enum class CombatLRNetworkEventType
 {
     TeamChanged,
     PlayerChanged,
-    StartGame
+    StartGame,
+    FriendlyFireChanged
 };
 
 class CombatLRNetworkEvent
@@ -103,6 +106,27 @@ private:
     String _gameStart;
 };
 
+
+class FriendlyFireChangedEvent : public CombatLRNetworkEvent
+{
+public:
+    explicit FriendlyFireChangedEvent(
+        bool friendlyFire)
+        : CombatLRNetworkEvent(
+              CombatLRNetworkEventType::FriendlyFireChanged),
+          _friendlyFire(friendlyFire)
+    {
+    }
+
+    bool GetFriendlyFire() const
+    {
+        return _friendlyFire;
+    }
+
+private:
+    bool _friendlyFire;
+};
+
 class CombatLRNetwork
 {
 public:
@@ -119,8 +143,10 @@ public:
 private:
     static constexpr uint8_t ProtocolVersion = 1;
     static constexpr uint8_t MaxTeamId = 3;
+    static constexpr uint16_t TcpPort = 4211;
 
     void HandlePacket();
+    void HandleTcpClient();
 
     std::unique_ptr<CombatLRNetworkEvent>
     HandleJson(
@@ -138,6 +164,10 @@ private:
     HandleStartGame(
         JsonDocument& request);
 
+    std::unique_ptr<CombatLRNetworkEvent>
+    HandleSetFriendlyFire(
+        JsonDocument& request);
+
     void HandleDiscovery(
         JsonDocument& request);
 
@@ -148,10 +178,15 @@ private:
         bool success,
         const char* message);
 
-    void SendJson(
+    void SendUdpJson(
+        JsonDocument& response);
+
+    void SendTcpJson(
         JsonDocument& response);
 
     WiFiUDP _udp;
+    WiFiServer _tcpServer{TcpPort};
+    WiFiClient _tcpClient;
     SystemConfig& _config;
 
     uint16_t _port = 4210;

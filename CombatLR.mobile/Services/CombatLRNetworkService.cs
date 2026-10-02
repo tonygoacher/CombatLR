@@ -14,15 +14,17 @@ namespace CombatLR.mobile.Services;
 public sealed class CombatLRNetworkService : IAsyncDisposable
 {
     public const int DiscoveryPort = 4210;
+    public const int CommandPort = 4211;
     public const int ProtocolVersion = 1;
     public const int MaxTeamId = 3;
     public const int MaxPlayerId = 127;
 
     private const int DiscoveryIntervalMilliseconds = 2000;
     private const int CommandTimeoutMilliseconds = 2000;
+    private const int CommandConnectRetries = 2;
+    private const int CommandRetryDelayMilliseconds = 100;
 
     private readonly ConcurrentDictionary<string, CombatLRDevice> _devices = new();
-    private readonly ConcurrentDictionary<int, TaskCompletionSource<CombatLRAck>> _pendingCommands = new();
 
     private UdpClient? _udp;
     private CancellationTokenSource? _cts;
@@ -61,11 +63,6 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         _udp?.Dispose();
         _udp = null;
 
-        foreach (var pending in _pendingCommands.Values)
-            pending.TrySetCanceled();
-
-        _pendingCommands.Clear();
-
         if (_discoveryTask is not null)
         {
             try
@@ -93,8 +90,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         CombatLRDevice device,
         int teamId)
     {
-        if (_udp is null ||
-            teamId < 0 ||
+        if (teamId < 0 ||
             teamId > MaxTeamId)
         {
             return false;
@@ -111,67 +107,28 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             TeamId = teamId
         };
 
-        string json =
-            JsonSerializer.Serialize(command);
+        CombatLRAck? ack =
+            await SendTcpCommandAsync(
+                device,
+                command);
 
-        var completion =
-            new TaskCompletionSource<CombatLRAck>(
-                TaskCreationOptions.RunContinuationsAsynchronously);
-
-        _pendingCommands[sequence] = completion;
-
-        try
+        if (ack is null ||
+            !ack.Success)
         {
-            byte[] data =
-                Encoding.UTF8.GetBytes(json);
-
-            var endpoint = new IPEndPoint(
-                IPAddress.Parse(device.IpAddress),
-                DiscoveryPort);
-
-            await _udp.SendAsync(
-                data,
-                data.Length,
-                endpoint);
-
-            using var timeout =
-                new CancellationTokenSource(
-                    CommandTimeoutMilliseconds);
-
-            CombatLRAck ack;
-
-            try
-            {
-                ack = await completion.Task.WaitAsync(
-                    timeout.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                return false;
-            }
-
-            if (!ack.Success)
-                return false;
-
-            device.TeamId = teamId;
-            device.LastSeen = DateTimeOffset.UtcNow;
-
-            return true;
+            return false;
         }
-        finally
-        {
-            _pendingCommands.TryRemove(
-                sequence,
-                out _);
-        }
+
+        device.TeamId = teamId;
+        device.LastSeen = DateTimeOffset.UtcNow;
+
+        return true;
     }
 
     public async Task<bool> SetPlayerIdAsync(
         CombatLRDevice device,
         int playerId)
     {
-        if (_udp is null ||
-            playerId < 0 ||
+        if (playerId < 0 ||
             playerId > MaxPlayerId)
         {
             return false;
@@ -188,59 +145,52 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             PlayerId = playerId
         };
 
-        string json =
-            JsonSerializer.Serialize(command);
+        CombatLRAck? ack =
+            await SendTcpCommandAsync(
+                device,
+                command);
 
-        var completion =
-            new TaskCompletionSource<CombatLRAck>(
-                TaskCreationOptions.RunContinuationsAsynchronously);
-
-        _pendingCommands[sequence] = completion;
-
-        try
+        if (ack is null ||
+            !ack.Success)
         {
-            byte[] data =
-                Encoding.UTF8.GetBytes(json);
-
-            var endpoint = new IPEndPoint(
-                IPAddress.Parse(device.IpAddress),
-                DiscoveryPort);
-
-            await _udp.SendAsync(
-                data,
-                data.Length,
-                endpoint);
-
-            using var timeout =
-                new CancellationTokenSource(
-                    CommandTimeoutMilliseconds);
-
-            CombatLRAck ack;
-
-            try
-            {
-                ack = await completion.Task.WaitAsync(
-                    timeout.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                return false;
-            }
-
-            if (!ack.Success)
-                return false;
-
-            device.PlayerId = playerId;
-            device.LastSeen = DateTimeOffset.UtcNow;
-
-            return true;
+            return false;
         }
-        finally
+
+        device.PlayerId = playerId;
+        device.LastSeen = DateTimeOffset.UtcNow;
+
+        return true;
+    }
+
+    public async Task<bool> SetFriendlyFireAsync(
+        CombatLRDevice device,
+        bool friendlyFire)
+    {
+        int sequence =
+            Interlocked.Increment(ref _nextSequence);
+
+        var command = new SetFriendlyFireCommand
         {
-            _pendingCommands.TryRemove(
-                sequence,
-                out _);
+            Type = "setFriendlyFire",
+            Version = ProtocolVersion,
+            Sequence = sequence,
+            FriendlyFire = friendlyFire
+        };
+
+        CombatLRAck? ack =
+            await SendTcpCommandAsync(
+                device,
+                command);
+
+        if (ack is null ||
+            !ack.Success)
+        {
+            return false;
         }
+
+        device.LastSeen = DateTimeOffset.UtcNow;
+
+        return true;
     }
 
     public async Task<StartGameResult> StartGameAsync()
@@ -300,9 +250,6 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         CombatLRDevice device,
         string gameStart)
     {
-        if (_udp is null)
-            return false;
-
         int sequence =
             Interlocked.Increment(ref _nextSequence);
 
@@ -314,58 +261,176 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             GameStart = gameStart
         };
 
-        string json =
-            JsonSerializer.Serialize(command);
+        CombatLRAck? ack =
+            await SendTcpCommandAsync(
+                device,
+                command);
 
-        var completion =
-            new TaskCompletionSource<CombatLRAck>(
-                TaskCreationOptions.RunContinuationsAsynchronously);
-
-        _pendingCommands[sequence] = completion;
-
-        try
+        if (ack is null ||
+            !ack.Success)
         {
-            byte[] data =
-                Encoding.UTF8.GetBytes(json);
+            return false;
+        }
 
-            var endpoint = new IPEndPoint(
-                IPAddress.Parse(device.IpAddress),
-                DiscoveryPort);
+        device.LastSeen = DateTimeOffset.UtcNow;
 
-            await _udp.SendAsync(
-                data,
-                data.Length,
-                endpoint);
+        return true;
+    }
 
-            using var timeout =
-                new CancellationTokenSource(
-                    CommandTimeoutMilliseconds);
+    private async Task<CombatLRAck?> SendTcpCommandAsync<TCommand>(
+        CombatLRDevice device,
+        TCommand command)
+    {
+        if (string.IsNullOrWhiteSpace(device.IpAddress))
+            return null;
 
-            CombatLRAck ack;
+        for (int attempt = 1;
+             attempt <= CommandConnectRetries;
+             attempt++)
+        {
+            bool connected = false;
 
             try
             {
-                ack = await completion.Task.WaitAsync(
-                    timeout.Token);
+                Console.WriteLine(
+                    $"CombatLR TCP: attempt {attempt}/{CommandConnectRetries} " +
+                    $"connecting to {device.DeviceId} " +
+                    $"at {device.IpAddress}:{device.CommandPort}");
+
+                using var client = new TcpClient();
+
+                using var connectTimeout =
+                    new CancellationTokenSource(
+                        CommandTimeoutMilliseconds);
+
+                await client.ConnectAsync(
+                    IPAddress.Parse(device.IpAddress),
+                    device.CommandPort,
+                    connectTimeout.Token);
+
+                connected = true;
+
+                Console.WriteLine(
+                    $"CombatLR TCP: connected to {device.DeviceId}");
+
+                // From this point onward the command may have reached
+                // the ESP32. Do not retry automatically, since doing so
+                // could execute a non-idempotent command twice.
+                using var stream = client.GetStream();
+
+                string json =
+                    JsonSerializer.Serialize(command);
+
+                byte[] data =
+                    Encoding.UTF8.GetBytes(
+                        json + "\n");
+
+                using var ioTimeout =
+                    new CancellationTokenSource(
+                        CommandTimeoutMilliseconds);
+
+                Console.WriteLine(
+                    $"CombatLR TCP: sending to {device.DeviceId}: {json}");
+
+                await stream.WriteAsync(
+                    data,
+                    ioTimeout.Token);
+
+                await stream.FlushAsync(
+                    ioTimeout.Token);
+
+                Console.WriteLine(
+                    $"CombatLR TCP: waiting for ACK from {device.DeviceId}");
+
+                using var reader =
+                    new StreamReader(
+                        stream,
+                        Encoding.UTF8,
+                        leaveOpen: true);
+
+                string? response =
+                    await reader.ReadLineAsync(
+                        ioTimeout.Token);
+
+                if (string.IsNullOrWhiteSpace(response))
+                {
+                    Console.WriteLine(
+                        $"CombatLR TCP: empty ACK from {device.DeviceId}");
+                    return null;
+                }
+
+                Console.WriteLine(
+                    $"CombatLR TCP: received from {device.DeviceId}: {response}");
+
+                var ack =
+                    JsonSerializer.Deserialize<CombatLRAckEnvelope>(
+                        response);
+
+                if (ack is null)
+                    return null;
+
+                return new CombatLRAck
+                {
+                    Sequence = ack.Sequence,
+                    Success = ack.Success,
+                    Message = ack.Message
+                };
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                return false;
+                if (!connected && attempt < CommandConnectRetries)
+                {
+                    Console.WriteLine(
+                        $"CombatLR TCP: connect timeout for " +
+                        $"{device.DeviceId}, retrying...");
+
+                    await Task.Delay(
+                        CommandRetryDelayMilliseconds);
+
+                    continue;
+                }
+
+                Console.WriteLine(
+                    $"CombatLR TCP: TIMEOUT/CANCEL for " +
+                    $"{device.DeviceId}: {ex.Message}");
+                return null;
             }
+            catch (SocketException ex)
+            {
+                if (!connected && attempt < CommandConnectRetries)
+                {
+                    Console.WriteLine(
+                        $"CombatLR TCP: socket error while connecting to " +
+                        $"{device.DeviceId}: {ex.SocketErrorCode}; retrying...");
 
-            if (!ack.Success)
-                return false;
+                    await Task.Delay(
+                        CommandRetryDelayMilliseconds);
 
-            device.LastSeen = DateTimeOffset.UtcNow;
+                    continue;
+                }
 
-            return true;
+                Console.WriteLine(
+                    $"CombatLR TCP: SOCKET ERROR for {device.DeviceId}: " +
+                    $"{ex.SocketErrorCode} ({ex.Message})");
+                return null;
+            }
+            catch (FormatException ex)
+            {
+                Console.WriteLine(
+                    $"CombatLR TCP: BAD IP/FORMAT for " +
+                    $"{device.DeviceId}: {ex.Message}");
+                return null;
+            }
+            catch (JsonException ex)
+            {
+                Console.WriteLine(
+                    $"CombatLR TCP: BAD ACK JSON from " +
+                    $"{device.DeviceId}: {ex.Message}");
+                return null;
+            }
         }
-        finally
-        {
-            _pendingCommands.TryRemove(
-                sequence,
-                out _);
-        }
+
+        return null;
     }
 
     private async Task DiscoveryLoopAsync(
@@ -553,10 +618,6 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 return;
             }
 
-            if (type == "ack")
-            {
-                ProcessAck(root);
-            }
         }
         catch (JsonException)
         {
@@ -620,6 +681,19 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 ? stateProperty.GetString() ?? ""
                 : "";
 
+        int commandPort =
+            root.TryGetProperty(
+                "tcpPort",
+                out var tcpPortProperty)
+                ? tcpPortProperty.GetInt32()
+                : CommandPort;
+
+        if (commandPort <= 0 ||
+            commandPort > 65535)
+        {
+            commandPort = CommandPort;
+        }
+
         if (_devices.TryGetValue(
                 deviceId,
                 out var existing))
@@ -643,6 +717,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             PlayerId = playerId,
             State = state,
             ProtocolVersion = version,
+            CommandPort = commandPort,
             LastSeen = DateTimeOffset.UtcNow
         };
 
@@ -653,43 +728,6 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             DevicesChanged?.Invoke(
                 this,
                 EventArgs.Empty);
-        }
-    }
-
-    private void ProcessAck(
-        JsonElement root)
-    {
-        int sequence =
-            root.TryGetProperty(
-                "sequence",
-                out var sequenceProperty)
-                ? sequenceProperty.GetInt32()
-                : 0;
-
-        bool success =
-            root.TryGetProperty(
-                "success",
-                out var successProperty) &&
-            successProperty.GetBoolean();
-
-        string message =
-            root.TryGetProperty(
-                "message",
-                out var messageProperty)
-                ? messageProperty.GetString() ?? ""
-                : "";
-
-        if (_pendingCommands.TryGetValue(
-                sequence,
-                out var completion))
-        {
-            completion.TrySetResult(
-                new CombatLRAck
-                {
-                    Sequence = sequence,
-                    Success = success,
-                    Message = message
-                });
         }
     }
 
@@ -736,6 +774,39 @@ public sealed class SetPlayerCommand
 
     [JsonPropertyName("playerId")]
     public int PlayerId { get; init; }
+}
+
+public sealed class SetFriendlyFireCommand
+{
+    [JsonPropertyName("type")]
+    public string Type { get; init; } = "";
+
+    [JsonPropertyName("version")]
+    public int Version { get; init; }
+
+    [JsonPropertyName("sequence")]
+    public int Sequence { get; init; }
+
+    [JsonPropertyName("friendlyFire")]
+    public bool FriendlyFire { get; init; }
+}
+
+internal sealed class CombatLRAckEnvelope
+{
+    [JsonPropertyName("type")]
+    public string Type { get; init; } = "";
+
+    [JsonPropertyName("version")]
+    public int Version { get; init; }
+
+    [JsonPropertyName("sequence")]
+    public int Sequence { get; init; }
+
+    [JsonPropertyName("success")]
+    public bool Success { get; init; }
+
+    [JsonPropertyName("message")]
+    public string Message { get; init; } = "";
 }
 
 public sealed class StartGameCommand
@@ -789,6 +860,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     private bool _isDuplicatePlayerId;
     private string _state = "";
     private int _protocolVersion;
+    private int _commandPort = 4211;
     private DateTimeOffset _lastSeen;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -877,6 +949,13 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     }
 
     [JsonIgnore]
+    public int CommandPort
+    {
+        get => _commandPort;
+        set => SetField(ref _commandPort, value);
+    }
+
+    [JsonIgnore]
     public DateTimeOffset LastSeen
     {
         get => _lastSeen;
@@ -910,13 +989,15 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
         int teamId,
         int playerId,
         string state,
-        int protocolVersion)
+        int protocolVersion,
+        int commandPort = 4211)
     {
         IpAddress = ipAddress;
         TeamId = teamId;
         PlayerId = playerId;
         State = state;
         ProtocolVersion = protocolVersion;
+        CommandPort = commandPort;
         LastSeen = DateTimeOffset.UtcNow;
     }
 
