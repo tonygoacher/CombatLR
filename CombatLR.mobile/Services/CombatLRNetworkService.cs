@@ -20,6 +20,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
     public const int MaxPlayerId = 127;
 
     private const int DiscoveryIntervalMilliseconds = 2000;
+    private const int DiscoveryMissLimit = 5;
     private const int CommandTimeoutMilliseconds = 2000;
     private const int CommandConnectRetries = 2;
     private const int CommandRetryDelayMilliseconds = 100;
@@ -119,7 +120,6 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         }
 
         device.TeamId = teamId;
-        device.LastSeen = DateTimeOffset.UtcNow;
 
         return true;
     }
@@ -157,7 +157,6 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         }
 
         device.PlayerId = playerId;
-        device.LastSeen = DateTimeOffset.UtcNow;
 
         return true;
     }
@@ -189,7 +188,6 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         }
 
         device.FriendlyFire = friendlyFire;
-        device.LastSeen = DateTimeOffset.UtcNow;
 
         return true;
     }
@@ -272,8 +270,6 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         {
             return false;
         }
-
-        device.LastSeen = DateTimeOffset.UtcNow;
 
         return true;
     }
@@ -449,6 +445,8 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 await Task.Delay(
                     DiscoveryIntervalMilliseconds,
                     cancellationToken);
+
+                CheckOfflineDevices();
             }
         }
         catch (OperationCanceledException)
@@ -711,7 +709,11 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 playerId,
                 friendlyFire,
                 state,
-                version);
+                version,
+                commandPort);
+
+            existing.LastSeen = DateTimeOffset.UtcNow;
+            existing.IsOnline = true;
 
             DevicesChanged?.Invoke(this, EventArgs.Empty);
             return;
@@ -727,7 +729,8 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             State = state,
             ProtocolVersion = version,
             CommandPort = commandPort,
-            LastSeen = DateTimeOffset.UtcNow
+            LastSeen = DateTimeOffset.UtcNow,
+            IsOnline = true
         };
 
         if (_devices.TryAdd(
@@ -737,6 +740,22 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             DevicesChanged?.Invoke(
                 this,
                 EventArgs.Empty);
+        }
+    }
+
+    private void CheckOfflineDevices()
+    {
+        DateTimeOffset cutoff =
+            DateTimeOffset.UtcNow.AddMilliseconds(
+                -(DiscoveryIntervalMilliseconds * DiscoveryMissLimit));
+
+        foreach (var device in _devices.Values)
+        {
+            if (device.IsOnline &&
+                device.LastSeen <= cutoff)
+            {
+                device.IsOnline = false;
+            }
         }
     }
 
@@ -872,6 +891,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     private int _protocolVersion;
     private int _commandPort = 4211;
     private DateTimeOffset _lastSeen;
+    private bool _isOnline = true;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -971,7 +991,11 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     public string State
     {
         get => _state;
-        set => SetField(ref _state, value);
+        set
+        {
+            if (SetField(ref _state, value))
+                OnPropertyChanged(nameof(DisplayState));
+        }
     }
 
     [JsonIgnore]
@@ -989,8 +1013,39 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     }
 
     [JsonIgnore]
+    public bool IsOnline
+    {
+        get => _isOnline;
+        set
+        {
+            if (SetField(ref _isOnline, value))
+            {
+                OnPropertyChanged(nameof(TeamBackgroundColor));
+                OnPropertyChanged(nameof(TeamTextColor));
+                OnPropertyChanged(nameof(FriendlyFireButtonEnabled));
+                OnPropertyChanged(nameof(FriendlyFireButtonOpacity));
+                OnPropertyChanged(nameof(DisplayState));
+            }
+        }
+    }
+
+    [JsonIgnore]
+    public bool FriendlyFireButtonEnabled =>
+        IsOnline;
+
+    [JsonIgnore]
+    public double FriendlyFireButtonOpacity =>
+        IsOnline ? 1.0 : 0.35;
+
+    [JsonIgnore]
+    public string DisplayState =>
+        IsOnline ? State : "OFFLINE";
+
+    [JsonIgnore]
     public Color TeamBackgroundColor =>
-        TeamId switch
+        !IsOnline
+            ? Color.FromArgb("#E0E0E0")
+            : TeamId switch
         {
             0 => Color.FromArgb("#FFCDD2"), // Red
             1 => Color.FromArgb("#BBDEFB"), // Blue
@@ -1001,7 +1056,9 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
 
     [JsonIgnore]
     public Color TeamTextColor =>
-        TeamId switch
+        !IsOnline
+            ? Color.FromArgb("#777777")
+            : TeamId switch
         {
             0 => Color.FromArgb("#8B0000"), // Red
             1 => Color.FromArgb("#003C8F"), // Blue

@@ -137,6 +137,9 @@ public partial class GameControlPage : ContentPage
             return;
         }
 
+        if (!device.IsOnline)
+            return;
+
         bool newState = !device.FriendlyFire;
 
         // Prevent double taps while the command is in flight.
