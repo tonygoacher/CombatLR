@@ -18,7 +18,7 @@
             Margin="0,30,0,0">
 
             <Label
-                Text="COMBATLR"
+                Text="CombatLR"
                 TextColor="White"
                 FontSize="36"
                 FontAttributes="Bold"
