@@ -3,9 +3,18 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 
-namespace
+namespace SystemConsts
 {
     constexpr uint8_t MaxTeamId = 3;
+    const char * const friendlyFire = "friendlyFire";
+    const char * const playerId =  "playerId";
+    const char * const teamId = "teamId";
+    const char * const wifiSSID = "wifiSSID";
+    const char * const wifiPass = "wifiPass";
+    const char * const ftpUser = "ftpUser";
+    const char * const ftpPass = "ftpPass";
+
+    
 }
 
 bool SystemConfig::Begin()
@@ -55,10 +64,10 @@ bool SystemConfig::Load()
         return false;
     }
 
-    int teamId = document["teamId"] | 0;
-    int playerId = document["playerId"] | 0;
+    int teamId = document[SystemConsts::teamId] | 0;
+    int playerId = document[SystemConsts::playerId] | 0;
 
-    if (teamId < 0 || teamId > MaxTeamId)
+    if (teamId < 0 || teamId > SystemConsts::MaxTeamId)
         return false;
 
     if (playerId < 0 || playerId > 255)
@@ -66,7 +75,14 @@ bool SystemConfig::Load()
 
     _teamId = static_cast<uint8_t>(teamId);
     _playerId = static_cast<uint8_t>(playerId);
-    _friendlyFire = document["friendlyFire"] | false;
+    _friendlyFire = document[SystemConsts::friendlyFire] | false;
+
+    _wifiSSID = static_cast<String>(document[SystemConsts::wifiSSID]);
+    _wifiPass = static_cast<String>(document[SystemConsts::wifiPass]);    
+
+    _ftpUser = static_cast<String>(document[SystemConsts::ftpUser]);
+    _ftpPass = static_cast<String>(document[SystemConsts::ftpPass]);    
+
 
     Serial.print("SystemConfig: Team ID = ");
     Serial.println(_teamId);
@@ -89,10 +105,17 @@ bool SystemConfig::Save() const
 
     JsonDocument document;
 
-    document["teamId"] = _teamId;
-    document["playerId"] = _playerId;
-    document["friendlyFire"] = _friendlyFire;
+    document[SystemConsts::teamId] = _teamId;
+    document[SystemConsts::playerId] = _playerId;
+    document[SystemConsts::friendlyFire] = _friendlyFire;
+    document[SystemConfig::_wifiSSID] = _wifiSSID.c_str();
+    document[SystemConfig::_wifiPass] = _wifiPass.c_str();
+    document[SystemConfig::_ftpUser] = _ftpUser;
+    document[SystemConfig::_ftpPass] = _ftpPass;
 
+
+    Serial.printf("WifiSSID %s\n", _wifiSSID);
+    Serial.printf("WifiPass %s\n", _wifiPass);
     if (serializeJson(document, file) == 0)
     {
         file.close();
@@ -118,7 +141,7 @@ uint8_t SystemConfig::GetTeamId() const
 
 bool SystemConfig::SetTeamId(uint8_t teamId)
 {
-    if (teamId > MaxTeamId)
+    if (teamId > SystemConsts::MaxTeamId)
         return false;
 
     if (teamId == _teamId)
