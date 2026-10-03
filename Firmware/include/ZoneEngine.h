@@ -55,7 +55,10 @@ public:
         IZoneEvent* listener);
 
    
-    void RemoveObjectsInCurrentZone();        
+    void RemoveObjectsInCurrentZone();     
+    
+    void EnableCallbacks(bool enableCallbacks);
+
 private:
     static const int UpdateRate = 1000;
     static constexpr uint32_t ZoneTransitionUpdateMs = 100;
@@ -93,6 +96,8 @@ private:
     uint32_t _transitionDurationMillis = 0;
 
     uint8_t _redshift = RedshiftMin;
+
+    bool _callbacksEnabled;
 
     void UpdateZones(
         uint32_t gameTimeSeconds);

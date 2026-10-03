@@ -5,6 +5,7 @@
 #include "stdint.h"
 #include "CombatLRNetwork.h"
 #include "TeamIDs.h"
+#include "Pacer.h"
 
 
 class DisplayManager;
@@ -26,6 +27,8 @@ private:
     CombatLRServices& _services;
     CombatLRNetwork _network;
     bool _connectionShown;
+    bool _networkShudown;
+    Pacer _exitPacer;
 
 
     static const int TextX = 160;

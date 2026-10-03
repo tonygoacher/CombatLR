@@ -11,7 +11,7 @@
       "northMetres": 34.9897227514712,
       "radiusMetres": 100,
       "startTime": 0,
-      "lifespanSeconds": 0,
+      "lifespanSeconds": 120,
       "pickups": [
         {
           "eastMetres": 101.73478659320928,
@@ -195,8 +195,8 @@
       "eastMetres": 63.05479562759181,
       "northMetres": 3.208633254330563,
       "radiusMetres": 65,
-      "startTime": 0,
-      "lifespanSeconds": 0,
+      "startTime": 100,
+      "lifespanSeconds": 120,
       "pickups": [
         {
           "eastMetres": 102.44928700677033,
@@ -300,8 +300,8 @@
       "eastMetres": 54.02604103441673,
       "northMetres": -27.831562007305447,
       "radiusMetres": 30,
-      "startTime": 0,
-      "lifespanSeconds": 0,
+      "startTime": 200,
+      "lifespanSeconds": 9999999,
       "pickups": [
         {
           "eastMetres": 62.594156992743535,

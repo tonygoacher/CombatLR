@@ -77,8 +77,12 @@ AwaitingStartState::AwaitingStartState(
     CombatLRServices& services)
     : _services(services),
       _connectionShown(false),
-      _network(services.systemConfig)
+      _network(services.systemConfig),
+     _exitPacer(false),
+     _networkShudown(false)
+
 {
+    _exitPacer.SetPace(1000);   // USed to prevent early shutdown of wifi before ACK has been sent
 }
 
 // -----------------------------------------------------------------------------
@@ -150,7 +154,8 @@ void AwaitingStartState::Exit()
     removeIcon = new RemoveWidgetCommand(UIWidgetIds::MACAddress);
 
     _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));  
-
+    
+ 
     _network.Stop();
 
     WiFi.disconnect(
@@ -170,6 +175,19 @@ uint16_t AwaitingStartState::Run()
     {
         return SystemStates::AwaitingStart;
     }
+
+    if(_networkShudown)
+    {
+
+        if(_exitPacer.Pace())
+        {
+            Serial.println("Closing");
+            return SystemStates::GameInit;   
+        }
+        Serial.println("Awaiting network clear");
+        return SystemStates::AwaitingStart;   
+    }
+    
 
     if (!_connectionShown)
     {
@@ -223,7 +241,8 @@ uint16_t AwaitingStartState::Run()
 
             if(_services.systemTime.Reset(startCommand->GetGameStart().c_str()))
             {
-                return SystemStates::GameInit;
+                _networkShudown = true;
+                _exitPacer.PacerReset();
             }           
         }
       

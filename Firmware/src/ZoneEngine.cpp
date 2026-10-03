@@ -24,7 +24,8 @@ ZoneEngine::ZoneEngine(
     _pacer(true),
     _gamePlan(gamePlan),
     _displayManager(displayManager),
-    _transitionPacer(true)
+    _transitionPacer(true),
+    _callbacksEnabled(true)
 {
     _pacer.SetPace(UpdateRate);
     _transitionPacer.SetPace(
@@ -1277,31 +1278,37 @@ void ZoneEngine::RemoveZoneEventListener(
 void ZoneEngine::NotifyPickupActivated(
     uint32_t pickupId)
 {
-    Serial.println("Pickup activated event");
-    for (IPickupEvent* listener :
-         _pickupEventListeners)
+    if(_callbacksEnabled)
     {
-        if (listener != nullptr)
+        Serial.println("Pickup activated event");
+        for (IPickupEvent* listener :
+            _pickupEventListeners)
         {
-            listener->PickupActivated(
-                pickupId);
+            if (listener != nullptr)
+            {
+                listener->PickupActivated(
+                    pickupId);
+            }
         }
-    }
+    }        
 }
 
 void ZoneEngine::NotifyPickupDeactivated(
     uint32_t pickupId)
 {
-    Serial.println("Pickup deactivated event");
-    for (IPickupEvent* listener :
-         _pickupEventListeners)
+    if(_callbacksEnabled)
     {
-        if (listener != nullptr)
+        Serial.println("Pickup deactivated event");
+        for (IPickupEvent* listener :
+            _pickupEventListeners)
         {
-            listener->PickupDeactivated(
-                pickupId);
+            if (listener != nullptr)
+            {
+                listener->PickupDeactivated(
+                    pickupId);
+            }
         }
-    }
+    }        
 }
 
 void ZoneEngine::NotifyZoneMoveImminent(
@@ -1309,66 +1316,75 @@ void ZoneEngine::NotifyZoneMoveImminent(
     int zoneIndex,
     uint32_t timeToActivation)
 {
-    Serial.println("Zone imminent");
-    const GameCoordinate position(
-        zone.eastMetres,
-        zone.northMetres);
-
-    for (IZoneEvent* listener :
-         _zoneEventListeners)
+    if(_callbacksEnabled)
     {
-        if (listener != nullptr)
+        Serial.println("Zone imminent");
+        const GameCoordinate position(
+            zone.eastMetres,
+            zone.northMetres);
+
+        for (IZoneEvent* listener :
+            _zoneEventListeners)
         {
-            listener->ZoneMoveImminent(
-                position,
-                zoneIndex,
-                timeToActivation);
+            if (listener != nullptr)
+            {
+                listener->ZoneMoveImminent(
+                    position,
+                    zoneIndex,
+                    timeToActivation);
+            }
         }
-    }
+    }        
 }
 
 void ZoneEngine::NotifyZoneStartedMoving(
     const Zone& zone,
     int zoneIndex)
 {
-    Serial.println("Zone started moving");
-
-    const GameCoordinate position(
-        zone.eastMetres,
-        zone.northMetres);
-
-    for (IZoneEvent* listener :
-         _zoneEventListeners)
+    if(_callbacksEnabled)
     {
-        if (listener != nullptr)
+        Serial.println("Zone started moving");
+
+        const GameCoordinate position(
+            zone.eastMetres,
+            zone.northMetres);
+
+        for (IZoneEvent* listener :
+            _zoneEventListeners)
         {
-            listener->ZoneStartedMoving(
-                position,
-                zoneIndex);
+            if (listener != nullptr)
+            {
+                listener->ZoneStartedMoving(
+                    position,
+                    zoneIndex);
+            }
         }
-    }
+    }        
 }
 
 void ZoneEngine::NotifyNewZoneActive(
     const Zone& zone,
     int zoneIndex)
 {
-    Serial.println("New zone active");
-
-    const GameCoordinate position(
-        zone.eastMetres,
-        zone.northMetres);
-
-    for (IZoneEvent* listener :
-         _zoneEventListeners)
+    if(_callbacksEnabled)
     {
-        if (listener != nullptr)
+        Serial.println("New zone active");
+
+        const GameCoordinate position(
+            zone.eastMetres,
+            zone.northMetres);
+
+        for (IZoneEvent* listener :
+            _zoneEventListeners)
         {
-            listener->NewZoneActive(
-                position,
-                zoneIndex);
+            if (listener != nullptr)
+            {
+                listener->NewZoneActive(
+                    position,
+                    zoneIndex);
+            }
         }
-    }
+    }        
 }
 
 void ZoneEngine::Reset()
@@ -1435,4 +1451,11 @@ bool ZoneEngine::InZone(
     return (east * east +
             north * north) <=
         radius * radius;
+}
+
+
+
+void ZoneEngine::EnableCallbacks(bool enableCallbacks)
+{
+    _callbacksEnabled = enableCallbacks;
 }
