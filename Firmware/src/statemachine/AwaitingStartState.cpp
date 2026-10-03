@@ -1,6 +1,7 @@
 #include "WiFi.h"
 #include "WiFiUdp.h"
 #include <ArduinoJson.h>
+#include <LittleFS.h>
 
 #include "ISounds.h"
 #include "statemachine/SystemStates.h"
@@ -18,6 +19,8 @@
 #include "TeamIDs.h"
 #include "widgets/TextWidget.h"
 #include "SystemTime.h"
+#include <SimpleFTPServer.h>
+
 
 
 
@@ -79,8 +82,9 @@ AwaitingStartState::AwaitingStartState(
       _connectionShown(false),
       _network(services.systemConfig),
      _exitPacer(false),
-     _networkShudown(false)
-
+     _networkShudown(false),
+     _ftpInitDone(false),
+     _ftpServer(nullptr)
 {
     _exitPacer.SetPace(1000);   // USed to prevent early shutdown of wifi before ACK has been sent
 }
@@ -107,15 +111,24 @@ void AwaitingStartState::Entry()
 
     TeamIds team = static_cast<TeamIds>(_services.systemConfig.GetTeamId());
 
-    TextureWidget* textureWidget  = new TextureWidget(UIWidgetIds::TeamID,
-         _services.displayManager.GetTextureManager(),posTeam,GetTeamFile(team));
+    TextureWidget* textureWidget = nullptr;
+    if(!FtpMode())
+    {
+        textureWidget  = new TextureWidget(UIWidgetIds::TeamID,
+            _services.displayManager.GetTextureManager(),posTeam,GetTeamFile(team));
+    }
+    else            
+    {
+        textureWidget  = new TextureWidget(UIWidgetIds::TeamID,
+            _services.displayManager.GetTextureManager(),posTeam,"/ftp.bmp");  
+    }
 
    _services.displayManager.Send(std::make_unique<AddWidgetCommand>(textureWidget));      
    
    
     WidgetPosition textPos={TextX,TextY};
 
-    TextWidget*  textWidget  = new TextWidget(UIWidgetIds::MACAddress, WiFi.macAddress().c_str(), textPos,TextFont,MC_DATUM, TFT_WHITE, TFT_BLACK, TextZoom);
+    TextWidget*  textWidget  = new TextWidget(UIWidgetIds::IPAddress, WiFi.macAddress().c_str(), textPos,TextFont,MC_DATUM, TFT_WHITE, TFT_BLACK, TextZoom);
     
     _services.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
@@ -126,8 +139,8 @@ void AwaitingStartState::Entry()
         WIFI_STA);
 
     WiFi.begin(
-        "TGTABLET",
-        "OiTheGah");
+        _services.systemConfig.GetWifiSSID().c_str(),
+        _services.systemConfig.GetWifiPass().c_str());
 
     Serial.println(
         "Connecting to Wi-Fi");
@@ -151,7 +164,7 @@ void AwaitingStartState::Exit()
 
     _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));  
 
-    removeIcon = new RemoveWidgetCommand(UIWidgetIds::MACAddress);
+    removeIcon = new RemoveWidgetCommand(UIWidgetIds::IPAddress);
 
     _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));  
     
@@ -173,21 +186,13 @@ uint16_t AwaitingStartState::Run()
 {
     if (WiFi.status() != WL_CONNECTED)
     {
-        return SystemStates::AwaitingStart;
+        return FtpMode() ? SystemStates::Ftp : SystemStates::AwaitingStart;
     }
 
-    if(_networkShudown)
-    {
 
-        if(_exitPacer.Pace())
-        {
-            Serial.println("Closing");
-            return SystemStates::GameInit;   
-        }
-        Serial.println("Awaiting network clear");
-        return SystemStates::AwaitingStart;   
-    }
-    
+
+
+
 
     if (!_connectionShown)
     {
@@ -205,8 +210,12 @@ uint16_t AwaitingStartState::Run()
         Serial.println(
             WiFi.macAddress());
 
+
         _services.displayManager.Send(
-            std::make_unique<SetTextCommand>(UIWidgetIds::MACAddress, WiFi.macAddress().c_str()));
+            std::make_unique<SetTextCommand>(UIWidgetIds::IPAddress, WiFi.localIP().toString().c_str()));
+
+
+
         
 
         _network.Begin();
@@ -214,6 +223,36 @@ uint16_t AwaitingStartState::Run()
         _connectionShown =
             true;
     }
+
+       
+    if(FtpMode())
+    {
+        if(!_ftpInitDone)
+        {
+            StartFTP();
+        }
+        else
+        {
+            RunFTP();
+        }
+        return SystemStates::Ftp;
+    }
+    
+    
+    if(_networkShudown)
+    {
+
+        if(_exitPacer.Pace())
+        {
+            Serial.println("Closing");
+            return SystemStates::GameInit;   
+        }
+        Serial.println("Awaiting network clear");
+        return SystemStates::AwaitingStart;   
+    }
+    
+
+
 
     /*
      * UDP command handling is deliberately pumped from the
@@ -248,4 +287,34 @@ uint16_t AwaitingStartState::Run()
       
     }        
     return SystemStates::AwaitingStart;
+}
+
+
+
+void AwaitingStartState::RunFTP()
+{
+    if(_ftpServer != nullptr)
+    {
+        _ftpServer->handleFTP();
+    }
+}
+
+
+
+
+void AwaitingStartState::StartFTP()
+{
+    if(_ftpServer == nullptr)
+    {
+        Serial.println("Starting FTP server");
+        _ftpServer = new FtpServer();
+        _ftpServer->begin("combatlr", "password");
+        _ftpInitDone = true;
+    }
+}
+
+
+bool AwaitingStartState::FtpMode()
+{
+    return false;
 }

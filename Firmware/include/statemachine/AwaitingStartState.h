@@ -6,6 +6,7 @@
 #include "CombatLRNetwork.h"
 #include "TeamIDs.h"
 #include "Pacer.h"
+#include <SimpleFTPServer.h>
 
 
 class DisplayManager;
@@ -21,13 +22,21 @@ public:
     uint16_t Run() override;
     void Entry() override;
     void Exit() override;
+protected:
+    virtual bool  FtpMode();
 
-private:    
+private:  
+  
+    void RunFTP();
+    void StartFTP();
     const char * const GetTeamFile(TeamIds teamId);
     CombatLRServices& _services;
     CombatLRNetwork _network;
+    FtpServer *  _ftpServer;
     bool _connectionShown;
     bool _networkShudown;
+
+    bool _ftpInitDone;
     Pacer _exitPacer;
 
 
@@ -36,3 +45,4 @@ private:
     static const int TextZoom = 2;
     static const int TextFont = 2;  
 };
+

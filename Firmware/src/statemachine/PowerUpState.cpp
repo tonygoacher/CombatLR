@@ -8,24 +8,32 @@
 #include "graphics/AddWidgetCommand.h"
 #include "widgets/GPSStatusWidget.h"
 #include "widgets/UIWidgetIds.h"
+#include "PBSwitch.h"
 
 
-PowerUpState::PowerUpState(DisplayManager& displayManager, INavigation& navigation)
-: _display(displayManager),
- _navigation(navigation), _pacer(true)
+PowerUpState::PowerUpState(CombatLRServices& services)
+: _services(services),
+_pacer(true)
 {  
-
+    _pacer.SetPace(2000);
 }
 
 uint16_t PowerUpState::Run()
 {
-    _navigation.Update();
+    _services.navigation.Update();
     if(_pacer.Pace())
     {
-        Serial.println("Exiting PowerUpState::Run()");
-        return SystemStates::GameInit;
+        Serial.printf("T:%d R:%d\n", _services.triggerSwitch.RawRead(), _services.reloadSwitch.RawRead());
+        if(_services.triggerSwitch.RawRead() && _services.reloadSwitch.RawRead())
+        {
+            return SystemStates::Ftp;
+        }
+        else
+        {
+            return SystemStates::GPSLock;
+        }
     }
-    return SystemStates::GPSLock;
+    return SystemStates::PowerUp;
 }
 
 void PowerUpState::Entry()
@@ -33,7 +41,7 @@ void PowerUpState::Entry()
     _pacer.SetPace(2000);
 
 
-    _display.Send(
+    _services.displayManager.Send(
     std::unique_ptr<IDisplayCommand>(
         new DisplayBackgroundCommand(
             "/logo.bmp")));
@@ -41,11 +49,11 @@ void PowerUpState::Entry()
     WidgetPosition p(0,0);
 
     GPSStatusWidget* statusWidget = new GPSStatusWidget(UIWidgetIds::GPStatus,
-         _display.GetTextureManager(),p, _navigation);
+         _services.displayManager.GetTextureManager(),p, _services.navigation);
     AddWidgetCommand* command =
     new AddWidgetCommand(statusWidget);
 
-    _display.Send(std::unique_ptr<IDisplayCommand>(command));
+    _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(command));
 
 }
 void PowerUpState::Exit()

@@ -4,6 +4,7 @@
 #include "State.h"
 #include "stdint.h"
 #include "Pacer.h"
+#include "Services.h"   
 
 
 class DisplayManager;
@@ -14,13 +15,12 @@ class PowerUpState : public State
 {
 public:
        
-    PowerUpState(DisplayManager& displayManager, INavigation& navigation);
+    PowerUpState(CombatLRServices& services);
     uint16_t Run() override;
     void Entry() override;
     void Exit() override;
 
 private:    
-    INavigation& _navigation;
-    DisplayManager& _display;
+    CombatLRServices& _services;
     Pacer _pacer;
 };

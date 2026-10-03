@@ -10,4 +10,5 @@ enum SystemStates
     GameInit,       // Time t to get in position around the map
     GameRunning,
     Dead,
+    Ftp
 };
