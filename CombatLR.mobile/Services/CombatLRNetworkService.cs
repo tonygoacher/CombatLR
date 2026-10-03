@@ -14,7 +14,6 @@ namespace CombatLR.mobile.Services;
 public sealed class CombatLRNetworkService : IAsyncDisposable
 {
     public const int DiscoveryPort = 4210;
-    public const int CommandPort = 4211;
     public const int ProtocolVersion = 1;
     public const int MaxTeamId = 3;
     public const int MaxPlayerId = 127;
@@ -194,32 +193,37 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         return true;
     }
 
-    public async Task<StartGameResult> StartGameAsync()
+    public Task<StartGameResult> StartGameAsync()
     {
-        if (_udp is null)
-        {
-            return new StartGameResult(
-                "",
-                Array.Empty<CombatLRDevice>(),
-                _devices.Values.ToArray());
-        }
-
-        var devices = _devices.Values.ToArray();
-
-        if (devices.Length == 0)
-        {
-            return new StartGameResult(
-                "",
-                Array.Empty<CombatLRDevice>(),
-                Array.Empty<CombatLRDevice>());
-        }
-
-        // Capture the mobile device time once. Every ESP32 receives
-        // exactly the same game start time.
         string gameStart =
             DateTime.UtcNow.ToString(
                 "HH:mm:ss",
                 CultureInfo.InvariantCulture);
+
+        return StartGameAsync(
+            gameStart,
+            _devices.Values.ToArray());
+    }
+
+    public async Task<StartGameResult> StartGameAsync(
+        string gameStart,
+        IReadOnlyCollection<CombatLRDevice> devices)
+    {
+        if (_udp is null)
+        {
+            return new StartGameResult(
+                gameStart,
+                Array.Empty<CombatLRDevice>(),
+                devices.ToArray());
+        }
+
+        if (devices.Count == 0)
+        {
+            return new StartGameResult(
+                gameStart,
+                Array.Empty<CombatLRDevice>(),
+                Array.Empty<CombatLRDevice>());
+        }
 
         var results = await Task.WhenAll(
             devices.Select(async device =>
@@ -298,7 +302,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 Console.WriteLine(
                     $"CombatLR TCP: attempt {attempt}/{CommandConnectRetries} " +
                     $"connecting to {device.DeviceId} " +
-                    $"at {device.IpAddress}:{device.CommandPort}");
+                    $"at {device.IpAddress}:4211");
 
                 using var client = new TcpClient();
 
@@ -308,7 +312,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
 
                 await client.ConnectAsync(
                     IPAddress.Parse(device.IpAddress),
-                    device.CommandPort,
+                    4211,
                     connectTimeout.Token);
 
                 connected = true;
@@ -692,19 +696,6 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 ? stateProperty.GetString() ?? ""
                 : "";
 
-        int commandPort =
-            root.TryGetProperty(
-                "tcpPort",
-                out var tcpPortProperty)
-                ? tcpPortProperty.GetInt32()
-                : CommandPort;
-
-        if (commandPort <= 0 ||
-            commandPort > 65535)
-        {
-            commandPort = CommandPort;
-        }
-
         if (_devices.TryGetValue(
                 deviceId,
                 out var existing))
@@ -715,8 +706,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 playerId,
                 friendlyFire,
                 state,
-                version,
-                commandPort);
+                version);
 
             existing.LastSeen = DateTimeOffset.UtcNow;
             existing.IsOnline = true;
@@ -734,7 +724,6 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             FriendlyFire = friendlyFire,
             State = state,
             ProtocolVersion = version,
-            CommandPort = commandPort,
             LastSeen = DateTimeOffset.UtcNow,
             IsOnline = true
         };
@@ -895,7 +884,6 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     private bool _isDuplicatePlayerId;
     private string _state = "";
     private int _protocolVersion;
-    private int _commandPort = 4211;
     private DateTimeOffset _lastSeen;
     private bool _isOnline = true;
 
@@ -1005,13 +993,6 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     }
 
     [JsonIgnore]
-    public int CommandPort
-    {
-        get => _commandPort;
-        set => SetField(ref _commandPort, value);
-    }
-
-    [JsonIgnore]
     public DateTimeOffset LastSeen
     {
         get => _lastSeen;
@@ -1079,8 +1060,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
         int playerId,
         bool friendlyFire,
         string state,
-        int protocolVersion,
-        int commandPort = 4211)
+        int protocolVersion)
     {
         IpAddress = ipAddress;
         TeamId = teamId;
@@ -1088,7 +1068,6 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
         FriendlyFire = friendlyFire;
         State = state;
         ProtocolVersion = protocolVersion;
-        CommandPort = commandPort;
         LastSeen = DateTimeOffset.UtcNow;
     }
 

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using CombatLR.mobile.Services;
 
 namespace CombatLR.mobile.Pages;
@@ -7,8 +8,13 @@ public partial class GameControlPage : ContentPage
 {
     private readonly CombatLRNetworkService _networkService = new();
 
+    private const string GameStartPreferenceKey =
+        "CombatLR.GameStartUtc";
+
     private readonly ObservableCollection<CombatLRDevice>
         _devices = new();
+
+    private string? _storedGameStartUtc;
 
     public GameControlPage()
     {
@@ -19,13 +25,17 @@ public partial class GameControlPage : ContentPage
         _networkService.DevicesChanged +=
             NetworkService_DevicesChanged;
 
-        _networkService.StartGameAcknowledged +=
-            NetworkService_StartGameAcknowledged;
+        LoadStoredGameStart();
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+
+        _networkService.StartGameAcknowledged +=
+            NetworkService_StartGameAcknowledged;
+
+        LoadStoredGameStart();
 
         await StartDiscoveryAsync();
     }
@@ -122,6 +132,55 @@ public partial class GameControlPage : ContentPage
         FriendlyFireOnButton.IsEnabled = enabled;
         FriendlyFireOffButton.IsEnabled = enabled;
         StartGameButton.IsEnabled = enabled;
+        LateStartButton.IsEnabled =
+            enabled &&
+            !string.IsNullOrWhiteSpace(_storedGameStartUtc);
+    }
+
+    private void LoadStoredGameStart()
+    {
+        _storedGameStartUtc =
+            Preferences.Default.Get(
+                GameStartPreferenceKey,
+                "");
+
+        if (string.IsNullOrWhiteSpace(_storedGameStartUtc))
+        {
+            GameStartLabel.Text = "GAME START: Not set";
+        }
+        else
+        {
+            GameStartLabel.Text =
+                $"GAME START: {FormatGameStart(_storedGameStartUtc)}";
+        }
+
+        SetControlButtonsEnabled(_devices.Count > 0);
+    }
+
+    private static string FormatGameStart(string utcGameStart)
+    {
+        if (!DateTime.TryParseExact(
+                utcGameStart,
+                "HH:mm:ss",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal |
+                DateTimeStyles.AdjustToUniversal,
+                out DateTime utc))
+        {
+            return utcGameStart;
+        }
+
+        string local =
+            utc.ToLocalTime().ToString(
+                "HH:mm:ss",
+                CultureInfo.InvariantCulture);
+
+        string utcText =
+            utc.ToString(
+                "HH:mm:ss",
+                CultureInfo.InvariantCulture);
+
+        return $"{local} ({utcText} UTC)";
     }
 
     private void UpdateDuplicatePlayerIds()
@@ -266,6 +325,15 @@ public partial class GameControlPage : ContentPage
                 return;
             }
 
+            _storedGameStartUtc = result.GameStart;
+
+            Preferences.Default.Set(
+                GameStartPreferenceKey,
+                _storedGameStartUtc);
+
+            GameStartLabel.Text =
+                $"GAME START: {FormatGameStart(_storedGameStartUtc)}";
+
             if (result.FailedDevices.Count == 0)
             {
                 return;
@@ -280,6 +348,61 @@ public partial class GameControlPage : ContentPage
             await DisplayAlert(
                 "Start Game",
                 $"Game start {result.GameStart} was acknowledged by " +
+                $"{result.SuccessfulDevices.Count} device(s), but failed on: {failed}.",
+                "OK");
+        }
+        finally
+        {
+            DiscoverButton.IsEnabled = true;
+            SetControlButtonsEnabled(_devices.Count > 0);
+        }
+    }
+
+    private async void LateStartButton_Clicked(
+        object? sender,
+        EventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_storedGameStartUtc) ||
+            _devices.Count == 0)
+        {
+            return;
+        }
+
+        SetControlButtonsEnabled(false);
+        DiscoverButton.IsEnabled = false;
+
+        try
+        {
+            var devices =
+                _devices.ToArray();
+
+            var result =
+                await _networkService.StartGameAsync(
+                    _storedGameStartUtc,
+                    devices);
+
+            if (result.SuccessfulDevices.Count == 0)
+            {
+                await DisplayAlert(
+                    "Late Start",
+                    "No CombatLR devices acknowledged the late start command.",
+                    "OK");
+
+                return;
+            }
+
+            if (result.FailedDevices.Count == 0)
+                return;
+
+            string failed =
+                string.Join(
+                    ", ",
+                    result.FailedDevices.Select(
+                        device => device.DeviceId));
+
+            await DisplayAlert(
+                "Late Start",
+                $"Game start {_storedGameStartUtc} was acknowledged by " +
                 $"{result.SuccessfulDevices.Count} device(s), but failed on: {failed}.",
                 "OK");
         }
