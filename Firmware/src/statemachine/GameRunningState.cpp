@@ -33,8 +33,7 @@ GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, CombatLRServices&
  _ammoPickup(weaponManager),
  _weaponPickupTable("/wtable.json"),
  _startTime(0),
- _weaponPickup(weaponManager, stateData.zoneEngine, _weaponPickupTable),
- _systemTime(stateData.navigation)
+ _weaponPickup(weaponManager, stateData.zoneEngine, _weaponPickupTable)
 {
 }
 
@@ -43,6 +42,7 @@ uint16_t GameRunningState::Run()
 {
     LaserTagData ltData;
 
+   
     _stateData.systemTime.Update();
 
     if(_stateData.laserTag.GetLasertagData(ltData))
@@ -112,9 +112,8 @@ uint16_t GameRunningState::Run()
                 zoom)));    
     }
 
-    uint32_t elapsedTime = _systemTime.GetSeconds() - _stateData.gamePlan.GetGameDelayTime();
-    Serial.printf("Elapsed %d\n", elapsedTime);
-  
+
+    uint32_t elapsedTime = _stateData.systemTime.GetSeconds() - _stateData.gamePlan.GetGameDelayTime();
     _stateData.zoneEngine.Update(elapsedTime);
 
 
@@ -143,7 +142,6 @@ uint16_t GameRunningState::Run()
 void GameRunningState::Entry()
 {
     _weaponManager.Init();
-    _stateData.systemTime.Reset();
     _player.InitHealth();
     _stateData.laserTag.Init();
     PlayerHealthWidget*  healthDisplay = new PlayerHealthWidget(UIWidgetIds::PlayerHealth, _player, HealthX, HealthY, HealthW, HealthH);
@@ -152,13 +150,23 @@ void GameRunningState::Entry()
             std::unique_ptr<IDisplayCommand>(
                 new AddWidgetCommand(healthDisplay)));
 
-    _startTime = _stateData.navigation.GetGpsTime();            
+    _startTime = 0;       
     
     _stateData.zoneEngine.AddZoneEventListener(this);
     _stateData.zoneEngine.AddPickupEventListener(this);
 
     _weaponManager.AddWeapon(5);
 
+    uint32_t elapsedTime = _stateData.systemTime.GetSeconds() - _stateData.gamePlan.GetGameDelayTime();
+    Serial.printf("Seconds:%d Delay time: %d StartTime:%d\n",  _stateData.systemTime.GetSeconds(), _stateData.gamePlan.GetGameDelayTime(), _startTime);
+
+    _stateData.zoneEngine.EnableCallbacks(false);
+    while(elapsedTime >= _startTime)
+    {
+        Serial.printf("Fast Forward Elapsed: %d FF: %d\n", (int)elapsedTime,(int) _startTime);
+        _stateData.zoneEngine.Update(_startTime++);
+    }
+    _stateData.zoneEngine.EnableCallbacks(true);
 }
 
 
