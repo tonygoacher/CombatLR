@@ -45,6 +45,27 @@
 
             </Grid>
 
+            <Grid
+                ColumnDefinitions="*,Auto"
+                ColumnSpacing="10">
+
+                <Label
+                    x:Name="GameStartLabel"
+                    Grid.Column="0"
+                    Text="GAME START: Not set"
+                    FontSize="16"
+                    FontAttributes="Bold"
+                    VerticalOptions="Center" />
+
+                <Button
+                    x:Name="LateStartButton"
+                    Grid.Column="1"
+                    Text="LATE START"
+                    Clicked="LateStartButton_Clicked"
+                    IsEnabled="False" />
+
+            </Grid>
+
             <ActivityIndicator
                 x:Name="DiscoveryActivity"
                 IsVisible="False"

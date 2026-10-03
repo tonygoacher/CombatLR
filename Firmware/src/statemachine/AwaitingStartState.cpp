@@ -122,7 +122,7 @@ void AwaitingStartState::Entry()
         WIFI_STA);
 
     WiFi.begin(
-        "TGFERNTHORPE",
+        "TGTABLET",
         "OiTheGah");
 
     Serial.println(
