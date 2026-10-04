@@ -5,6 +5,9 @@ using System.Diagnostics;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 
+#if ANDROID
+[assembly: Android.App.UsesPermission(Android.Manifest.Permission.ManageExternalStorage)]
+#endif
 
 namespace CombatLR.mobile.Pages
 {
@@ -81,6 +84,10 @@ namespace CombatLR.mobile.Pages
         private double _pinchLastScale = 1.0;
         private GamePlan _gamePlan = new();
 
+        // The containing directory is the project. Its directory name is the
+        // project name; it is deliberately not duplicated in gameplan.json.
+        private string? _projectDirectory;
+
         private readonly GamePlanService _gamePlanService = new();
 
         private readonly GameObjectCoordinateService  _gameObjectCoordinateService;
@@ -99,9 +106,6 @@ namespace CombatLR.mobile.Pages
             Loaded += MainPage_Loaded;
 #endif
             HomeMarker.SizeChanged += HomeMarker_SizeChanged;
-            _ = LoadMapAsync();
-
-
         }
 
         private async void MapInfoLabel_Tapped(
@@ -137,111 +141,281 @@ namespace CombatLR.mobile.Pages
         }
 #endif
 
-        private async Task LoadMapAsync()
+        private async Task LoadMapAsync(string projectDirectory)
         {
             long loadMapStart = Environment.TickCount64;
+
             try
             {
-               
-                // Load the bitmap.
-                await using var input =
-                    await FileSystem.OpenAppPackageFileAsync("map.bmp");
+                var mapPath = System.IO.Path.Combine(projectDirectory, "map.bmp");
+                var mapJsonPath = System.IO.Path.Combine(projectDirectory, "map.json");
 
-                long t0 = Environment.TickCount64 - loadMapStart;
+                if (!File.Exists(mapPath))
+                    throw new FileNotFoundException("The project does not contain map.bmp.", mapPath);
 
+                if (!File.Exists(mapJsonPath))
+                    throw new FileNotFoundException("The project does not contain map.json.", mapJsonPath);
+
+                // Load the project map bitmap.
+                await using var input = File.OpenRead(mapPath);
                 using var memory = new MemoryStream();
                 await input.CopyToAsync(memory);
-
-                long t1 = Environment.TickCount64 - loadMapStart;
-
                 var bytes = memory.ToArray();
 
                 MapImage.Source = ImageSource.FromStream(
                     () => new MemoryStream(bytes));
-                long t2 = Environment.TickCount64 - loadMapStart;
 
                 MapInfoLabel.Text =
+                    $"PROJECT: {System.IO.Path.GetFileName(projectDirectory)}\n" +
                     "MAP LOADED\nLoading map.json...";
 
                 ResetMapView();
-                long t3 = Environment.TickCount64 - loadMapStart;
 
-
-                // Load map.json.
-                await using var jsonStream =
-                    await FileSystem.OpenAppPackageFileAsync("map.json");
-
-                long t4 = Environment.TickCount64 - loadMapStart;
-
-                //            var mapDefinition =
-                //              await JsonSerializer.DeserializeAsync<MapDefinition>(
-                //                jsonStream);
+                await using var jsonStream = File.OpenRead(mapJsonPath);
                 var mapDefinition =
-             JsonSerializer.Deserialize<MapDefinition>(jsonStream);
+                    JsonSerializer.Deserialize<MapDefinition>(jsonStream);
 
-                long t5 = Environment.TickCount64 - loadMapStart;
                 if (mapDefinition is null)
                     throw new InvalidDataException(
                         "map.json produced no MapDefinition.");
 
                 _mapDefinition = mapDefinition;
-        
                 _coordinateService =
                     new MapCoordinateService(_mapDefinition);
-                long t6 = Environment.TickCount64 - loadMapStart;
-                long loadMapElapsed = Environment.TickCount64 - loadMapStart;
 
-                
-                                MapInfoLabel.Text =
-                                    $"MAP LOADED\n" +
-                                    $"JSON LOADED\n" +
-                                    $"{_mapDefinition.Image.Width} × {_mapDefinition.Image.Height}\n" +
-                                    $"{_mapDefinition.MetresPerPixel:F4} m/pixel\n" +
-                                    $"Rotation: {_mapDefinition.RotationDegrees:F0}°\n" +
-                                    $"Centre:\n" +
-                                    $"{_mapDefinition.Playfield.Centre.Latitude:F6}\n" +
-                                    $"{_mapDefinition.Playfield.Centre.Longitude:F6}"; 
+                MapInfoLabel.Text =
+                    $"PROJECT: {System.IO.Path.GetFileName(projectDirectory)}\n" +
+                    "MAP LOADED\n" +
+                    "JSON LOADED\n" +
+                    $"{_mapDefinition.Image.Width} × {_mapDefinition.Image.Height}\n" +
+                    $"{_mapDefinition.MetresPerPixel:F4} m/pixel\n" +
+                    $"Rotation: {_mapDefinition.RotationDegrees:F0}°\n" +
+                    $"Centre:\n" +
+                    $"{_mapDefinition.Playfield.Centre.Latitude:F6}\n" +
+                    $"{_mapDefinition.Playfield.Centre.Longitude:F6}";
+
+                _projectDirectory = projectDirectory;
+
+                // gameplan.json is optional. A project containing only map.bmp
+                // and map.json is therefore a valid project.
+                var gamePlanPath = System.IO.Path.Combine(projectDirectory, "gameplan.json");
+                if (File.Exists(gamePlanPath))
+                {
+                    _gamePlan = await _gamePlanService.LoadAsync(gamePlanPath);
+                    GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
+                    UpdateGameObjectControls();
+                    UpdateHomeMarker();
+                    _currentZoneIndex = _gamePlan.Zones.Count > 0 ? 0 : -1;
+                    _currentPickupIndex = -1;
+                    RenderGameObjects();
+
+                    MapInfoLabel.Text +=
+                        $"\nPLAN VERSION: {_gamePlan.Version}";
+                }
+                else
+                {
+                    _gamePlan = _gamePlanService.CreateNew();
+                    GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
+                    ClearZoneMarkers();
+                    ClearPickupMarkers();
+                    _currentZoneIndex = -1;
+                    _currentPickupIndex = -1;
+                    HomeMarker.IsVisible = false;
+                    UpdateGameObjectControls();
+
+                    MapInfoLabel.Text += "\nNO GAME PLAN";
+                }
             }
             catch (Exception ex)
             {
-                MapInfoLabel.Text =
-                    "ERROR\n" + ex.Message;
-
+                MapInfoLabel.Text = "ERROR\n" + ex.Message;
                 await DisplayAlert(
-                    "Map Error",
-                    ex.ToString(),
+                    "Open Project",
+                    ex.Message,
                     "OK");
             }
+        }
 
+        private async void LoadGamePlan_Clicked(
+            object? sender,
+            EventArgs e)
+        {
+            try
+            {
+#if ANDROID
+                if (Android.OS.Build.VERSION.SdkInt >=
+                        Android.OS.BuildVersionCodes.R &&
+                    !Android.OS.Environment.IsExternalStorageManager)
+                {
+                    var packageUri =
+                        Android.Net.Uri.Parse(
+                            $"package:{Android.App.Application.Context.PackageName}");
+
+                    var settingsIntent =
+                        new Android.Content.Intent(
+                            Android.Provider.Settings.ActionManageAppAllFilesAccessPermission,
+                            packageUri);
+
+                    var activity =
+                        Microsoft.Maui.ApplicationModel.Platform.CurrentActivity;
+
+                    if (activity is null)
+                    {
+                        await DisplayAlert(
+                            "Storage Access Required",
+                            "CombatLR could not access the current Android activity. Please try Open again.",
+                            "OK");
+                        return;
+                    }
+
+                    activity.StartActivity(settingsIntent);
+
+                    await DisplayAlert(
+                        "Storage Access Required",
+                        "Android requires CombatLR to have access to shared storage so it can read the project files copied into Documents/CombatLR.\n\nEnable \"Allow access to manage all files\" for CombatLR, then press Open again.",
+                        "OK");
+                    return;
+                }
+
+                var documentsDirectory =
+                    Android.OS.Environment.GetExternalStoragePublicDirectory(
+                        Android.OS.Environment.DirectoryDocuments)?.AbsolutePath;
+
+                if (string.IsNullOrWhiteSpace(documentsDirectory))
+                {
+                    await DisplayAlert(
+                        "Open Project",
+                        "The Android Documents folder could not be located.",
+                        "OK");
+                    return;
+                }
+
+                var combatLrDirectory =
+                    System.IO.Path.Combine(documentsDirectory, "CombatLR");
+
+                if (!Directory.Exists(combatLrDirectory))
+                {
+                    await DisplayAlert(
+                        "Open Project",
+                        $"The CombatLR project directory was not found.\n\nExpected:\n{combatLrDirectory}",
+                        "OK");
+                    return;
+                }
+
+                var projectDirectories =
+                    Directory.GetDirectories(combatLrDirectory)
+                        .Where(IsValidProjectDirectory)
+                        .OrderBy(System.IO.Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                if (projectDirectories.Count == 0)
+                {
+                    await DisplayAlert(
+                        "Open Project",
+                        "No valid CombatLR projects were found.\n\nEach project directory must contain map.bmp and map.json.",
+                        "OK");
+                    return;
+                }
+
+                var projectNames =
+                    projectDirectories
+                        .Select(p => System.IO.Path.GetFileName(p) ?? string.Empty)
+                        .ToArray();
+
+                var selectedProjectName =
+                    await DisplayActionSheet(
+                        "Open CombatLR Project",
+                        "Cancel",
+                        null,
+                        projectNames!);
+
+                if (string.IsNullOrWhiteSpace(selectedProjectName) ||
+                    selectedProjectName == "Cancel")
+                    return;
+
+                var projectDirectory =
+                    projectDirectories.FirstOrDefault(
+                        p => string.Equals(
+                            System.IO.Path.GetFileName(p),
+                            selectedProjectName,
+                            StringComparison.OrdinalIgnoreCase));
+
+                if (projectDirectory is null)
+                    return;
+
+                await LoadMapAsync(projectDirectory);
+#else
+                await DisplayAlert(
+                    "Open Project",
+                    "CombatLR project discovery is currently implemented for Android.",
+                    "OK");
+#endif
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert(
+                    "Open Project",
+                    $"The projects could not be opened.\n\n{ex.Message}",
+                    "OK");
+            }
+        }
+
+        private static bool IsValidProjectDirectory(
+            string directory)
+        {
+            return File.Exists(
+                       System.IO.Path.Combine(directory, "map.bmp")) &&
+                   File.Exists(
+                       System.IO.Path.Combine(directory, "map.json"));
         }
 
         private async void NewGamePlan_Clicked(
-        object? sender,
-        EventArgs e)
+            object? sender,
+            EventArgs e)
         {
+            if (_projectDirectory is null)
+            {
+                await DisplayAlert(
+                    "New Game Plan",
+                    "Open a project first.",
+                    "OK");
+                return;
+            }
+
             _gamePlan = _gamePlanService.CreateNew();
             GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
             ClearZoneMarkers();
-            ClearPickupMarkers();   
+            ClearPickupMarkers();
 
             _currentZoneIndex = -1;
             _currentPickupIndex = -1;
 
             HomeMarker.IsVisible = false;
             UpdateGameObjectControls();
-      
+
             MapInfoLabel.Text =
+                $"PROJECT: {System.IO.Path.GetFileName(_projectDirectory)}\n" +
                 "NEW GAME PLAN\n" +
                 "No Home\n" +
-                "0 Zones";
+                "0 Zones\n" +
+                "VERSION: 0 (unsaved)";
         }
 
         private async void SaveGamePlan_Clicked(
-        object? sender,
-        EventArgs e)
+            object? sender,
+            EventArgs e)
         {
             try
             {
+                if (_projectDirectory is null)
+                {
+                    await DisplayAlert(
+                        "Save Game Plan",
+                        "Open a project before saving the game plan.",
+                        "OK");
+                    return;
+                }
+
                 if (!int.TryParse(
                         GameDelayTimeEntry.Text,
                         out var gameDelayTime) ||
@@ -256,79 +430,23 @@ namespace CombatLR.mobile.Pages
 
                 _gamePlan.GameDelayTime = gameDelayTime;
 
-                var fileName = "gameplan.json";
-
-                var filePath =
-                   System.IO.Path.Combine(
-                        FileSystem.Current.AppDataDirectory,
-                        fileName);
+                var filePath = System.IO.Path.Combine(
+                    _projectDirectory,
+                    "gameplan.json");
 
                 await _gamePlanService.SaveAsync(
                     _gamePlan,
                     filePath);
 
                 MapInfoLabel.Text =
-                    $"GAME PLAN SAVED\n{fileName}";
+                    $"PROJECT: {System.IO.Path.GetFileName(_projectDirectory)}\n" +
+                    $"GAME PLAN SAVED\nVERSION: {_gamePlan.Version}";
             }
             catch (Exception ex)
             {
                 await DisplayAlert(
                     "Save Game Plan",
                     ex.Message,
-                    "OK");
-            }
-        }
-
-        private async void LoadGamePlan_Clicked(
-    object? sender,
-    EventArgs e)
-        {
-            try
-            {
-                var fileName = "gameplan.json";
-
-                var filePath =
-                    System.IO.Path.Combine(
-                        FileSystem.Current.AppDataDirectory,
-                        fileName);
-
-                if (!File.Exists(filePath))
-                {
-                    await DisplayAlert(
-                        "Load Game Plan",
-                        "No game plan has been saved yet.",
-                        "OK");
-
-                    return;
-                }
-
-                _gamePlan =
-                    await _gamePlanService.LoadAsync(
-                        filePath);
-                _gamePlan.InitialisePickupIdAllocator();
-                GameDelayTimeEntry.Text =
-                    _gamePlan.GameDelayTime.ToString();
-                UpdateGameObjectControls();
-                UpdateHomeMarker();
-                _currentZoneIndex =
-                    _gamePlan.Zones.Count > 0
-                    ? 0
-                    : -1;
-                _currentPickupIndex = -1;
-
-                RenderGameObjects();
-                UpdateGameObjectControls();
-
-                MapInfoLabel.Text =
-                    $"GAME PLAN LOADED\n" +
-                    $"Home: {(_gamePlan.Home is null ? "None" : "Set")}\n" +
-                    $"Zones: {_gamePlan.Zones.Count}";
-            }
-            catch (Exception ex)
-            {
-                await DisplayAlert(
-                    "Load Game Plan",
-                    $"The game plan could not be loaded.\n\n{ex.Message}",
                     "OK");
             }
         }

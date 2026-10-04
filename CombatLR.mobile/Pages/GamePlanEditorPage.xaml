@@ -186,7 +186,7 @@
 
                 <Button
                     x:Name="LoadButton"
-                    Text="Load"
+                    Text="Open"
                     Style="{StaticResource PanelButton}"
                     Clicked="LoadGamePlan_Clicked" />
 

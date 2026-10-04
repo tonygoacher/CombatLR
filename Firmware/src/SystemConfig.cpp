@@ -93,6 +93,9 @@ bool SystemConfig::Load()
     Serial.print("SystemConfig: Friendly Fire = ");
     Serial.println(_friendlyFire);
 
+    Serial.printf("WifiSSID %s\n", _wifiSSID);
+    Serial.printf("WifiPass %s\n", _wifiPass);
+
     return true;
 }
 
@@ -108,8 +111,8 @@ bool SystemConfig::Save() const
     document[SystemConsts::teamId] = _teamId;
     document[SystemConsts::playerId] = _playerId;
     document[SystemConsts::friendlyFire] = _friendlyFire;
-    document[SystemConfig::_wifiSSID] = _wifiSSID.c_str();
-    document[SystemConfig::_wifiPass] = _wifiPass.c_str();
+    document[SystemConfig::_wifiSSID] = _wifiSSID;
+    document[SystemConfig::_wifiPass] = _wifiPass;
     document[SystemConfig::_ftpUser] = _ftpUser;
     document[SystemConfig::_ftpPass] = _ftpPass;
 
@@ -130,6 +133,8 @@ bool SystemConfig::Save() const
     Serial.print(_playerId);
     Serial.print(", Friendly fire = ");
     Serial.println(_friendlyFire);    
+    Serial.printf("WifiSSID %s\n", _wifiSSID);
+    Serial.printf("WifiPass %s\n", _wifiPass);
 
     return true;
 }
