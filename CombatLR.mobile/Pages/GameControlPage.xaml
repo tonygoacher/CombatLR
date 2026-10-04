@@ -74,7 +74,8 @@
                 VerticalOptions="Center" />
 
             <Label
-                Text="COMBATLR DEVICES"
+                x:Name="DevicesHeaderLabel"
+                Text="COMBATLR DEVICES: 0"
                 FontSize="18"
                 FontAttributes="Bold" />
 
