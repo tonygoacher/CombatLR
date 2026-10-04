@@ -85,7 +85,7 @@ namespace CombatLR.mobile.Pages
         private GamePlan _gamePlan = new();
 
         // The containing directory is the project. Its directory name is the
-        // project name; it is deliberately not duplicated in gameplan.json.
+        // project name; it is also persisted in gameplan.json.
         private string? _projectDirectory;
 
         private readonly GamePlanService _gamePlanService = new();
@@ -202,6 +202,8 @@ namespace CombatLR.mobile.Pages
                 if (File.Exists(gamePlanPath))
                 {
                     _gamePlan = await _gamePlanService.LoadAsync(gamePlanPath);
+                    _gamePlan.ProjectName =
+                        System.IO.Path.GetFileName(projectDirectory) ?? string.Empty;
                     GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
                     UpdateGameObjectControls();
                     UpdateHomeMarker();
@@ -215,6 +217,8 @@ namespace CombatLR.mobile.Pages
                 else
                 {
                     _gamePlan = _gamePlanService.CreateNew();
+                    _gamePlan.ProjectName =
+                        System.IO.Path.GetFileName(projectDirectory) ?? string.Empty;
                     GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
                     ClearZoneMarkers();
                     ClearPickupMarkers();
@@ -383,6 +387,8 @@ namespace CombatLR.mobile.Pages
             }
 
             _gamePlan = _gamePlanService.CreateNew();
+            _gamePlan.ProjectName =
+                System.IO.Path.GetFileName(_projectDirectory) ?? string.Empty;
             GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
             ClearZoneMarkers();
             ClearPickupMarkers();
@@ -429,6 +435,8 @@ namespace CombatLR.mobile.Pages
                 }
 
                 _gamePlan.GameDelayTime = gameDelayTime;
+                _gamePlan.ProjectName =
+                    System.IO.Path.GetFileName(_projectDirectory) ?? string.Empty;
 
                 var filePath = System.IO.Path.Combine(
                     _projectDirectory,
