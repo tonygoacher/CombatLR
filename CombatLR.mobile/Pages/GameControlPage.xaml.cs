@@ -26,6 +26,7 @@ public partial class GameControlPage : ContentPage
             NetworkService_DevicesChanged;
 
         LoadStoredGameStart();
+        UpdateDeviceCount();
     }
 
     protected override async void OnAppearing()
@@ -107,9 +108,13 @@ public partial class GameControlPage : ContentPage
                 d => d.DeviceId == device.DeviceId);
 
             if (existing is not null)
+            {
+                existing.PropertyChanged -= Device_PropertyChanged;
                 _devices.Remove(existing);
+            }
 
             UpdateDuplicatePlayerIds();
+            UpdateDeviceCount();
             SetControlButtonsEnabled(_devices.Count > 0);
         });
     }
@@ -119,12 +124,30 @@ public partial class GameControlPage : ContentPage
         foreach (var device in _networkService.Devices)
         {
             if (!_devices.Contains(device))
+            {
                 _devices.Add(device);
+                device.PropertyChanged += Device_PropertyChanged;
+            }
         }
 
         UpdateDuplicatePlayerIds();
+        UpdateDeviceCount();
 
         SetControlButtonsEnabled(_devices.Count > 0);
+    }
+
+    private void Device_PropertyChanged(
+        object? sender,
+        System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(CombatLRDevice.IsOnline))
+            MainThread.BeginInvokeOnMainThread(UpdateDeviceCount);
+    }
+
+    private void UpdateDeviceCount()
+    {
+        int onlineCount = _devices.Count(device => device.IsOnline);
+        DevicesHeaderLabel.Text = $"COMBATLR DEVICES: {onlineCount}";
     }
 
     private void SetControlButtonsEnabled(bool enabled)
