@@ -23,6 +23,7 @@
 #include "GamePlan.h"
 
 
+AwaitingStartState* AwaitingStartState::_ftpCallbackInstance = nullptr;
 
 
 namespace TeamIconFiles
@@ -96,6 +97,11 @@ AwaitingStartState::AwaitingStartState(
 
 void AwaitingStartState::Entry()
 {
+    if (FtpMode())
+    {
+        _ftpCallbackInstance = this;
+    }
+
     _services.displayManager.Send(
         std::unique_ptr<IDisplayCommand>(
             new DisplayBackgroundCommand(
@@ -159,6 +165,11 @@ void AwaitingStartState::Entry()
 
 void AwaitingStartState::Exit()
 {
+    if (_ftpCallbackInstance == this)
+    {
+        _ftpCallbackInstance = nullptr;
+    }
+
     RemoveWidgetCommand* removeIcon = new RemoveWidgetCommand(UIWidgetIds::WiFiStatus);
 
     _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));      
@@ -191,9 +202,6 @@ uint16_t AwaitingStartState::Run()
     {
         return FtpMode() ? SystemStates::Ftp : SystemStates::AwaitingStart;
     }
-
-
-
 
 
 
@@ -304,6 +312,47 @@ void AwaitingStartState::RunFTP()
 }
 
 
+void AwaitingStartState::FtpCallback(
+    FtpOperation operation,
+    uint32_t freeSpace,
+    uint32_t totalSpace)
+{
+    if (_ftpCallbackInstance != nullptr)
+    {
+        _ftpCallbackInstance->HandleFtpCallback(
+            operation,
+            freeSpace,
+            totalSpace);
+    }
+}
+
+
+void AwaitingStartState::HandleFtpCallback(
+    FtpOperation operation,
+    uint32_t freeSpace,
+    uint32_t totalSpace)
+{
+    switch (operation)
+    {
+        case FTP_CONNECT:
+            Serial.println("FTP client connected");
+            _services.displayManager.EnableRendering(false);
+            break;
+
+        case FTP_DISCONNECT:
+            Serial.println("FTP client disconnected");
+            _services.displayManager.EnableRendering(true);
+            break;
+
+        case FTP_FREE_SPACE_CHANGE:
+            Serial.print("FTP free space: ");
+            Serial.print(freeSpace);
+            Serial.print(" / ");
+            Serial.println(totalSpace);
+            break;
+    }
+}
+
 
 
 void AwaitingStartState::StartFTP()
@@ -312,6 +361,12 @@ void AwaitingStartState::StartFTP()
     {
         Serial.println("Starting FTP server");
         _ftpServer = new FtpServer();
+
+        _ftpCallbackInstance = this;
+
+        _ftpServer->setCallback(
+            AwaitingStartState::FtpCallback);
+
         _ftpServer->begin("combatlr", "password");
         _ftpInitDone = true;
     }

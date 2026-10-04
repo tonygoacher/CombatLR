@@ -17,6 +17,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
     public const int ProtocolVersion = 1;
     public const int MaxTeamId = 3;
     public const int MaxPlayerId = 127;
+    public const int FtpPort = 21;
 
     private const int DiscoveryIntervalMilliseconds = 2000;
     private const int DiscoveryMissLimit = 5;
@@ -689,6 +690,12 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 out var friendlyFireProperty) &&
             friendlyFireProperty.ValueKind == JsonValueKind.True;
 
+        bool ftpMode =
+            root.TryGetProperty(
+                "ftpMode",
+                out var ftpModeProperty) &&
+            ftpModeProperty.ValueKind == JsonValueKind.True;
+
         int planVersion =
             root.TryGetProperty(
                 "planVersion",
@@ -719,6 +726,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 teamId,
                 playerId,
                 friendlyFire,
+                ftpMode,
                 state,
                 version,
                 planVersion,
@@ -738,6 +746,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             TeamId = teamId,
             PlayerId = playerId,
             FriendlyFire = friendlyFire,
+            FtpMode = ftpMode,
             State = state,
             ProtocolVersion = version,
             PlanVersion = planVersion,
@@ -771,6 +780,69 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             }
         }
     }
+
+#pragma warning disable SYSLIB0014
+    public async Task<bool> UploadProjectFileAsync(
+        CombatLRDevice device,
+        string localFilePath,
+        string remoteFileName,
+        string username,
+        string password,
+        CancellationToken cancellationToken = default)
+    {
+        if (!device.IsOnline ||
+            !device.FtpMode ||
+            string.IsNullOrWhiteSpace(device.IpAddress) ||
+            !File.Exists(localFilePath) ||
+            string.IsNullOrWhiteSpace(username))
+        {
+            return false;
+        }
+
+        try
+        {
+            var request =
+                (FtpWebRequest)WebRequest.Create(
+                    new Uri($"ftp://{device.IpAddress}:{FtpPort}/{Uri.EscapeDataString(remoteFileName)}"));
+
+            request.Method = WebRequestMethods.Ftp.UploadFile;
+            request.Credentials = new NetworkCredential(username, password);
+            request.UseBinary = true;
+            request.KeepAlive = false;
+            request.Timeout = 10000;
+            request.ReadWriteTimeout = 10000;
+
+            byte[] data = await File.ReadAllBytesAsync(
+                localFilePath,
+                cancellationToken);
+
+            request.ContentLength = data.Length;
+
+            await using (Stream requestStream =
+                await request.GetRequestStreamAsync())
+            {
+                await requestStream.WriteAsync(
+                    data,
+                    cancellationToken);
+            }
+
+            using var response =
+                (FtpWebResponse)await request.GetResponseAsync();
+
+            return response.StatusCode ==
+                   FtpStatusCode.ClosingData ||
+                   response.StatusCode == FtpStatusCode.CommandOK;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"CombatLR FTP: upload of {remoteFileName} to " +
+                $"{device.DeviceId} failed: {ex.Message}");
+            return false;
+        }
+    }
+
+#pragma warning restore SYSLIB0014
 
     public async ValueTask DisposeAsync()
     {
@@ -899,6 +971,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     private int _teamId;
     private int _playerId;
     private bool _friendlyFire;
+    private bool _ftpMode;
     private bool _isDuplicatePlayerId;
     private string _state = "";
     private int _protocolVersion;
@@ -987,6 +1060,12 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
         FriendlyFire
             ? "friendly_fire_on.png"
             : "friendly_fire_off.png";
+
+    public bool FtpMode
+    {
+        get => _ftpMode;
+        set => SetField(ref _ftpMode, value);
+    }
 
     [JsonIgnore]
     public bool IsDuplicatePlayerId
@@ -1091,6 +1170,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
         int teamId,
         int playerId,
         bool friendlyFire,
+        bool ftpMode,
         string state,
         int protocolVersion,
         int planVersion = 0,
@@ -1100,6 +1180,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
         TeamId = teamId;
         PlayerId = playerId;
         FriendlyFire = friendlyFire;
+        FtpMode = ftpMode;
         State = state;
         ProtocolVersion = protocolVersion;
         PlanVersion = planVersion;

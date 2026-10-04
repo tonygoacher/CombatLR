@@ -29,6 +29,20 @@ private:
   
     void RunFTP();
     void StartFTP();
+
+    static AwaitingStartState* _ftpCallbackInstance;
+
+    static void FtpCallback(
+        FtpOperation operation,
+        uint32_t freeSpace,
+        uint32_t totalSpace);
+
+    void HandleFtpCallback(
+        FtpOperation operation,
+        uint32_t freeSpace,
+        uint32_t totalSpace);
+
+
     const char * const GetTeamFile(TeamIds teamId);
     CombatLRServices& _services;
     CombatLRNetwork _network;

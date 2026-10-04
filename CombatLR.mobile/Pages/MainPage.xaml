@@ -51,6 +51,12 @@
                 HeightRequest="70"
                 Clicked="GameControl_Clicked" />
 
+            <Button
+                Text="PROJECT UPDATE"
+                FontSize="20"
+                HeightRequest="70"
+                Clicked="ProjectUpdate_Clicked" />
+
         </VerticalStackLayout>
 
         <Label

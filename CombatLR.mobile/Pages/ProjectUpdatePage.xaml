@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="CombatLR.mobile.Pages.ProjectUpdatePage"
+    BackgroundColor="Black"
+    NavigationPage.HasNavigationBar="True"
+    Title="Project Update">
+
+    <Grid Padding="16" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="12">
+
+        <VerticalStackLayout Grid.Row="0" Spacing="2">
+            <Label
+                Text="PROJECT UPDATE"
+                TextColor="White"
+                FontSize="24"
+                FontAttributes="Bold" />
+            <Label
+                x:Name="ProjectLabel"
+                Text="No project selected"
+                TextColor="LightGray"
+                FontSize="14" />
+        </VerticalStackLayout>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <VerticalStackLayout Spacing="2">
+                <Label Text="Game plan folder" TextColor="White" FontAttributes="Bold" />
+                <Label
+                    x:Name="FolderLabel"
+                    Text="No folder selected"
+                    TextColor="LightGray"
+                    FontSize="12"
+                    LineBreakMode="TailTruncation" />
+            </VerticalStackLayout>
+            <Button
+                Grid.Column="1"
+                Text="CHOOSE"
+                Clicked="ChooseFolderButton_Clicked" />
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <VerticalStackLayout Spacing="2">
+                <Label Text="FTP credentials" TextColor="White" FontAttributes="Bold" />
+                <Label
+                    x:Name="CredentialsLabel"
+                    Text="Not configured"
+                    TextColor="LightGray"
+                    FontSize="12" />
+            </VerticalStackLayout>
+            <Button
+                Grid.Column="1"
+                Text="SET CREDENTIALS"
+                Clicked="SetCredentialsButton_Clicked" />
+        </Grid>
+
+        <Grid Grid.Row="3" RowDefinitions="Auto,*" RowSpacing="8">
+            <Grid ColumnDefinitions="*,Auto">
+                <Label
+                    x:Name="DevicesHeaderLabel"
+                    Text="FTP DEVICES: 0"
+                    TextColor="White"
+                    FontSize="18"
+                    FontAttributes="Bold" />
+                <Button
+                    Grid.Column="1"
+                    Text="DISCOVER"
+                    Clicked="DiscoverButton_Clicked" />
+            </Grid>
+
+            <CollectionView
+                Grid.Row="1"
+                x:Name="DevicesView"
+                SelectionMode="None"
+                ItemsLayout="VerticalGrid, 2">
+                <CollectionView.EmptyView>
+                    <Label
+                        Text="No FTP-capable CombatLR devices discovered."
+                        TextColor="Gray"
+                        HorizontalTextAlignment="Center"
+                        VerticalTextAlignment="Center" />
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame
+                            Margin="4"
+                            Padding="10"
+                            HasShadow="False"
+                            BorderColor="Gray"
+                            BackgroundColor="#202020">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                <CheckBox
+                                    Grid.Column="0"
+                                    IsChecked="{Binding IsSelected}"
+                                    VerticalOptions="Center" />
+
+                                <VerticalStackLayout Grid.Column="1" Spacing="1">
+                                    <Label
+                                        Text="{Binding Device.DeviceId}"
+                                        TextColor="White"
+                                        FontAttributes="Bold" />
+                                    <Label
+                                        Text="{Binding Device.IpAddress}"
+                                        TextColor="Gray"
+                                        FontSize="12" />
+                                    <Label
+                                        Text="{Binding PlanDisplay}"
+                                        TextColor="LightGray"
+                                        FontSize="12" />
+                                </VerticalStackLayout>
+
+                                <Label
+                                    Grid.Column="2"
+                                    Text="{Binding Status}"
+                                    TextColor="LightGray"
+                                    FontSize="12"
+                                    VerticalTextAlignment="Center" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+
+        <Button
+            Grid.Row="4"
+            x:Name="UpdateButton"
+            Text="UPDATE SELECTED DEVICES"
+            FontSize="18"
+            HeightRequest="60"
+            Clicked="UpdateButton_Clicked"
+            IsEnabled="False" />
+
+    </Grid>
+</ContentPage>

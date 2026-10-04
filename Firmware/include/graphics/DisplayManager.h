@@ -45,6 +45,8 @@ public:
 
     TextureManager& GetTextureManager(){return _textureManager;}
 
+    void EnableRendering(bool enable) { _renderEnabled = enable;}
+
 private:
     static void DisplayTaskEntry(
         void* parameter);
@@ -86,5 +88,6 @@ std::deque<
     float _zoom;
 
     bool _playerVisible;
+    bool _renderEnabled;
     TextureManager& _textureManager;
 };
