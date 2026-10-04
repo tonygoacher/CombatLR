@@ -11,15 +11,25 @@ public partial class ProjectUpdatePage : ContentPage
 
     private readonly CombatLRNetworkService _networkService = new();
     private readonly ObservableCollection<FtpDeviceRow> _devices = new();
-    private readonly HashSet<string> _completedDeviceIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _completedDeviceIds =
+        new(StringComparer.OrdinalIgnoreCase);
+
     private string? _projectDirectory;
+
     private bool _updating;
+    private bool _cancelUpdate;
+    private bool _leaving;
+
+    private Task? _updateTask;
 
     public ProjectUpdatePage()
     {
         InitializeComponent();
+
         DevicesView.ItemsSource = _devices;
+
         _networkService.DevicesChanged += NetworkService_DevicesChanged;
+
         _ = LoadCredentialsAsync();
     }
 
@@ -27,15 +37,78 @@ public partial class ProjectUpdatePage : ContentPage
     {
         base.OnAppearing();
 
+        _leaving = false;
+
         await _networkService.StartDiscoveryAsync();
+
         UpdateDeviceList();
     }
 
     protected override async void OnDisappearing()
     {
         await _networkService.StopDiscoveryAsync();
+
         base.OnDisappearing();
     }
+
+    // -------------------------------------------------------------------------
+    // Back button
+    // -------------------------------------------------------------------------
+
+    protected override bool OnBackButtonPressed()
+    {
+        if (!_updating || _leaving)
+            return base.OnBackButtonPressed();
+
+        _leaving = true;
+        _cancelUpdate = true;
+
+        _ = CancelAndLeaveAsync();
+
+        return true;
+    }
+
+    private async Task CancelAndLeaveAsync()
+    {
+        try
+        {
+            /*
+             * Do not abort an FTP transfer in the middle of a file.
+             *
+             * UploadProjectFileAsync() does not currently accept a
+             * CancellationToken, so allow the current transfer to complete.
+             * The update loop will then stop before starting another file
+             * or another device.
+             */
+            if (_updateTask is not null)
+            {
+                await _updateTask;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"Project Update: cancellation cleanup: {ex.Message}");
+        }
+
+        try
+        {
+            await MainThread.InvokeOnMainThreadAsync(
+                async () =>
+                {
+                    await Navigation.PopAsync();
+                });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"Project Update: unable to leave page: {ex.Message}");
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Credentials
+    // -------------------------------------------------------------------------
 
     private async Task LoadCredentialsAsync()
     {
@@ -50,107 +123,13 @@ public partial class ProjectUpdatePage : ContentPage
         }
     }
 
-    private async void ChooseFolderButton_Clicked(
-        object? sender,
-        EventArgs e)
-    {
-        try
-        {
-            string? documentsDirectory = GetDocumentsDirectory();
-
-            if (string.IsNullOrWhiteSpace(documentsDirectory))
-            {
-                await DisplayAlert(
-                    "Choose Project",
-                    "Unable to locate the public Documents folder.",
-                    "OK");
-                return;
-            }
-
-            string combatLRDirectory =
-                Path.Combine(documentsDirectory, "CombatLR");
-
-            if (!Directory.Exists(combatLRDirectory))
-            {
-                await DisplayAlert(
-                    "Choose Project",
-                    $"The CombatLR project folder does not exist yet:\n\n{combatLRDirectory}",
-                    "OK");
-                return;
-            }
-
-            var projects = Directory.GetDirectories(combatLRDirectory)
-                .Where(directory =>
-                    File.Exists(Path.Combine(directory, "map.bmp")) &&
-                    File.Exists(Path.Combine(directory, "map.json")))
-                .OrderBy(directory => directory, StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-
-            if (projects.Length == 0)
-            {
-                await DisplayAlert(
-                    "Choose Project",
-                    "No valid CombatLR projects were found.\n\nA project must contain map.bmp and map.json.",
-                    "OK");
-                return;
-            }
-
-            string[] names = projects
-                .Select(Path.GetFileName)
-                .Where(name => !string.IsNullOrWhiteSpace(name))
-                .Cast<string>()
-                .ToArray();
-
-            string? selected = await DisplayActionSheet(
-                "Select Game Plan Folder",
-                "Cancel",
-                null,
-                names);
-
-            if (string.IsNullOrWhiteSpace(selected) ||
-                selected == "Cancel")
-                return;
-
-            string folder = Path.Combine(combatLRDirectory, selected);
-
-            if (!ValidateProjectFolder(folder, out string error))
-            {
-                _projectDirectory = null;
-                ProjectLabel.Text = "No project selected";
-                FolderLabel.Text = "Selected project has no complete game plan";
-                UpdateButton.IsEnabled = false;
-
-                await DisplayAlert("Invalid Project", error, "OK");
-                return;
-            }
-
-            _projectDirectory = folder;
-            ProjectLabel.Text = selected;
-            FolderLabel.Text = folder;
-            UpdateButton.IsEnabled = _devices.Any(row => row.IsSelected && row.Device.IsOnline);
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlert("Choose Project", ex.Message, "OK");
-        }
-    }
-
-    private static string? GetDocumentsDirectory()
-    {
-#if ANDROID
-        return Android.OS.Environment.GetExternalStoragePublicDirectory(
-            Android.OS.Environment.DirectoryDocuments)?.AbsolutePath;
-#elif WINDOWS
-        return Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-#else
-        return Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-#endif
-    }
-
     private async void SetCredentialsButton_Clicked(
         object? sender,
         EventArgs e)
     {
+        if (_updating)
+            return;
+
         string currentUsername =
             await SecureStorage.Default.GetAsync(FtpUsernameKey) ?? "";
 
@@ -192,11 +171,17 @@ public partial class ProjectUpdatePage : ContentPage
                 "FTP Credentials",
                 "Both username and password are required.",
                 "OK");
+
             return;
         }
 
-        await SecureStorage.Default.SetAsync(FtpUsernameKey, username);
-        await SecureStorage.Default.SetAsync(FtpPasswordKey, password);
+        await SecureStorage.Default.SetAsync(
+            FtpUsernameKey,
+            username);
+
+        await SecureStorage.Default.SetAsync(
+            FtpPasswordKey,
+            password);
 
         UpdateCredentialsLabel();
     }
@@ -212,6 +197,137 @@ public partial class ProjectUpdatePage : ContentPage
                 : $"Username: {username}   •   Port 21";
     }
 
+    // -------------------------------------------------------------------------
+    // Project selection
+    // -------------------------------------------------------------------------
+
+    private async void ChooseFolderButton_Clicked(
+        object? sender,
+        EventArgs e)
+    {
+        if (_updating)
+            return;
+
+        try
+        {
+            string? documentsDirectory = GetDocumentsDirectory();
+
+            if (string.IsNullOrWhiteSpace(documentsDirectory))
+            {
+                await DisplayAlert(
+                    "Choose Project",
+                    "Unable to locate the public Documents folder.",
+                    "OK");
+
+                return;
+            }
+
+            string combatLRDirectory =
+                Path.Combine(documentsDirectory, "CombatLR");
+
+            if (!Directory.Exists(combatLRDirectory))
+            {
+                await DisplayAlert(
+                    "Choose Project",
+                    $"The CombatLR project folder does not exist yet:\n\n" +
+                    $"{combatLRDirectory}",
+                    "OK");
+
+                return;
+            }
+
+            var projects = Directory.GetDirectories(combatLRDirectory)
+                .Where(directory =>
+                    File.Exists(Path.Combine(directory, "map.bmp")) &&
+                    File.Exists(Path.Combine(directory, "map.json")))
+                .OrderBy(
+                    directory => directory,
+                    StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            if (projects.Length == 0)
+            {
+                await DisplayAlert(
+                    "Choose Project",
+                    "No valid CombatLR projects were found.\n\n" +
+                    "A project must contain map.bmp and map.json.",
+                    "OK");
+
+                return;
+            }
+
+            string[] names = projects
+                .Select(Path.GetFileName)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Cast<string>()
+                .ToArray();
+
+            string? selected = await DisplayActionSheet(
+                "Select Game Plan Folder",
+                "Cancel",
+                null,
+                names);
+
+            if (string.IsNullOrWhiteSpace(selected) ||
+                selected == "Cancel")
+            {
+                return;
+            }
+
+            string folder =
+                Path.Combine(combatLRDirectory, selected);
+
+            if (!ValidateProjectFolder(folder, out string error))
+            {
+                _projectDirectory = null;
+
+                ProjectLabel.Text = "No project selected";
+
+                FolderLabel.Text =
+                    "Selected project has no complete game plan";
+
+                UpdateButton.IsEnabled = false;
+
+                await DisplayAlert(
+                    "Invalid Project",
+                    error,
+                    "OK");
+
+                return;
+            }
+
+            _projectDirectory = folder;
+
+            ProjectLabel.Text = selected;
+            FolderLabel.Text = folder;
+
+            UpdateButton.IsEnabled =
+                _devices.Any(
+                    row => row.IsSelected && row.Device.IsOnline);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert(
+                "Choose Project",
+                ex.Message,
+                "OK");
+        }
+    }
+
+    private static string? GetDocumentsDirectory()
+    {
+#if ANDROID
+        return Android.OS.Environment.GetExternalStoragePublicDirectory(
+            Android.OS.Environment.DirectoryDocuments)?.AbsolutePath;
+#elif WINDOWS
+        return Environment.GetFolderPath(
+            Environment.SpecialFolder.MyDocuments);
+#else
+        return Environment.GetFolderPath(
+            Environment.SpecialFolder.MyDocuments);
+#endif
+    }
+
     private static bool ValidateProjectFolder(
         string folder,
         out string error)
@@ -224,7 +340,8 @@ public partial class ProjectUpdatePage : ContentPage
         };
 
         var missing = requiredFiles
-            .Where(file => !File.Exists(Path.Combine(folder, file)))
+            .Where(file =>
+                !File.Exists(Path.Combine(folder, file)))
             .ToArray();
 
         if (missing.Length != 0)
@@ -232,13 +349,20 @@ public partial class ProjectUpdatePage : ContentPage
             error =
                 "This project cannot be updated because it is missing:\n\n" +
                 string.Join("\n", missing) +
-                "\n\nA project update requires map.bmp, map.json and gameplan.json.";
+                "\n\nA project update requires " +
+                "map.bmp, map.json and gameplan.json.";
+
             return false;
         }
 
         error = "";
+
         return true;
     }
+
+    // -------------------------------------------------------------------------
+    // Discovery
+    // -------------------------------------------------------------------------
 
     private async void DiscoverButton_Clicked(
         object? sender,
@@ -248,10 +372,13 @@ public partial class ProjectUpdatePage : ContentPage
             return;
 
         _completedDeviceIds.Clear();
+
         _devices.Clear();
+
         UpdateDeviceCount();
 
         _networkService.ClearDevices();
+
         await _networkService.StartDiscoveryAsync();
     }
 
@@ -259,11 +386,16 @@ public partial class ProjectUpdatePage : ContentPage
         object? sender,
         EventArgs e)
     {
-        MainThread.BeginInvokeOnMainThread(UpdateDeviceList);
+        MainThread.BeginInvokeOnMainThread(
+            UpdateDeviceList);
     }
 
     private void UpdateDeviceList()
     {
+        /*
+         * Do not allow discovery updates to modify the collection while
+         * an FTP update is in progress.
+         */
         if (_updating)
             return;
 
@@ -271,14 +403,19 @@ public partial class ProjectUpdatePage : ContentPage
             .Where(device =>
                 device.FtpMode &&
                 !_completedDeviceIds.Contains(device.DeviceId))
-            .ToDictionary(device => device.DeviceId);
+            .ToDictionary(
+                device => device.DeviceId);
 
         foreach (var row in _devices.ToArray())
         {
             if (!ftpDevices.ContainsKey(row.Device.DeviceId))
             {
-                row.Device.PropertyChanged -= Device_PropertyChanged;
-                row.PropertyChanged -= DeviceRow_PropertyChanged;
+                row.Device.PropertyChanged -=
+                    Device_PropertyChanged;
+
+                row.PropertyChanged -=
+                    DeviceRow_PropertyChanged;
+
                 _devices.Remove(row);
             }
         }
@@ -286,13 +423,20 @@ public partial class ProjectUpdatePage : ContentPage
         foreach (var device in ftpDevices.Values)
         {
             var row = _devices.FirstOrDefault(
-                item => item.Device.DeviceId == device.DeviceId);
+                item =>
+                    item.Device.DeviceId ==
+                    device.DeviceId);
 
             if (row is null)
             {
                 row = new FtpDeviceRow(device);
-                device.PropertyChanged += Device_PropertyChanged;
-                row.PropertyChanged += DeviceRow_PropertyChanged;
+
+                device.PropertyChanged +=
+                    Device_PropertyChanged;
+
+                row.PropertyChanged +=
+                    DeviceRow_PropertyChanged;
+
                 _devices.Add(row);
             }
 
@@ -300,22 +444,30 @@ public partial class ProjectUpdatePage : ContentPage
         }
 
         UpdateDeviceCount();
+
         UpdateButton.IsEnabled =
             !_updating &&
             _projectDirectory is not null &&
-            _devices.Any(row => row.IsSelected && row.Device.IsOnline);
+            _devices.Any(
+                row =>
+                    row.IsSelected &&
+                    row.Device.IsOnline);
     }
 
     private void DeviceRow_PropertyChanged(
         object? sender,
         PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(FtpDeviceRow.IsSelected))
+        if (e.PropertyName ==
+            nameof(FtpDeviceRow.IsSelected))
         {
             UpdateButton.IsEnabled =
                 !_updating &&
                 _projectDirectory is not null &&
-                _devices.Any(row => row.IsSelected && row.Device.IsOnline);
+                _devices.Any(
+                    row =>
+                        row.IsSelected &&
+                        row.Device.IsOnline);
         }
     }
 
@@ -323,51 +475,79 @@ public partial class ProjectUpdatePage : ContentPage
         object? sender,
         PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(CombatLRDevice.IsOnline) ||
-            e.PropertyName == nameof(CombatLRDevice.PlanName) ||
-            e.PropertyName == nameof(CombatLRDevice.PlanVersion))
+        if (e.PropertyName ==
+                nameof(CombatLRDevice.IsOnline) ||
+            e.PropertyName ==
+                nameof(CombatLRDevice.PlanName) ||
+            e.PropertyName ==
+                nameof(CombatLRDevice.PlanVersion))
         {
-            MainThread.BeginInvokeOnMainThread(UpdateDeviceList);
+            MainThread.BeginInvokeOnMainThread(
+                UpdateDeviceList);
         }
     }
 
     private void UpdateDeviceCount()
     {
-        int onlineCount = _devices.Count(row => row.Device.IsOnline);
-        DevicesHeaderLabel.Text = $"FTP DEVICES: {onlineCount}";
+        int onlineCount =
+            _devices.Count(
+                row => row.Device.IsOnline);
+
+        DevicesHeaderLabel.Text =
+            $"FTP DEVICES: {onlineCount}";
     }
+
+    // -------------------------------------------------------------------------
+    // Project update
+    // -------------------------------------------------------------------------
 
     private async void UpdateButton_Clicked(
         object? sender,
         EventArgs e)
     {
-        if (_updating || _projectDirectory is null)
-            return;
-
-        if (!ValidateProjectFolder(_projectDirectory, out string validationError))
+        if (_updating ||
+            _projectDirectory is null)
         {
-            await DisplayAlert("Invalid Project", validationError, "OK");
+            return;
+        }
+
+        if (!ValidateProjectFolder(
+                _projectDirectory,
+                out string validationError))
+        {
+            await DisplayAlert(
+                "Invalid Project",
+                validationError,
+                "OK");
+
             return;
         }
 
         string username =
-            await SecureStorage.Default.GetAsync(FtpUsernameKey) ?? "";
+            await SecureStorage.Default.GetAsync(
+                FtpUsernameKey) ?? "";
 
         string password =
-            await SecureStorage.Default.GetAsync(FtpPasswordKey) ?? "";
+            await SecureStorage.Default.GetAsync(
+                FtpPasswordKey) ?? "";
 
         if (string.IsNullOrWhiteSpace(username) ||
             string.IsNullOrWhiteSpace(password))
         {
             await DisplayAlert(
                 "FTP Credentials",
-                "Enter the FTP username and password before updating devices.",
+                "Enter the FTP username and password " +
+                "before updating devices.",
                 "OK");
+
             return;
         }
 
         var selected = _devices
-            .Where(row => row.IsSelected && row.Device.IsOnline)
+            .Where(
+                row =>
+                    row.IsSelected &&
+                    row.Device.IsOnline)
             .ToList();
 
         if (selected.Count == 0)
@@ -376,21 +556,54 @@ public partial class ProjectUpdatePage : ContentPage
                 "Project Update",
                 "Select at least one online FTP device.",
                 "OK");
+
             return;
         }
 
+        _cancelUpdate = false;
+
+        /*
+         * Capture the task so the Back button can wait for the current
+         * FTP operation to finish cleanly.
+         */
+        _updateTask = UpdateSelectedDevicesAsync(
+            selected,
+            username,
+            password);
+
+        try
+        {
+            await _updateTask;
+        }
+        finally
+        {
+            _updateTask = null;
+        }
+    }
+
+    private async Task UpdateSelectedDevicesAsync(
+        List<FtpDeviceRow> selected,
+        string username,
+        string password)
+    {
         try
         {
             _updating = true;
+
             UpdateButton.IsEnabled = false;
 
-            await SecureStorage.Default.SetAsync(FtpUsernameKey, username);
-            await SecureStorage.Default.SetAsync(FtpPasswordKey, password);
+            await SecureStorage.Default.SetAsync(
+                FtpUsernameKey,
+                username);
+
+            await SecureStorage.Default.SetAsync(
+                FtpPasswordKey,
+                password);
 
             foreach (var row in selected)
             {
                 row.Status = "Updating...";
-                row.IsSelected = false;
+
             }
 
             string[] files =
@@ -402,62 +615,158 @@ public partial class ProjectUpdatePage : ContentPage
 
             foreach (var row in selected)
             {
+                /*
+                 * Back was pressed while processing a previous device. */
                 bool success = true;
+                if (_cancelUpdate)
+                {
+                    success = false;
+                    row.Status = "Cancelled";
+                    break;
+                }
+
 
                 foreach (string fileName in files)
                 {
-                    row.Status = $"Uploading {fileName}...";
+                    /*
+                     * Never start another FTP transfer once cancellation
+                     * has been requested.
+                     */
+                    if (_cancelUpdate)
+                    {
+                        success = false;
+
+                        row.Status = "Cancelled";
+                        row.IsSelected = true;
+
+                        break;
+                    }
+
+                    row.Status =
+                        $"Uploading {fileName}...";
 
                     bool uploaded =
-                        await _networkService.UploadProjectFileAsync(
-                            row.Device,
-                            Path.Combine(_projectDirectory, fileName),
-                            fileName,
-                            username,
-                            password);
+                        await _networkService
+                            .UploadProjectFileAsync(
+                                row.Device,
+                                Path.Combine(
+                                    _projectDirectory!,
+                                    fileName),
+                                fileName,
+                                username,
+                                password);
+
+                    /*
+                     * If Back was pressed during the transfer,
+                     * UploadProjectFileAsync() is allowed to finish.
+                     *
+                     * We now stop processing this device rather than
+                     * starting another file.
+                     */
+                    if (_cancelUpdate)
+                    {
+                        success = false;
+
+                        row.Status = "Cancelled";
+                        row.IsSelected = true;
+
+                        break;
+                    }
 
                     if (!uploaded)
                     {
                         success = false;
+
                         break;
                     }
+                }
+
+                if (_cancelUpdate)
+                {
+                    row.Status = "Cancelled";
+                    row.IsSelected = true;
+
+                    continue;
                 }
 
                 if (success)
                 {
                     row.Status = "Updated";
-                    _completedDeviceIds.Add(row.Device.DeviceId);
-                    row.Device.PropertyChanged -= Device_PropertyChanged;
-                    row.PropertyChanged -= DeviceRow_PropertyChanged;
+
+                    _completedDeviceIds.Add(
+                        row.Device.DeviceId);
+
+                    row.Device.PropertyChanged -=
+                        Device_PropertyChanged;
+
+                    row.PropertyChanged -=
+                        DeviceRow_PropertyChanged;
+
                     _devices.Remove(row);
                 }
                 else
                 {
-                    row.Status = "FAILED - retry available";
+                    row.Status =
+                        "FAILED - retry available";
+
                     row.IsSelected = true;
                 }
             }
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Project Update", ex.Message, "OK");
+            /*
+             * If the user is leaving the page, don't display an alert
+             * over the page that is about to disappear.
+             */
+            if (!_cancelUpdate &&
+                !_leaving)
+            {
+                await MainThread.InvokeOnMainThreadAsync(
+                    async () =>
+                    {
+                        await DisplayAlert(
+                            "Project Update",
+                            ex.Message,
+                            "OK");
+                    });
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"Project Update: {ex.Message}");
+            }
         }
         finally
         {
             _updating = false;
-            UpdateDeviceCount();
-            UpdateButton.IsEnabled =
-                _projectDirectory is not null &&
-                _devices.Any(row => row.IsSelected && row.Device.IsOnline);
+
+            if (!_leaving)
+            {
+                UpdateDeviceCount();
+
+                UpdateButton.IsEnabled =
+                    _projectDirectory is not null &&
+                    _devices.Any(
+                        row =>
+                            row.IsSelected &&
+                            row.Device.IsOnline);
+            }
         }
     }
 
-    private sealed class FtpDeviceRow : INotifyPropertyChanged
+    // -------------------------------------------------------------------------
+    // FTP device row
+    // -------------------------------------------------------------------------
+
+    private sealed class FtpDeviceRow :
+        INotifyPropertyChanged
     {
         private bool _isSelected;
         private string _status = "Ready";
 
-        public FtpDeviceRow(CombatLRDevice device)
+        public FtpDeviceRow(
+            CombatLRDevice device)
         {
             Device = device;
         }
@@ -467,45 +776,55 @@ public partial class ProjectUpdatePage : ContentPage
         public bool IsSelected
         {
             get => _isSelected;
+
             set
             {
                 if (_isSelected == value)
                     return;
 
                 _isSelected = value;
+
                 PropertyChanged?.Invoke(
                     this,
-                    new PropertyChangedEventArgs(nameof(IsSelected)));
+                    new PropertyChangedEventArgs(
+                        nameof(IsSelected)));
             }
         }
 
         public string Status
         {
             get => _status;
+
             set
             {
                 if (_status == value)
                     return;
 
                 _status = value;
+
                 PropertyChanged?.Invoke(
                     this,
-                    new PropertyChangedEventArgs(nameof(Status)));
+                    new PropertyChangedEventArgs(
+                        nameof(Status)));
             }
         }
 
         public string PlanDisplay =>
-            string.IsNullOrWhiteSpace(Device.PlanName)
+            string.IsNullOrWhiteSpace(
+                Device.PlanName)
                 ? $"Plan: v{Device.PlanVersion}"
-                : $"Plan: {Device.PlanName}  v{Device.PlanVersion}";
+                : $"Plan: {Device.PlanName}  " +
+                  $"v{Device.PlanVersion}";
 
-        public event PropertyChangedEventHandler? PropertyChanged;
+        public event PropertyChangedEventHandler?
+            PropertyChanged;
 
         public void Refresh()
         {
             PropertyChanged?.Invoke(
                 this,
-                new PropertyChangedEventArgs(nameof(PlanDisplay)));
+                new PropertyChangedEventArgs(
+                    nameof(PlanDisplay)));
         }
     }
 }
