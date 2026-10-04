@@ -1,5 +1,6 @@
 {
-  "version": 1,
+  "version": 6,
+  "projectName": "fern - Copy",
   "gameDelayTime": 30,
   "home": {
     "latitude": 53.55075063983786,
@@ -188,6 +189,22 @@
           "spawnTimeSeconds": 0,
           "lifespanSeconds": 0,
           "id": 21
+        },
+        {
+          "eastMetres": 108.50432851783994,
+          "northMetres": 5.494486968240037,
+          "type": 2,
+          "spawnTimeSeconds": 0,
+          "lifespanSeconds": 0,
+          "id": 37
+        },
+        {
+          "eastMetres": 86.11574758738944,
+          "northMetres": 1.3116141866917672,
+          "type": 3,
+          "spawnTimeSeconds": 0,
+          "lifespanSeconds": 0,
+          "id": 38
         }
       ]
     },

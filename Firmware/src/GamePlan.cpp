@@ -407,6 +407,7 @@ bool GamePlan::Load(const char* filename)
      * without changing the GamePlan interface.
      */
     File file = LittleFS.open(filename, FILE_READ);
+  
 
     if (!file)
     {
@@ -444,6 +445,7 @@ bool GamePlan::Load(const char* filename)
         return false;
     }
 
+
     /*
      * home
      */
@@ -470,6 +472,13 @@ bool GamePlan::Load(const char* filename)
     _version =
         document["version"].as<int>();
 
+    _projectName = document["projectName"].as<String>();
+    if(_projectName.length() == 0)
+    {
+          _projectName="Untitled";
+    }
+
+
     _homeLatitude =
         home["latitude"].as<double>();
 
@@ -479,8 +488,7 @@ bool GamePlan::Load(const char* filename)
         
     _gameDelayTime =
         document["gameDelayTime"].as<int>();
-
-    Serial.printf("Game Delay time: %d\n", _gameDelayTime);        
+  
 
     _valid = true;
 

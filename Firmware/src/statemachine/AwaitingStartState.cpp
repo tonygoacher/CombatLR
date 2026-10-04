@@ -20,6 +20,7 @@
 #include "widgets/TextWidget.h"
 #include "SystemTime.h"
 #include <SimpleFTPServer.h>
+#include "GamePlan.h"
 
 
 
@@ -80,7 +81,7 @@ AwaitingStartState::AwaitingStartState(
     CombatLRServices& services)
     : _services(services),
       _connectionShown(false),
-      _network(services.systemConfig),
+      _network(services.systemConfig, services.gamePlan.GetVersion(), services.gamePlan.GetProjectName()),
      _exitPacer(false),
      _networkShudown(false),
      _ftpInitDone(false),
