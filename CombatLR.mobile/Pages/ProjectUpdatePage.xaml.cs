@@ -669,6 +669,7 @@ public partial class ProjectUpdatePage : ContentPage
                 {
                     success = false;
                     row.Status = "Cancelled";
+                    row.Progress = 0;
                     break;
                 }
 
@@ -684,13 +685,23 @@ public partial class ProjectUpdatePage : ContentPage
                         success = false;
 
                         row.Status = "Cancelled";
+                        row.Progress = 0;
                         row.IsSelected = true;
 
                         break;
                     }
 
+                    row.Progress = 0;
                     row.Status =
-                        $"Uploading {fileName}...";
+                        $"Uploading {fileName}... 0%";
+
+                    var progress =
+                        new Progress<FtpTransferProgress>(update =>
+                        {
+                            row.Progress = update.Percentage / 100.0;
+                            row.Status =
+                                $"Uploading {update.FileName}... {update.Percentage}%";
+                        });
 
                     bool uploaded =
                         await _networkService
@@ -701,7 +712,8 @@ public partial class ProjectUpdatePage : ContentPage
                                     fileName),
                                 fileName,
                                 username,
-                                password);
+                                password,
+                                progress: progress);
 
                     /*
                      * If Back was pressed during the transfer,
@@ -715,6 +727,7 @@ public partial class ProjectUpdatePage : ContentPage
                         success = false;
 
                         row.Status = "Cancelled";
+                        row.Progress = 0;
                         row.IsSelected = true;
 
                         break;
@@ -739,6 +752,7 @@ public partial class ProjectUpdatePage : ContentPage
                 if (success)
                 {
                     row.Status = "Updated";
+                    row.Progress = 1.0;
 
                     _completedDeviceIds.Add(
                         row.Device.DeviceId);
@@ -755,6 +769,7 @@ public partial class ProjectUpdatePage : ContentPage
                 {
                     row.Status =
                         "FAILED - retry available";
+                    row.Progress = 0;
 
                     row.IsSelected = true;
                 }
@@ -811,6 +826,7 @@ public partial class ProjectUpdatePage : ContentPage
     {
         private bool _isSelected;
         private string _status = "Ready";
+        private double _progress;
 
         public FtpDeviceRow(
             CombatLRDevice device)
@@ -835,6 +851,23 @@ public partial class ProjectUpdatePage : ContentPage
                     this,
                     new PropertyChangedEventArgs(
                         nameof(IsSelected)));
+            }
+        }
+
+        public double Progress
+        {
+            get => _progress;
+            set
+            {
+                if (Math.Abs(_progress - value) < 0.0001)
+                    return;
+
+                _progress = value;
+
+                PropertyChanged?.Invoke(
+                    this,
+                    new PropertyChangedEventArgs(
+                        nameof(Progress)));
             }
         }
 

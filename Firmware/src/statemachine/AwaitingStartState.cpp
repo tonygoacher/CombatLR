@@ -23,7 +23,7 @@
 #include "GamePlan.h"
 
 
-AwaitingStartState* AwaitingStartState::_ftpCallbackInstance = nullptr;
+
 
 
 namespace TeamIconFiles
@@ -84,29 +84,18 @@ AwaitingStartState::AwaitingStartState(
       _connectionShown(false),
       _network(services.systemConfig, services.gamePlan.GetVersion(), services.gamePlan.GetProjectName()),
      _exitPacer(false),
-     _networkShudown(false),
-     _ftpInitDone(false),
-     _ftpServer(nullptr)
+     _networkShudown(false)
 {
     _exitPacer.SetPace(1000);   // USed to prevent early shutdown of wifi before ACK has been sent
 }
 
-// -----------------------------------------------------------------------------
-// Entry
-// -----------------------------------------------------------------------------
 
-void AwaitingStartState::Entry()
+void AwaitingStartState::EntryCommon()
 {
-    if (FtpMode())
-    {
-        _ftpCallbackInstance = this;
-    }
-
     _services.displayManager.Send(
         std::unique_ptr<IDisplayCommand>(
             new DisplayBackgroundCommand(
                 "/logo.bmp")));
-
     WidgetPosition posWifi(320-32,0);
 
     WiFiStatusWidget* statusWidget = new WiFiStatusWidget(UIWidgetIds::WiFiStatus,
@@ -114,25 +103,6 @@ void AwaitingStartState::Entry()
 
     _services.displayManager.Send(std::make_unique<AddWidgetCommand>(statusWidget));   
 
-    WidgetPosition posTeam(320-64,0);
-
-    TeamIds team = static_cast<TeamIds>(_services.systemConfig.GetTeamId());
-
-    TextureWidget* textureWidget = nullptr;
-    if(!FtpMode())
-    {
-        textureWidget  = new TextureWidget(UIWidgetIds::TeamID,
-            _services.displayManager.GetTextureManager(),posTeam,GetTeamFile(team));
-    }
-    else            
-    {
-        textureWidget  = new TextureWidget(UIWidgetIds::TeamID,
-            _services.displayManager.GetTextureManager(),posTeam,"/ftp.bmp");  
-    }
-
-   _services.displayManager.Send(std::make_unique<AddWidgetCommand>(textureWidget));      
-   
-   
     WidgetPosition textPos={TextX,TextY};
 
     TextWidget*  textWidget  = new TextWidget(UIWidgetIds::IPAddress, WiFi.macAddress().c_str(), textPos,TextFont,MC_DATUM, TFT_WHITE, TFT_BLACK, TextZoom);
@@ -140,8 +110,8 @@ void AwaitingStartState::Entry()
     _services.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new AddWidgetCommand(
-                    textWidget)));
-
+                    textWidget)));    
+    
     WiFi.mode(
         WIFI_STA);
 
@@ -152,10 +122,30 @@ void AwaitingStartState::Entry()
     Serial.println(
         "Connecting to Wi-Fi");
 
-    _network.IndicateFtpMode(FtpMode());
-
     _connectionShown =
-        false;
+        false;                    
+    
+}
+
+
+// -----------------------------------------------------------------------------
+// Entry
+// -----------------------------------------------------------------------------
+
+void AwaitingStartState::Entry()
+{
+
+    EntryCommon();
+    _network.IndicateFtpMode(false);
+
+    TextureWidget* textureWidget = nullptr;
+    WidgetPosition posTeam(320-64,0);
+
+    TeamIds team = static_cast<TeamIds>(_services.systemConfig.GetTeamId());
+    textureWidget  = new TextureWidget(UIWidgetIds::TeamID,
+        _services.displayManager.GetTextureManager(),posTeam,GetTeamFile(team));
+    _services.displayManager.Send(std::make_unique<AddWidgetCommand>(textureWidget));               
+
 }
 
 // -----------------------------------------------------------------------------
@@ -165,10 +155,7 @@ void AwaitingStartState::Entry()
 
 void AwaitingStartState::Exit()
 {
-    if (_ftpCallbackInstance == this)
-    {
-        _ftpCallbackInstance = nullptr;
-    }
+
 
     RemoveWidgetCommand* removeIcon = new RemoveWidgetCommand(UIWidgetIds::WiFiStatus);
 
@@ -196,14 +183,8 @@ void AwaitingStartState::Exit()
 // Run
 // -----------------------------------------------------------------------------
 
-uint16_t AwaitingStartState::Run()
+void AwaitingStartState::RunCommon()
 {
-    if (WiFi.status() != WL_CONNECTED)
-    {
-        return FtpMode() ? SystemStates::Ftp : SystemStates::AwaitingStart;
-    }
-
-
 
     if (!_connectionShown)
     {
@@ -225,32 +206,25 @@ uint16_t AwaitingStartState::Run()
         _services.displayManager.Send(
             std::make_unique<SetTextCommand>(UIWidgetIds::IPAddress, WiFi.localIP().toString().c_str()));
 
-
-
-        
-
         _network.Begin();
 
         _connectionShown =
             true;
     }
+    
 
-       
-    if(FtpMode())
+}
+
+uint16_t AwaitingStartState::Run()
+{
+    if (WiFi.status() != WL_CONNECTED)
     {
-        if(!_ftpInitDone)
-        {
-            StartFTP();
-        }
-        else
-        {
-            RunFTP();
-        }
-        _network.Update();  // Keep the network running as this does IP boradcasts
-        return SystemStates::Ftp;
+        return SystemStates::AwaitingStart;
     }
-    
-    
+
+    RunCommon();
+
+  
     if(_networkShudown)
     {
 
@@ -303,77 +277,4 @@ uint16_t AwaitingStartState::Run()
 
 
 
-void AwaitingStartState::RunFTP()
-{
-    if(_ftpServer != nullptr)
-    {
-        _ftpServer->handleFTP();
-    }
-}
 
-
-void AwaitingStartState::FtpCallback(
-    FtpOperation operation,
-    uint32_t freeSpace,
-    uint32_t totalSpace)
-{
-    if (_ftpCallbackInstance != nullptr)
-    {
-        _ftpCallbackInstance->HandleFtpCallback(
-            operation,
-            freeSpace,
-            totalSpace);
-    }
-}
-
-
-void AwaitingStartState::HandleFtpCallback(
-    FtpOperation operation,
-    uint32_t freeSpace,
-    uint32_t totalSpace)
-{
-    switch (operation)
-    {
-        case FTP_CONNECT:
-            Serial.println("FTP client connected");
-            _services.displayManager.EnableRendering(false);
-            break;
-
-        case FTP_DISCONNECT:
-            Serial.println("FTP client disconnected");
-            _services.displayManager.EnableRendering(true);
-            break;
-
-        case FTP_FREE_SPACE_CHANGE:
-            Serial.print("FTP free space: ");
-            Serial.print(freeSpace);
-            Serial.print(" / ");
-            Serial.println(totalSpace);
-            break;
-    }
-}
-
-
-
-void AwaitingStartState::StartFTP()
-{
-    if(_ftpServer == nullptr)
-    {
-        Serial.println("Starting FTP server");
-        _ftpServer = new FtpServer();
-
-        _ftpCallbackInstance = this;
-
-        _ftpServer->setCallback(
-            AwaitingStartState::FtpCallback);
-
-        _ftpServer->begin("combatlr", "password");
-        _ftpInitDone = true;
-    }
-}
-
-
-bool AwaitingStartState::FtpMode()
-{
-    return false;
-}

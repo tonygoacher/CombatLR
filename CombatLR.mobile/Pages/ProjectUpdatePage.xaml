@@ -114,12 +114,20 @@
                                         FontSize="12" />
                                 </VerticalStackLayout>
 
-                                <Label
+                                <VerticalStackLayout
                                     Grid.Column="2"
-                                    Text="{Binding Status}"
-                                    TextColor="LightGray"
-                                    FontSize="12"
-                                    VerticalTextAlignment="Center" />
+                                    WidthRequest="120"
+                                    Spacing="2"
+                                    VerticalOptions="Center">
+                                    <ProgressBar
+                                        Progress="{Binding Progress}"
+                                        HeightRequest="6" />
+                                    <Label
+                                        Text="{Binding Status}"
+                                        TextColor="LightGray"
+                                        FontSize="12"
+                                        HorizontalTextAlignment="End" />
+                                </VerticalStackLayout>
                             </Grid>
                         </Frame>
                     </DataTemplate>
