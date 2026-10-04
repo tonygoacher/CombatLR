@@ -1,15 +1,12 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace CombatLR.mobile.Models;
 
 public class GamePlan
 {
-    public GamePlan()
-    {
-        _nextPickupId = 0;
-    }
-
-    public int Version { get; set; } = 1;
+    // 0 means this plan has never been saved. SaveAsync changes it to 1
+    // on the first successful save and increments it thereafter.
+    public int Version { get; set; } = 0;
 
     [JsonPropertyName("gameDelayTime")]
     public int GameDelayTime { get; set; } = 0;
