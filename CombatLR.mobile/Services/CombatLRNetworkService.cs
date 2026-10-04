@@ -11,6 +11,18 @@ using System.Text.Json.Serialization;
 
 namespace CombatLR.mobile.Services;
 
+public sealed class FtpTransferProgress
+{
+    public string FileName { get; init; } = "";
+    public long BytesTransferred { get; init; }
+    public long TotalBytes { get; init; }
+
+    public int Percentage =>
+        TotalBytes <= 0
+            ? 0
+            : Math.Min(100, (int)(BytesTransferred * 100L / TotalBytes));
+}
+
 public sealed class CombatLRNetworkService : IAsyncDisposable
 {
     public const int DiscoveryPort = 4210;
@@ -788,7 +800,8 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         string remoteFileName,
         string username,
         string password,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IProgress<FtpTransferProgress>? progress = null)
     {
         if (!device.IsOnline ||
             !device.FtpMode ||
@@ -799,9 +812,13 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             return false;
         }
 
+        FtpWebRequest? request = null;
+        long totalBytes = 0;
+        long bytesTransferred = 0;
+
         try
         {
-            var request =
+            request =
                 (FtpWebRequest)WebRequest.Create(
                     new Uri($"ftp://{device.IpAddress}:{FtpPort}/{Uri.EscapeDataString(remoteFileName)}"));
 
@@ -812,26 +829,105 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             request.Timeout = 10000;
             request.ReadWriteTimeout = 10000;
 
-            byte[] data = await File.ReadAllBytesAsync(
-                localFilePath,
-                cancellationToken);
+            var fileInfo = new FileInfo(localFilePath);
+            totalBytes = fileInfo.Length;
+            request.ContentLength = totalBytes;
 
-            request.ContentLength = data.Length;
+            await using FileStream fileStream =
+                new FileStream(
+                    localFilePath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    bufferSize: 16 * 1024,
+                    useAsync: true);
 
+            byte[] buffer = new byte[16 * 1024];
+
+            progress?.Report(new FtpTransferProgress
+            {
+                FileName = remoteFileName,
+                BytesTransferred = 0,
+                TotalBytes = totalBytes
+            });
+
+            // Send the complete file. Reaching 100% means all bytes have
+            // successfully been accepted by the FTP request stream.
             await using (Stream requestStream =
                 await request.GetRequestStreamAsync())
             {
-                await requestStream.WriteAsync(
-                    data,
-                    cancellationToken);
+                int bytesRead;
+
+                while ((bytesRead = await fileStream.ReadAsync(
+                           buffer.AsMemory(0, buffer.Length),
+                           cancellationToken)) > 0)
+                {
+                    await requestStream.WriteAsync(
+                        buffer.AsMemory(0, bytesRead),
+                        cancellationToken);
+
+                    bytesTransferred += bytesRead;
+
+                    progress?.Report(new FtpTransferProgress
+                    {
+                        FileName = remoteFileName,
+                        BytesTransferred = bytesTransferred,
+                        TotalBytes = totalBytes
+                    });
+                }
             }
 
-            using var response =
-                (FtpWebResponse)await request.GetResponseAsync();
+            // The data stream is now closed. Normally the FTP server returns
+            // a 226 response here. SimpleFTPServer can, however, close the
+            // control connection without FtpWebRequest receiving that final
+            // response. Do not turn a successfully transferred file into a
+            // failed update just because that final acknowledgement is lost.
+            try
+            {
+                using var response =
+                    (FtpWebResponse)await request.GetResponseAsync();
 
-            return response.StatusCode ==
-                   FtpStatusCode.ClosingData ||
-                   response.StatusCode == FtpStatusCode.CommandOK;
+                Console.WriteLine(
+                    $"CombatLR FTP: {remoteFileName} -> {device.DeviceId}: " +
+                    $"{response.StatusCode} {response.StatusDescription?.Trim()}");
+
+                return (int)response.StatusCode >= 200 &&
+                       (int)response.StatusCode < 300;
+            }
+            catch (WebException ex) when
+                (bytesTransferred == totalBytes &&
+                 ex.Response is null)
+            {
+                // All file bytes were written successfully, but no FTP
+                // response was received. Treat the transfer as successful.
+                // This handles the SimpleFTPServer/FtpWebRequest completion
+                // behaviour without making the user retry an uploaded file.
+                Console.WriteLine(
+                    $"CombatLR FTP: {remoteFileName} -> {device.DeviceId}: " +
+                    "transfer complete; no final FTP response received.");
+
+                return true;
+            }
+        }
+        catch (WebException ex)
+        {
+            if (ex.Response is FtpWebResponse ftpResponse)
+            {
+                Console.WriteLine(
+                    $"CombatLR FTP: upload of {remoteFileName} to " +
+                    $"{device.DeviceId} failed: " +
+                    $"{ftpResponse.StatusCode} {ftpResponse.StatusDescription?.Trim()}");
+
+                ftpResponse.Dispose();
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"CombatLR FTP: upload of {remoteFileName} to " +
+                    $"{device.DeviceId} failed: {ex.Message}");
+            }
+
+            return false;
         }
         catch (Exception ex)
         {
