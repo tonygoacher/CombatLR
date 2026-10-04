@@ -23,34 +23,19 @@ public:
     void Entry() override;
     void Exit() override;
 protected:
-    virtual bool  FtpMode();
+    void EntryCommon();
+    void RunCommon();
 
-private:  
-  
-    void RunFTP();
-    void StartFTP();
-
-    static AwaitingStartState* _ftpCallbackInstance;
-
-    static void FtpCallback(
-        FtpOperation operation,
-        uint32_t freeSpace,
-        uint32_t totalSpace);
-
-    void HandleFtpCallback(
-        FtpOperation operation,
-        uint32_t freeSpace,
-        uint32_t totalSpace);
-
+ 
 
     const char * const GetTeamFile(TeamIds teamId);
     CombatLRServices& _services;
     CombatLRNetwork _network;
-    FtpServer *  _ftpServer;
+
     bool _connectionShown;
     bool _networkShudown;
 
-    bool _ftpInitDone;
+
     Pacer _exitPacer;
 
 
