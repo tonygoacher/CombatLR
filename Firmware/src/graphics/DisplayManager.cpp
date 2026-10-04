@@ -25,7 +25,8 @@ DisplayManager::DisplayManager(
     _textureManager(textureManager),
     _heading(0.0f),
     _zoom(1.0f),
-    _playerVisible(false)
+    _playerVisible(false),
+    _renderEnabled(true)
 {
 }
 
@@ -183,11 +184,25 @@ void DisplayManager::DisplayTask()
     
         }
 
-        _display->Update(
-            _playerPosition,
-            _heading,
-            _zoom,
-            _playerVisible);
+        uint32_t start = millis();
+
+        if(_renderEnabled)
+        {
+            _display->Update(
+                _playerPosition,
+                _heading,
+                _zoom,
+                _playerVisible);
+        }                
+
+        uint32_t elapsed = millis() - start;
+
+    if (elapsed > 500)
+    {
+        Serial.printf(
+            "DisplayTask: Update took %lu ms\n",
+            elapsed);
+    }
 
         vTaskDelay(
             pdMS_TO_TICKS(10));

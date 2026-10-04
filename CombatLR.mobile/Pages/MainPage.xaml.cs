@@ -24,5 +24,13 @@ namespace CombatLR.mobile.Pages
             await Navigation.PushAsync(
                 new GameControlPage());
         }
+
+        private async void ProjectUpdate_Clicked(
+            object? sender,
+            EventArgs e)
+        {
+            await Navigation.PushAsync(
+                new ProjectUpdatePage());
+        }
     }
 }
