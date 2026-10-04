@@ -689,6 +689,20 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 out var friendlyFireProperty) &&
             friendlyFireProperty.ValueKind == JsonValueKind.True;
 
+        int planVersion =
+            root.TryGetProperty(
+                "planVersion",
+                out var planVersionProperty)
+                ? planVersionProperty.GetInt32()
+                : 0;
+
+        string planName =
+            root.TryGetProperty(
+                "planName",
+                out var planNameProperty)
+                ? planNameProperty.GetString() ?? ""
+                : "";
+
         string state =
             root.TryGetProperty(
                 "state",
@@ -706,7 +720,9 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 playerId,
                 friendlyFire,
                 state,
-                version);
+                version,
+                planVersion,
+                planName);
 
             existing.LastSeen = DateTimeOffset.UtcNow;
             existing.IsOnline = true;
@@ -724,6 +740,8 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             FriendlyFire = friendlyFire,
             State = state,
             ProtocolVersion = version,
+            PlanVersion = planVersion,
+            PlanName = planName,
             LastSeen = DateTimeOffset.UtcNow,
             IsOnline = true
         };
@@ -884,6 +902,8 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     private bool _isDuplicatePlayerId;
     private string _state = "";
     private int _protocolVersion;
+    private int _planVersion;
+    private string _planName = "";
     private DateTimeOffset _lastSeen;
     private bool _isOnline = true;
 
@@ -898,6 +918,18 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     {
         get => _protocolVersion;
         set => SetField(ref _protocolVersion, value);
+    }
+
+    public int PlanVersion
+    {
+        get => _planVersion;
+        set => SetField(ref _planVersion, value);
+    }
+
+    public string PlanName
+    {
+        get => _planName;
+        set => SetField(ref _planName, value);
     }
 
     public string DeviceId { get; init; } = "";
@@ -1060,7 +1092,9 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
         int playerId,
         bool friendlyFire,
         string state,
-        int protocolVersion)
+        int protocolVersion,
+        int planVersion = 0,
+        string planName = "")
     {
         IpAddress = ipAddress;
         TeamId = teamId;
@@ -1068,6 +1102,8 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
         FriendlyFire = friendlyFire;
         State = state;
         ProtocolVersion = protocolVersion;
+        PlanVersion = planVersion;
+        PlanName = planName;
         LastSeen = DateTimeOffset.UtcNow;
     }
 
