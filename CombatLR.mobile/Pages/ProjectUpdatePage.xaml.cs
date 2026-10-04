@@ -75,8 +75,8 @@ public partial class ProjectUpdatePage : ContentPage
             /*
              * Do not abort an FTP transfer in the middle of a file.
              *
-             * UploadProjectFileAsync() does not currently accept a
-             * CancellationToken, so allow the current transfer to complete.
+             * UploadProjectFileAsync() is allowed to finish the current
+             * file; the update loop then stops before another file/device.
              * The update loop will then stop before starting another file
              * or another device.
              */
@@ -642,8 +642,15 @@ public partial class ProjectUpdatePage : ContentPage
                         break;
                     }
 
+                    var uploadProgress =
+                        new Progress<FtpTransferProgress>(progress =>
+                        {
+                            row.Status =
+                                $"Uploading {progress.FileName} — {progress.Percentage}%";
+                        });
+
                     row.Status =
-                        $"Uploading {fileName}...";
+                        $"Uploading {fileName} — 0%";
 
                     bool uploaded =
                         await _networkService
@@ -654,7 +661,8 @@ public partial class ProjectUpdatePage : ContentPage
                                     fileName),
                                 fileName,
                                 username,
-                                password);
+                                password,
+                                progress: uploadProgress);
 
                     /*
                      * If Back was pressed during the transfer,
