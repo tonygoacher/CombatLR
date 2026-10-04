@@ -6,13 +6,13 @@
 namespace SystemConsts
 {
     constexpr uint8_t MaxTeamId = 3;
-    const char * const friendlyFire = "friendlyFire";
-    const char * const playerId =  "playerId";
-    const char * const teamId = "teamId";
-    const char * const wifiSSID = "wifiSSID";
-    const char * const wifiPass = "wifiPass";
-    const char * const ftpUser = "ftpUser";
-    const char * const ftpPass = "ftpPass";
+    const char * const FriendlyFire = "friendlyFire";
+    const char * const PlayerID =  "playerId";
+    const char * const TeamID = "teamId";
+    const char * const WifiSSID = "wifiSSID";
+    const char * const WifiPass = "wifiPass";
+    const char * const FTPUser = "ftpUser";
+    const char * const FTPPass = "ftpPass";
 
     
 }
@@ -64,8 +64,8 @@ bool SystemConfig::Load()
         return false;
     }
 
-    int teamId = document[SystemConsts::teamId] | 0;
-    int playerId = document[SystemConsts::playerId] | 0;
+    int teamId = document[SystemConsts::TeamID] | 0;
+    int playerId = document[SystemConsts::PlayerID] | 0;
 
     if (teamId < 0 || teamId > SystemConsts::MaxTeamId)
         return false;
@@ -75,13 +75,13 @@ bool SystemConfig::Load()
 
     _teamId = static_cast<uint8_t>(teamId);
     _playerId = static_cast<uint8_t>(playerId);
-    _friendlyFire = document[SystemConsts::friendlyFire] | false;
+    _friendlyFire = document[SystemConsts::FriendlyFire] | false;
 
-    _wifiSSID = static_cast<String>(document[SystemConsts::wifiSSID]);
-    _wifiPass = static_cast<String>(document[SystemConsts::wifiPass]);    
+    _wifiSSID = static_cast<String>(document[SystemConsts::WifiSSID]);
+    _wifiPass = static_cast<String>(document[SystemConsts::WifiPass]);    
 
-    _ftpUser = static_cast<String>(document[SystemConsts::ftpUser]);
-    _ftpPass = static_cast<String>(document[SystemConsts::ftpPass]);    
+    _ftpUser = static_cast<String>(document[SystemConsts::FTPUser]);
+    _ftpPass = static_cast<String>(document[SystemConsts::FTPPass]);    
 
 
     Serial.print("SystemConfig: Team ID = ");
@@ -108,17 +108,15 @@ bool SystemConfig::Save() const
 
     JsonDocument document;
 
-    document[SystemConsts::teamId] = _teamId;
-    document[SystemConsts::playerId] = _playerId;
-    document[SystemConsts::friendlyFire] = _friendlyFire;
-    document[SystemConfig::_wifiSSID] = _wifiSSID;
-    document[SystemConfig::_wifiPass] = _wifiPass;
-    document[SystemConfig::_ftpUser] = _ftpUser;
-    document[SystemConfig::_ftpPass] = _ftpPass;
+    document[SystemConsts::TeamID] = _teamId;
+    document[SystemConsts::PlayerID] = _playerId;
+    document[SystemConsts::FriendlyFire] = _friendlyFire;
+    document[SystemConsts::WifiSSID] = _wifiSSID;
+    document[SystemConsts::WifiPass] = _wifiPass;
+    document[SystemConsts::FTPUser] = _ftpUser;
+    document[SystemConsts::FTPPass] = _ftpPass;
 
 
-    Serial.printf("WifiSSID %s\n", _wifiSSID);
-    Serial.printf("WifiPass %s\n", _wifiPass);
     if (serializeJson(document, file) == 0)
     {
         file.close();

@@ -9,5 +9,5 @@ public:
     FtpState(CombatLRServices& services):
         AwaitingStartState(services){};
         
-    virtual bool FtpMode() override { Serial.println("FTP MODE FALSE");return true;}  
+    virtual bool FtpMode() override {return true;}  
 };
