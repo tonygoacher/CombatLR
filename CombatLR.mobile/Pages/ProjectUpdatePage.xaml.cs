@@ -1,6 +1,7 @@
 using CombatLR.mobile.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Text.Json;
 
 namespace CombatLR.mobile.Pages;
 
@@ -75,8 +76,8 @@ public partial class ProjectUpdatePage : ContentPage
             /*
              * Do not abort an FTP transfer in the middle of a file.
              *
-             * UploadProjectFileAsync() is allowed to finish the current
-             * file; the update loop then stops before another file/device.
+             * UploadProjectFileAsync() does not currently accept a
+             * CancellationToken, so allow the current transfer to complete.
              * The update loop will then stop before starting another file
              * or another device.
              */
@@ -282,6 +283,7 @@ public partial class ProjectUpdatePage : ContentPage
                 _projectDirectory = null;
 
                 ProjectLabel.Text = "No project selected";
+                ProjectVersionLabel.Text = "Version: —";
 
                 FolderLabel.Text =
                     "Selected project has no complete game plan";
@@ -299,6 +301,8 @@ public partial class ProjectUpdatePage : ContentPage
             _projectDirectory = folder;
 
             ProjectLabel.Text = selected;
+            ProjectVersionLabel.Text =
+                $"Version: {await GetGamePlanVersionAsync(folder)}";
             FolderLabel.Text = folder;
 
             UpdateButton.IsEnabled =
@@ -326,6 +330,49 @@ public partial class ProjectUpdatePage : ContentPage
         return Environment.GetFolderPath(
             Environment.SpecialFolder.MyDocuments);
 #endif
+    }
+
+    private static async Task<string> GetGamePlanVersionAsync(
+        string folder)
+    {
+        string path = Path.Combine(
+            folder,
+            "gameplan.json");
+
+        try
+        {
+            string json = await File.ReadAllTextAsync(path);
+
+            using JsonDocument document =
+                JsonDocument.Parse(json);
+
+            JsonElement root = document.RootElement;
+
+            if (!root.TryGetProperty(
+                    "version",
+                    out JsonElement versionProperty))
+            {
+                return "—";
+            }
+
+            return versionProperty.ValueKind switch
+            {
+                JsonValueKind.Number =>
+                    versionProperty.GetRawText(),
+
+                JsonValueKind.String =>
+                    versionProperty.GetString() ?? "—",
+
+                _ => "—"
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"Project Update: unable to read game plan version: {ex.Message}");
+
+            return "—";
+        }
     }
 
     private static bool ValidateProjectFolder(
@@ -642,15 +689,8 @@ public partial class ProjectUpdatePage : ContentPage
                         break;
                     }
 
-                    var uploadProgress =
-                        new Progress<FtpTransferProgress>(progress =>
-                        {
-                            row.Status =
-                                $"Uploading {progress.FileName} — {progress.Percentage}%";
-                        });
-
                     row.Status =
-                        $"Uploading {fileName} — 0%";
+                        $"Uploading {fileName}...";
 
                     bool uploaded =
                         await _networkService
@@ -661,8 +701,7 @@ public partial class ProjectUpdatePage : ContentPage
                                     fileName),
                                 fileName,
                                 username,
-                                password,
-                                progress: uploadProgress);
+                                password);
 
                     /*
                      * If Back was pressed during the transfer,

@@ -21,6 +21,11 @@
                 Text="No project selected"
                 TextColor="LightGray"
                 FontSize="14" />
+            <Label
+                x:Name="ProjectVersionLabel"
+                Text="Version: —"
+                TextColor="LightGray"
+                FontSize="14" />
         </VerticalStackLayout>
 
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
