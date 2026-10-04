@@ -146,6 +146,8 @@ void AwaitingStartState::Entry()
     Serial.println(
         "Connecting to Wi-Fi");
 
+    _network.IndicateFtpMode(FtpMode());
+
     _connectionShown =
         false;
 }
