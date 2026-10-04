@@ -235,6 +235,7 @@ uint16_t AwaitingStartState::Run()
         {
             RunFTP();
         }
+        _network.Update();  // Keep the network running as this does IP boradcasts
         return SystemStates::Ftp;
     }
     
