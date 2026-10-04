@@ -34,6 +34,7 @@ public:
     bool IsValid() const;
 
     int GetVersion() const;
+    const String& GetProjectName() const { return _projectName;}
 
     double GetHomeLatitude() const;
     double GetHomeLongitude() const;
@@ -43,6 +44,7 @@ public:
     static constexpr int ZoneWidgetIdBase = 0x80000;
 private:
 
+    String _projectName;
     int _version = 0;
     int _gameDelayTime = 600;   // Default of 5 mins
 

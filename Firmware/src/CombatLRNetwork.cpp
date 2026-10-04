@@ -5,8 +5,8 @@
 #include <WiFi.h>
 
 CombatLRNetwork::CombatLRNetwork(
-    SystemConfig& config)
-    : _config(config)
+    SystemConfig& config, int planVersion, const String& planName)
+    : _config(config), _ftpMpde(false), _planVersion(planVersion), _planName(planName)
 {
 }
 
@@ -549,6 +549,12 @@ void CombatLRNetwork::SendDeviceResponse()
 
     response["tcpPort"] =
         TcpPort;
+
+    response["ftpMode"] = _ftpMpde;
+
+    response["planVersion"] = _planVersion;
+    response["planName"] = _planName;
+
 
     SendUdpJson(response);
 }

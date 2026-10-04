@@ -131,7 +131,7 @@ class CombatLRNetwork
 {
 public:
     explicit CombatLRNetwork(
-        SystemConfig& config);
+        SystemConfig& config, int planVersion, const String& planName);
 
     bool Begin(
         uint16_t port = 4210);
@@ -139,6 +139,8 @@ public:
     void Stop();
 
     std::unique_ptr<CombatLRNetworkEvent> Update();
+
+    void IndicateFtpMode(bool ftpModeEnabled) { _ftpMpde = ftpModeEnabled;}
 
 private:
     static constexpr uint8_t ProtocolVersion = 1;
@@ -188,6 +190,10 @@ private:
     WiFiServer _tcpServer{TcpPort};
     WiFiClient _tcpClient;
     SystemConfig& _config;
+    bool _ftpMpde;
+    int _planVersion;
+    const String& _planName;
+
 
     uint16_t _port = 4210;
     bool _started = false;
