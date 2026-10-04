@@ -8,6 +8,9 @@ public class GamePlan
     // on the first successful save and increments it thereafter.
     public int Version { get; set; } = 0;
 
+    // ProjectName is the name of the containing CombatLR project directory.
+    public string ProjectName { get; set; } = string.Empty;
+
     [JsonPropertyName("gameDelayTime")]
     public int GameDelayTime { get; set; } = 0;
 
