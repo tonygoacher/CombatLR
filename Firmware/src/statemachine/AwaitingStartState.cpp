@@ -114,6 +114,7 @@ void AwaitingStartState::EntryCommon()
     
     WiFi.mode(
         WIFI_STA);
+        
 
     WiFi.begin(
         _services.systemConfig.GetWifiSSID().c_str(),

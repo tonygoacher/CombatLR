@@ -23,15 +23,20 @@ uint16_t PowerUpState::Run()
     _services.navigation.Update();
     if(_pacer.Pace())
     {
-        Serial.printf("T:%d R:%d\n", _services.triggerSwitch.RawRead(), _services.reloadSwitch.RawRead());
+
+
         if(_services.triggerSwitch.RawRead() && _services.reloadSwitch.RawRead())
         {
             return SystemStates::Ftp;
         }
-        else
+
+        if(_services.triggerSwitch.RawRead() && _services.zoomSwitch.RawRead())
         {
-            return SystemStates::GPSLock;
+            return SystemStates::OTA;
         }
+            
+        return SystemStates::GPSLock;
+
     }
     return SystemStates::PowerUp;
 }
