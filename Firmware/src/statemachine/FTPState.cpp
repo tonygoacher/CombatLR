@@ -46,7 +46,7 @@ uint16_t FtpState::Run()
 {
     
     RunCommon();
-    
+
     if (WiFi.status() != WL_CONNECTED)
     {
         return SystemStates::Ftp;
@@ -133,7 +133,10 @@ void FtpState::StartFTP()
         _ftpServer->setCallback(
             FtpState::FtpCallback);
 
-        _ftpServer->begin("combatlr", "password");
+        Serial.print("User:"); Serial.println(_services.systemConfig.GetFtpUser().c_str());         
+        Serial.print("Pass:>>>>"); Serial.print(_services.systemConfig.GetFtpPass().c_str()); Serial.println("<<<<");
+
+        _ftpServer->begin(_services.systemConfig.GetFtpUser().c_str(), _services.systemConfig.GetFtpPass().c_str());
         _ftpInitDone = true;
     }
 }

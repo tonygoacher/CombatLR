@@ -9,6 +9,7 @@
 #include "statemachine/GPSLockState.h"
 #include "statemachine/FtpState.h"
 #include "statemachine/OTAState.h"
+#include "statemachine/ProvisioningState.h"
 #include "statemachine/DeadState.h"
 #include "weapons/WeaponManager.h"
 #include <Arduino.h>
@@ -51,4 +52,6 @@ void CombatLRStateMachine::Init()
     _states.insert(StateMapEntry(SystemStates::GameRunning,*new GameRunningState(12000, _stateData, _weaponManager)));
     _states.insert(StateMapEntry(SystemStates::Dead,*new DeadState(_stateData)));
     _states.insert(StateMapEntry(SystemStates::OTA,*new OTAState(_stateData)));
+    _states.insert(StateMapEntry(SystemStates::Provisioning,*new ProvisioningState(_stateData)));    
 }
+

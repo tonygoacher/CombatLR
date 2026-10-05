@@ -11,5 +11,6 @@ enum SystemStates
     GameRunning,
     Dead,
     Ftp,
-    OTA
+    OTA,
+    Provisioning,
 };

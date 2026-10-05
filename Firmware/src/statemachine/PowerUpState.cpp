@@ -34,6 +34,11 @@ uint16_t PowerUpState::Run()
         {
             return SystemStates::OTA;
         }
+
+        if(_services.leftSwitch.RawRead() && _services.rightSwitch.RawRead())
+        {
+            return SystemStates::Provisioning;
+        }
             
         return SystemStates::GPSLock;
 
