@@ -21,6 +21,8 @@ public:
     const String& GetWifiPass(uint8_t index = 0) const { return _wifiNetworks[index].password; }
     uint8_t GetWifiMostRecent() const { return _wifiMostRecent; }
     bool SetWifiMostRecent(uint8_t index);
+    bool SetProvisioningConfig(const String* ssids, const String* passwords, uint8_t count,
+                               const String& ftpUser, const String& ftpPass);
     const String& GetFtpUser() { return _ftpUser;}
     const String GetFtpPass() { return _ftpPass;}
 

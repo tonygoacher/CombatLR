@@ -220,6 +220,55 @@ bool SystemConfig::SetWifiMostRecent(uint8_t index)
     return false;
 }
 
+bool SystemConfig::SetProvisioningConfig(
+    const String* ssids,
+    const String* passwords,
+    uint8_t count,
+    const String& ftpUser,
+    const String& ftpPass)
+{
+    if (ssids == nullptr || passwords == nullptr || count == 0 || count > MaxWifiNetworks)
+        return false;
+
+    WifiNetwork oldNetworks[MaxWifiNetworks];
+    const uint8_t oldCount = _wifiCount;
+    const uint8_t oldMostRecent = _wifiMostRecent;
+    const String oldFtpUser = _ftpUser;
+    const String oldFtpPass = _ftpPass;
+
+    for (uint8_t i = 0; i < MaxWifiNetworks; ++i)
+        oldNetworks[i] = _wifiNetworks[i];
+
+    _wifiCount = count;
+    for (uint8_t i = 0; i < count; ++i)
+    {
+        _wifiNetworks[i].ssid = ssids[i];
+        _wifiNetworks[i].password = passwords[i];
+    }
+
+    for (uint8_t i = count; i < MaxWifiNetworks; ++i)
+    {
+        _wifiNetworks[i].ssid = "";
+        _wifiNetworks[i].password = "";
+    }
+
+    _wifiMostRecent = 0;
+    _ftpUser = ftpUser;
+    _ftpPass = ftpPass;
+
+    if (Save())
+        return true;
+
+    _wifiCount = oldCount;
+    for (uint8_t i = 0; i < MaxWifiNetworks; ++i)
+        _wifiNetworks[i] = oldNetworks[i];
+    _wifiMostRecent = oldMostRecent;
+    _ftpUser = oldFtpUser;
+    _ftpPass = oldFtpPass;
+
+    return false;
+}
+
 uint8_t SystemConfig::GetTeamId() const
 {
     return _teamId;

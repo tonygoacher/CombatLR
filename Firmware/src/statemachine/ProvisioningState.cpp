@@ -1,0 +1,308 @@
+#include "statemachine/ProvisioningState.h"
+
+#include "WiFi.h"
+#include "statemachine/SystemStates.h"
+#include "statemachine/services.h"
+#include "SystemConfig.h"
+
+namespace
+{
+    constexpr const char* ApPassword = "combatlr";
+}
+
+ProvisioningState::ProvisioningState(CombatLRServices& services)
+    : AwaitingStartState(services),
+      _webServer(nullptr),
+      _webServerStarted(false),
+      _saveRequested(false),
+      _apIP(192, 168, 4, 1)
+{
+}
+
+void ProvisioningState::Entry()
+{
+    Serial.println();
+    Serial.println("=================================");
+    Serial.println("CombatLR network provisioning mode");
+    Serial.println("=================================");
+
+    _saveRequested = false;
+    _webServerStarted = false;
+
+    StartAccessPoint();
+    StartWebServer();
+}
+
+void ProvisioningState::Exit()
+{
+    StopWebServer();
+
+    Serial.println("Stopping provisioning AP");
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_OFF);
+}
+
+uint16_t ProvisioningState::Run()
+{
+    if (_webServerStarted && _webServer != nullptr)
+        _webServer->handleClient();
+
+    if (_saveRequested)
+        return SystemStates::AwaitingStart;
+
+    return SystemStates::Provisioning;
+}
+
+void ProvisioningState::StartAccessPoint()
+{
+    WiFi.mode(WIFI_AP);
+
+    String mac = WiFi.macAddress();
+    mac.replace(":", "");
+
+    String apName = "CombatLR-";
+    apName += mac.substring(mac.length() >= 4 ? mac.length() - 4 : 0);
+
+    if (!WiFi.softAPConfig(_apIP, _apIP, IPAddress(255, 255, 255, 0)))
+        Serial.println("Provisioning: failed to configure AP IP");
+
+    if (!WiFi.softAP(apName.c_str(), ApPassword))
+    {
+        Serial.println("Provisioning: failed to start AP");
+        return;
+    }
+
+    Serial.print("Provisioning AP: ");
+    Serial.println(apName);
+    Serial.print("AP password: ");
+    Serial.println(ApPassword);
+    Serial.print("Open: http://");
+    Serial.println(WiFi.softAPIP());
+}
+
+void ProvisioningState::StartWebServer()
+{
+    if (_webServer != nullptr)
+        return;
+
+    _webServer = new WebServer(80);
+
+    _webServer->on("/", HTTP_GET, [this]()
+    {
+        HandleRoot();
+    });
+
+    _webServer->on("/save", HTTP_POST, [this]()
+    {
+        HandleSave();
+    });
+
+    _webServer->onNotFound([this]()
+    {
+        HandleNotFound();
+    });
+
+    _webServer->begin();
+    _webServerStarted = true;
+
+    Serial.println("Provisioning web server started");
+}
+
+void ProvisioningState::StopWebServer()
+{
+    if (_webServer != nullptr)
+    {
+        _webServer->stop();
+        delete _webServer;
+        _webServer = nullptr;
+    }
+
+    _webServerStarted = false;
+}
+
+void ProvisioningState::HandleRoot()
+{
+    if (_webServer == nullptr)
+        return;
+
+    _webServer->send(200, "text/html; charset=utf-8", BuildPage());
+}
+
+void ProvisioningState::HandleSave()
+{
+    if (_webServer == nullptr)
+        return;
+
+    String ssids[8];
+    String passwords[8];
+    uint8_t count = 0;
+
+    for (uint8_t i = 0; i < 8; ++i)
+    {
+        String ssidName = "ssid";
+        ssidName += i;
+
+        String passName = "pass";
+        passName += i;
+
+        String ssid = GetArg(ssidName.c_str());
+        String password = GetArg(passName.c_str());
+
+        ssid.trim();
+
+        if (ssid.length() == 0)
+            continue;
+
+        ssids[count] = ssid;
+        passwords[count] = password;
+        ++count;
+    }
+
+    if (count == 0)
+    {
+        _webServer->send(400, "text/html; charset=utf-8",
+            "<html><body><h2>Error</h2><p>At least one Wi-Fi network is required.</p>"
+            "<p><a href='/'>Back</a></p></body></html>");
+        return;
+    }
+
+    String ftpUser = GetArg("ftpUser");
+    String ftpPass = GetArg("ftpPass");
+
+    if (!_services.systemConfig.SetProvisioningConfig(
+            ssids, passwords, count, ftpUser, ftpPass))
+    {
+        _webServer->send(500, "text/html; charset=utf-8",
+            "<html><body><h2>Save failed</h2>"
+            "<p>Could not save system.json.</p>"
+            "<p><a href='/'>Back</a></p></body></html>");
+        return;
+    }
+
+    Serial.println("Provisioning: configuration saved");
+
+    _webServer->send(200, "text/html; charset=utf-8",
+        "<html><head><meta http-equiv='refresh' content='3;url=/'>"
+        "<style>body{font-family:Arial;text-align:center;margin-top:80px}</style>"
+        "</head><body><h2>Configuration saved</h2>"
+        "<p>The ESP32 will return to normal startup.</p></body></html>");
+
+    _saveRequested = true;
+}
+
+void ProvisioningState::HandleNotFound()
+{
+    if (_webServer == nullptr)
+        return;
+
+    _webServer->send(404, "text/plain", "Not found");
+}
+
+String ProvisioningState::GetArg(const char* name)
+{
+    if (_webServer == nullptr || !_webServer->hasArg(name))
+        return String();
+
+    return _webServer->arg(name);
+}
+
+String ProvisioningState::HtmlEscape(const String& value)
+{
+    String result;
+    result.reserve(value.length() + 16);
+
+    for (size_t i = 0; i < value.length(); ++i)
+    {
+        switch (value[i])
+        {
+            case '&': result += "&amp;";  break;
+            case '<': result += "&lt;";   break;
+            case '>': result += "&gt;";   break;
+            case '"': result += "&quot;"; break;
+            case '\'': result += "&#39;"; break;
+            default: result += value[i]; break;
+        }
+    }
+
+    return result;
+}
+
+String ProvisioningState::BuildPage()
+{
+    String page;
+    page.reserve(9000);
+
+    page += F(R"HTML(<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CombatLR Network Setup</title>
+<style>
+body{font-family:Arial,sans-serif;background:#202020;color:#eee;margin:0;padding:20px}
+.container{max-width:700px;margin:auto}
+h1{font-size:26px}
+h2{font-size:20px;margin-top:28px}
+.card{background:#303030;border-radius:8px;padding:16px;margin-bottom:16px}
+label{display:block;margin-top:10px;margin-bottom:4px}
+input{box-sizing:border-box;width:100%;padding:10px;border:1px solid #666;border-radius:4px;background:#181818;color:#fff;font-size:16px}
+.network{border-top:1px solid #555;padding-top:10px;margin-top:14px}
+button{width:100%;padding:13px;margin-top:22px;border:0;border-radius:5px;font-size:17px;font-weight:bold}
+.save{background:#ddd;color:#111}
+.small{color:#aaa;font-size:14px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>CombatLR Network Setup</h1>
+<div class="card">
+<p class="small">Configure the Wi-Fi networks and FTP credentials stored in system.json.</p>
+<form method="POST" action="/save">
+<h2>Wi-Fi Networks</h2>
+)HTML");
+
+    const uint8_t count = _services.systemConfig.GetWifiCount();
+
+    for (uint8_t i = 0; i < 8; ++i)
+    {
+        const bool existing = i < count;
+        const String ssid = existing ? _services.systemConfig.GetWifiSSID(i) : String();
+        const String password = existing ? _services.systemConfig.GetWifiPass(i) : String();
+
+        page += "<div class='network'><b>Network ";
+        page += String(i + 1);
+        page += "</b>";
+
+        page += "<label>SSID</label><input name='ssid";
+        page += String(i);
+        page += "' value='";
+        page += HtmlEscape(ssid);
+        page += "' maxlength='63'>";
+
+        page += "<label>Password</label><input type='password' name='pass";
+        page += String(i);
+        page += "' value='";
+        page += HtmlEscape(password);
+        page += "' maxlength='63'>";
+        page += "</div>";
+    }
+
+    page += F(R"HTML(
+<h2>FTP</h2>
+<label>Username</label>
+<input name="ftpUser" value=")HTML");
+    page += HtmlEscape(_services.systemConfig.GetFtpUser());
+    page += F(R"HTML(" maxlength="32">
+<label>Password</label>
+<input type="password" name="ftpPass" value=")HTML");
+    page += HtmlEscape(_services.systemConfig.GetFtpPass());
+    page += F(R"HTML(" maxlength="64">
+<button class="save" type="submit">Save Configuration</button>
+</form>
+</div>
+</div>
+</body>
+</html>
+)HTML");
+
+    return page;
+}
