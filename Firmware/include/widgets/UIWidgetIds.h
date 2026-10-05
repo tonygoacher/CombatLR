@@ -12,5 +12,5 @@ enum UIWidgetIds
     GPSInfo = 0x4005,
     WiFiStatus = 0x4006,
     TeamID = 0x4007,
-    IPAddress= 0x4008,
+    IPAdrString= 0x4008,
 };

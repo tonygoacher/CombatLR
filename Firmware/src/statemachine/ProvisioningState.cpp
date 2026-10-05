@@ -4,6 +4,20 @@
 #include "statemachine/SystemStates.h"
 #include "statemachine/services.h"
 #include "SystemConfig.h"
+#include "widgets/TextWidget.h"
+#include "graphics/DisplayManager.h"
+#include "graphics/DisplayBackgroundCommand.h"
+#include "statemachine/services.h"
+#include "widgets/WiFiStatusWidget.h"
+#include "widgets/UIWidgetIds.h"
+#include "graphics/AddWidgetCommand.h"
+#include "graphics/RemoveWidgetCommand.h"
+#include "graphics/SetTextureCommand.h"
+#include "graphics/SetTextCommand.h"
+#include "widgets/TextureWidget.h"
+#include "TeamIDs.h"
+#include "widgets/TextWidget.h"
+
 
 namespace
 {
@@ -26,6 +40,22 @@ void ProvisioningState::Entry()
     Serial.println("CombatLR network provisioning mode");
     Serial.println("=================================");
 
+    WidgetPosition pos(320-32,0);
+
+    TextureWidget* statusWidget = new TextureWidget(UIWidgetIds::WiFiStatus,
+         _services.displayManager.GetTextureManager(),pos, "/provision.bmp");
+
+    _services.displayManager.Send(std::make_unique<AddWidgetCommand>(statusWidget));   
+
+    WidgetPosition textPos={TextX,TextY};
+
+    TextWidget*  textWidget  = new TextWidget(UIWidgetIds::IPAdrString,"xx.xx.xx.xx", textPos,TextFont,MC_DATUM, TFT_WHITE, TFT_BLACK, TextZoom);
+    
+    _services.displayManager.Send(
+            std::unique_ptr<IDisplayCommand>(
+                new AddWidgetCommand(
+                    textWidget)));        
+
     _saveRequested = false;
     _webServerStarted = false;
 
@@ -40,6 +70,13 @@ void ProvisioningState::Exit()
     Serial.println("Stopping provisioning AP");
     WiFi.softAPdisconnect(true);
     WiFi.mode(WIFI_OFF);
+
+    RemoveWidgetCommand* removeIcon = new RemoveWidgetCommand(UIWidgetIds::WiFiStatus);
+
+    _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));    
+    removeIcon = new RemoveWidgetCommand(UIWidgetIds::IPAdrString);
+
+    _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));        
 }
 
 uint16_t ProvisioningState::Run()
@@ -48,7 +85,7 @@ uint16_t ProvisioningState::Run()
         _webServer->handleClient();
 
     if (_saveRequested)
-        return SystemStates::AwaitingStart;
+        return SystemStates::GPSLock;
 
     return SystemStates::Provisioning;
 }
@@ -57,11 +94,8 @@ void ProvisioningState::StartAccessPoint()
 {
     WiFi.mode(WIFI_AP);
 
-    String mac = WiFi.macAddress();
-    mac.replace(":", "");
+    String apName = "CombatLR";
 
-    String apName = "CombatLR-";
-    apName += mac.substring(mac.length() >= 4 ? mac.length() - 4 : 0);
 
     if (!WiFi.softAPConfig(_apIP, _apIP, IPAddress(255, 255, 255, 0)))
         Serial.println("Provisioning: failed to configure AP IP");
@@ -78,6 +112,9 @@ void ProvisioningState::StartAccessPoint()
     Serial.println(ApPassword);
     Serial.print("Open: http://");
     Serial.println(WiFi.softAPIP());
+
+    _services.displayManager.Send(
+    std::make_unique<SetTextCommand>(UIWidgetIds::IPAdrString, WiFi.softAPIP().toString().c_str()));
 }
 
 void ProvisioningState::StartWebServer()

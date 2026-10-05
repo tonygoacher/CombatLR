@@ -105,7 +105,7 @@ void AwaitingStartState::EntryCommon()
 
     WidgetPosition textPos={TextX,TextY};
 
-    TextWidget*  textWidget  = new TextWidget(UIWidgetIds::IPAddress, WiFi.macAddress().c_str(), textPos,TextFont,MC_DATUM, TFT_WHITE, TFT_BLACK, TextZoom);
+    TextWidget*  textWidget  = new TextWidget(UIWidgetIds::IPAdrString, "xx.xx.xx.xx", textPos,TextFont,MC_DATUM, TFT_WHITE, TFT_BLACK, TextZoom);
     
     _services.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
@@ -211,7 +211,7 @@ void AwaitingStartState::Exit()
 
     _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));  
 
-    removeIcon = new RemoveWidgetCommand(UIWidgetIds::IPAddress);
+    removeIcon = new RemoveWidgetCommand(UIWidgetIds::IPAdrString);
 
     _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));  
     
@@ -257,7 +257,7 @@ void AwaitingStartState::RunCommon()
         _services.systemConfig.SetWifiMostRecent(_wifiIndex);
 
         _services.displayManager.Send(
-            std::make_unique<SetTextCommand>(UIWidgetIds::IPAddress, WiFi.localIP().toString().c_str()));
+            std::make_unique<SetTextCommand>(UIWidgetIds::IPAdrString, WiFi.localIP().toString().c_str()));
 
         _network.Begin();
 
