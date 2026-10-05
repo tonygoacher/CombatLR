@@ -44,6 +44,7 @@ protected:
 
 
     Pacer _exitPacer;
+    String _ssid;
 
 
     static const int TextX = 160;

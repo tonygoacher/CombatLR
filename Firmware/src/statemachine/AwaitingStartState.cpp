@@ -111,6 +111,14 @@ void AwaitingStartState::EntryCommon()
             std::unique_ptr<IDisplayCommand>(
                 new AddWidgetCommand(
                     textWidget)));    
+
+    WidgetPosition ssidTextPos={TextX, TextY+30};                    
+     textWidget  = new TextWidget(UIWidgetIds::SSIDString, "", ssidTextPos,TextFont,MC_DATUM, TFT_WHITE, TFT_BLACK, 1);
+    
+    _services.displayManager.Send(
+            std::unique_ptr<IDisplayCommand>(
+                new AddWidgetCommand(
+                    textWidget)));   
     
     WiFi.mode(
         WIFI_STA);
@@ -133,16 +141,16 @@ void AwaitingStartState::StartWifiConnection()
         return;
     }
 
-    const String& ssid = _services.systemConfig.GetWifiSSID(_wifiIndex);
+    _ssid  = _services.systemConfig.GetWifiSSID(_wifiIndex);
     const String& password = _services.systemConfig.GetWifiPass(_wifiIndex);
 
     Serial.printf("Connecting to Wi-Fi %u/%u: %s\n",
                   _wifiIndex + 1,
                   networkCount,
-                  ssid.c_str());
+                  _ssid.c_str());
 
     WiFi.disconnect(false);
-    WiFi.begin(ssid.c_str(), password.c_str());
+    WiFi.begin(_ssid.c_str(), password.c_str());
 
     _wifiAttemptStart = millis();
 }
@@ -214,6 +222,10 @@ void AwaitingStartState::Exit()
     removeIcon = new RemoveWidgetCommand(UIWidgetIds::IPAdrString);
 
     _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));  
+
+    removeIcon = new RemoveWidgetCommand(UIWidgetIds::SSIDString);
+
+    _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));  
     
  
     _network.Stop();
@@ -258,6 +270,9 @@ void AwaitingStartState::RunCommon()
 
         _services.displayManager.Send(
             std::make_unique<SetTextCommand>(UIWidgetIds::IPAdrString, WiFi.localIP().toString().c_str()));
+
+        _services.displayManager.Send(
+            std::make_unique<SetTextCommand>(UIWidgetIds::SSIDString, _ssid.c_str()));
 
         _network.Begin();
 

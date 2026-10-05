@@ -13,4 +13,5 @@ enum UIWidgetIds
     WiFiStatus = 0x4006,
     TeamID = 0x4007,
     IPAdrString= 0x4008,
+    SSIDString= 0x4009,
 };
