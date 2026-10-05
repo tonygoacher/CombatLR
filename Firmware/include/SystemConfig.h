@@ -24,7 +24,7 @@ public:
     bool SetProvisioningConfig(const String* ssids, const String* passwords, uint8_t count,
                                const String& ftpUser, const String& ftpPass);
     const String& GetFtpUser() { return _ftpUser;}
-    const String GetFtpPass() { return _ftpPass;}
+    const String& GetFtpPass() { return _ftpPass;}
 
 private:
     static constexpr const char* ConfigFile = "/system.json";

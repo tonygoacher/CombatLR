@@ -133,9 +133,6 @@ void FtpState::StartFTP()
         _ftpServer->setCallback(
             FtpState::FtpCallback);
 
-        Serial.print("User:"); Serial.println(_services.systemConfig.GetFtpUser().c_str());         
-        Serial.print("Pass:>>>>"); Serial.print(_services.systemConfig.GetFtpPass().c_str()); Serial.println("<<<<");
-
         _ftpServer->begin(_services.systemConfig.GetFtpUser().c_str(), _services.systemConfig.GetFtpPass().c_str());
         _ftpInitDone = true;
     }
