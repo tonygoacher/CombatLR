@@ -9,8 +9,9 @@ namespace SystemConsts
     const char * const FriendlyFire = "friendlyFire";
     const char * const PlayerID =  "playerId";
     const char * const TeamID = "teamId";
-    const char * const WifiSSID = "wifiSSID";
-    const char * const WifiPass = "wifiPass";
+    const char * const Wifi = "wifi";
+    const char * const WifiSSID = "wifiSSID";       // legacy
+    const char * const WifiPass = "wifiPass";       // legacy
     const char * const FTPUser = "ftpUser";
     const char * const FTPPass = "ftpPass";
 
@@ -77,8 +78,48 @@ bool SystemConfig::Load()
     _playerId = static_cast<uint8_t>(playerId);
     _friendlyFire = document[SystemConsts::FriendlyFire] | false;
 
-    _wifiSSID = static_cast<String>(document[SystemConsts::WifiSSID]);
-    _wifiPass = static_cast<String>(document[SystemConsts::WifiPass]);    
+    _wifiCount = 0;
+
+    // New format: an array of Wi-Fi networks.
+    if (document[SystemConsts::Wifi].is<JsonArray>())
+    {
+        JsonArray wifi = document[SystemConsts::Wifi].as<JsonArray>();
+
+        for (JsonObject network : wifi)
+        {
+            if (_wifiCount >= MaxWifiNetworks)
+                break;
+
+            const char* ssid = network["ssid"] | "";
+            const char* password = network["password"] | "";
+
+            if (ssid[0] == '\0')
+                continue;
+
+            _wifiNetworks[_wifiCount].ssid = ssid;
+            _wifiNetworks[_wifiCount].password = password;
+            ++_wifiCount;
+        }
+    }
+    // Backwards compatibility with the original single-network format.
+    else
+    {
+        const char* ssid = document[SystemConsts::WifiSSID] | "";
+        const char* password = document[SystemConsts::WifiPass] | "";
+
+        if (ssid[0] != '\0')
+        {
+            _wifiNetworks[0].ssid = ssid;
+            _wifiNetworks[0].password = password;
+            _wifiCount = 1;
+        }
+    }
+
+    if (_wifiCount == 0)
+    {
+        Serial.println("SystemConfig: no Wi-Fi networks configured");
+        return false;
+    }
 
     _ftpUser = static_cast<String>(document[SystemConsts::FTPUser]);
     _ftpPass = static_cast<String>(document[SystemConsts::FTPPass]);    
@@ -93,8 +134,9 @@ bool SystemConfig::Load()
     Serial.print("SystemConfig: Friendly Fire = ");
     Serial.println(_friendlyFire);
 
-    Serial.printf("WifiSSID %s\n", _wifiSSID);
-    Serial.printf("WifiPass %s\n", _wifiPass);
+    Serial.printf("Wi-Fi networks = %u\n", _wifiCount);
+    for (uint8_t i = 0; i < _wifiCount; ++i)
+        Serial.printf("Wi-Fi %u: %s\n", i, _wifiNetworks[i].ssid.c_str());
 
     return true;
 }
@@ -111,8 +153,14 @@ bool SystemConfig::Save() const
     document[SystemConsts::TeamID] = _teamId;
     document[SystemConsts::PlayerID] = _playerId;
     document[SystemConsts::FriendlyFire] = _friendlyFire;
-    document[SystemConsts::WifiSSID] = _wifiSSID;
-    document[SystemConsts::WifiPass] = _wifiPass;
+    JsonArray wifi = document[SystemConsts::Wifi].to<JsonArray>();
+    for (uint8_t i = 0; i < _wifiCount; ++i)
+    {
+        JsonObject network = wifi.add<JsonObject>();
+        network["ssid"] = _wifiNetworks[i].ssid;
+        network["password"] = _wifiNetworks[i].password;
+    }
+
     document[SystemConsts::FTPUser] = _ftpUser;
     document[SystemConsts::FTPPass] = _ftpPass;
 
@@ -131,8 +179,9 @@ bool SystemConfig::Save() const
     Serial.print(_playerId);
     Serial.print(", Friendly fire = ");
     Serial.println(_friendlyFire);    
-    Serial.printf("WifiSSID %s\n", _wifiSSID);
-    Serial.printf("WifiPass %s\n", _wifiPass);
+    Serial.printf("Wi-Fi networks = %u\n", _wifiCount);
+    for (uint8_t i = 0; i < _wifiCount; ++i)
+        Serial.printf("Wi-Fi %u: %s\n", i, _wifiNetworks[i].ssid.c_str());
 
     return true;
 }

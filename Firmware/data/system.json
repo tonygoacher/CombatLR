@@ -1,9 +1,17 @@
 {
-    "teamId":0,
-    "playerId":0,
-    "friendlyFire":false,
-    "wifiSSID": "TGFERNTHORPE",
-    "wifiPass": "OiTheGah",
+    "teamId": 0,
+    "playerId": 0,
+    "friendlyFire": false,
+    "wifi": [
+        {
+            "ssid": "TGFERNTHORPE",
+            "password": "OiTheGah"
+        },
+        {
+            "ssid": "AnotherNetwork",
+            "password": "<password>"
+        }
+    ],
     "ftpUser": "combatlr",
     "ftpPass": "password"
 }

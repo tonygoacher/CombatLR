@@ -68,12 +68,14 @@ void OTAState::Exit()
 
 uint16_t OTAState::Run() 
 {
+    RunCommon();
+
     if (WiFi.status() != WL_CONNECTED)
     {
         return SystemStates::OTA;
     }
 
-    RunCommon();
+
 
     if(!_otaInitDone)
     {
