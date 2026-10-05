@@ -19,6 +19,8 @@ public:
     uint8_t GetWifiCount() const { return _wifiCount; }
     const String& GetWifiSSID(uint8_t index = 0) const { return _wifiNetworks[index].ssid; }
     const String& GetWifiPass(uint8_t index = 0) const { return _wifiNetworks[index].password; }
+    uint8_t GetWifiMostRecent() const { return _wifiMostRecent; }
+    bool SetWifiMostRecent(uint8_t index);
     const String& GetFtpUser() { return _ftpUser;}
     const String GetFtpPass() { return _ftpPass;}
 
@@ -37,6 +39,7 @@ private:
     static constexpr uint8_t MaxWifiNetworks = 8;
     WifiNetwork _wifiNetworks[MaxWifiNetworks];
     uint8_t _wifiCount = 0;
+    uint8_t _wifiMostRecent = 0;
     String _ftpUser;
     String _ftpPass;
 

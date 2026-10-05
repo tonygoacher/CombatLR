@@ -115,11 +115,12 @@ void AwaitingStartState::EntryCommon()
     WiFi.mode(
         WIFI_STA);
 
-    _wifiIndex = 0;
+    _wifiIndex = _services.systemConfig.GetWifiMostRecent();
     _connectionShown = false;
     _wifiAttemptStart = 0;
 
     StartWifiConnection();
+
 }
 
 void AwaitingStartState::StartWifiConnection()
@@ -160,6 +161,10 @@ void AwaitingStartState::HandleWifiConnection()
         return;
 
     Serial.printf("Wi-Fi connection timeout for network %u\n", _wifiIndex + 1);
+
+    // A failed network is no longer considered the preferred network.
+    // Persist zero, then move on to the next network in the list.
+    _services.systemConfig.SetWifiMostRecent(0);
 
     ++_wifiIndex;
     if (_wifiIndex >= networkCount)
@@ -248,6 +253,8 @@ void AwaitingStartState::RunCommon()
         Serial.println(
             WiFi.macAddress());
 
+        // Remember the network that actually connected.
+        _services.systemConfig.SetWifiMostRecent(_wifiIndex);
 
         _services.displayManager.Send(
             std::make_unique<SetTextCommand>(UIWidgetIds::IPAddress, WiFi.localIP().toString().c_str()));
