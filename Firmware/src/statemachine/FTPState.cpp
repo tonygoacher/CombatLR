@@ -44,12 +44,15 @@ void FtpState::Exit()
 
 uint16_t FtpState::Run() 
 {
+    
+    RunCommon();
+    
     if (WiFi.status() != WL_CONNECTED)
     {
         return SystemStates::Ftp;
     }
 
-    RunCommon();
+
 
     if(!_ftpInitDone)
     {

@@ -16,8 +16,9 @@ public:
     bool  GetFriendlyFire() const;
     bool  SetFriendlyFire(bool enabled);
 
-    const String& GetWifiSSID() { return _wifiSSID;}
-    const String& GetWifiPass() { return _wifiPass;}
+    uint8_t GetWifiCount() const { return _wifiCount; }
+    const String& GetWifiSSID(uint8_t index = 0) const { return _wifiNetworks[index].ssid; }
+    const String& GetWifiPass(uint8_t index = 0) const { return _wifiNetworks[index].password; }
     const String& GetFtpUser() { return _ftpUser;}
     const String GetFtpPass() { return _ftpPass;}
 
@@ -27,8 +28,15 @@ private:
     uint8_t _teamId = 0;
     uint8_t _playerId = 0;
     bool    _friendlyFire;
-    String _wifiSSID;
-    String _wifiPass;
+    struct WifiNetwork
+    {
+        String ssid;
+        String password;
+    };
+
+    static constexpr uint8_t MaxWifiNetworks = 8;
+    WifiNetwork _wifiNetworks[MaxWifiNetworks];
+    uint8_t _wifiCount = 0;
     String _ftpUser;
     String _ftpPass;
 

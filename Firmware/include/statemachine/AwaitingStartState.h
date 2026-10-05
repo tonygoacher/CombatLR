@@ -25,6 +25,8 @@ public:
 protected:
     void EntryCommon();
     void RunCommon();
+    void StartWifiConnection();
+    void HandleWifiConnection();
 
  
 
@@ -34,6 +36,11 @@ protected:
 
     bool _connectionShown;
     bool _networkShudown;
+
+    uint8_t _wifiIndex;
+    uint32_t _wifiAttemptStart;
+
+    static constexpr uint32_t WifiAttemptTimeoutMs = 20000;
 
 
     Pacer _exitPacer;

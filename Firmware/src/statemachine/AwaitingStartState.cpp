@@ -114,18 +114,58 @@ void AwaitingStartState::EntryCommon()
     
     WiFi.mode(
         WIFI_STA);
-        
 
-    WiFi.begin(
-        _services.systemConfig.GetWifiSSID().c_str(),
-        _services.systemConfig.GetWifiPass().c_str());
+    _wifiIndex = 0;
+    _connectionShown = false;
+    _wifiAttemptStart = 0;
 
-    Serial.println(
-        "Connecting to Wi-Fi");
+    StartWifiConnection();
+}
 
-    _connectionShown =
-        false;                    
-    
+void AwaitingStartState::StartWifiConnection()
+{
+    const uint8_t networkCount = _services.systemConfig.GetWifiCount();
+
+    if (networkCount == 0)
+    {
+        Serial.println("No Wi-Fi networks configured");
+        return;
+    }
+
+    const String& ssid = _services.systemConfig.GetWifiSSID(_wifiIndex);
+    const String& password = _services.systemConfig.GetWifiPass(_wifiIndex);
+
+    Serial.printf("Connecting to Wi-Fi %u/%u: %s\n",
+                  _wifiIndex + 1,
+                  networkCount,
+                  ssid.c_str());
+
+    WiFi.disconnect(false);
+    WiFi.begin(ssid.c_str(), password.c_str());
+
+    _wifiAttemptStart = millis();
+}
+
+void AwaitingStartState::HandleWifiConnection()
+{
+    if (WiFi.status() == WL_CONNECTED)
+        return;
+
+    if ((uint32_t)(millis() - _wifiAttemptStart) < WifiAttemptTimeoutMs)
+        return;
+
+    const uint8_t networkCount = _services.systemConfig.GetWifiCount();
+
+    if (networkCount == 0)
+        return;
+
+    Serial.printf("Wi-Fi connection timeout for network %u\n", _wifiIndex + 1);
+
+    ++_wifiIndex;
+    if (_wifiIndex >= networkCount)
+        _wifiIndex = 0;
+
+    StartWifiConnection();
 }
 
 
@@ -186,6 +226,11 @@ void AwaitingStartState::Exit()
 
 void AwaitingStartState::RunCommon()
 {
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        HandleWifiConnection();
+        return;
+    }
 
     if (!_connectionShown)
     {
@@ -212,18 +257,17 @@ void AwaitingStartState::RunCommon()
         _connectionShown =
             true;
     }
-    
-
 }
+
 
 uint16_t AwaitingStartState::Run()
 {
+    RunCommon();
+
     if (WiFi.status() != WL_CONNECTED)
     {
         return SystemStates::AwaitingStart;
     }
-
-    RunCommon();
 
   
     if(_networkShudown)
