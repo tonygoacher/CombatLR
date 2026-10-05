@@ -12,6 +12,7 @@ namespace SystemConsts
     const char * const Wifi = "wifi";
     const char * const WifiSSID = "wifiSSID";       // legacy
     const char * const WifiPass = "wifiPass";       // legacy
+    const char * const WifiMostRecent = "mostRecent";
     const char * const FTPUser = "ftpUser";
     const char * const FTPPass = "ftpPass";
 
@@ -79,6 +80,7 @@ bool SystemConfig::Load()
     _friendlyFire = document[SystemConsts::FriendlyFire] | false;
 
     _wifiCount = 0;
+    _wifiMostRecent = document[SystemConsts::WifiMostRecent] | 0;
 
     // New format: an array of Wi-Fi networks.
     if (document[SystemConsts::Wifi].is<JsonArray>())
@@ -121,6 +123,16 @@ bool SystemConfig::Load()
         return false;
     }
 
+    if (_wifiMostRecent >= _wifiCount)
+    {
+        Serial.printf("SystemConfig: mostRecent %u is out of range, resetting to 0\n", _wifiMostRecent);
+        _wifiMostRecent = 0;
+
+        // Keep the JSON in sync with the corrected value.
+        if (!Save())
+            Serial.println("SystemConfig: failed to save corrected mostRecent");
+    }
+
     _ftpUser = static_cast<String>(document[SystemConsts::FTPUser]);
     _ftpPass = static_cast<String>(document[SystemConsts::FTPPass]);    
 
@@ -153,6 +165,7 @@ bool SystemConfig::Save() const
     document[SystemConsts::TeamID] = _teamId;
     document[SystemConsts::PlayerID] = _playerId;
     document[SystemConsts::FriendlyFire] = _friendlyFire;
+    document[SystemConsts::WifiMostRecent] = _wifiMostRecent;
     JsonArray wifi = document[SystemConsts::Wifi].to<JsonArray>();
     for (uint8_t i = 0; i < _wifiCount; ++i)
     {
@@ -184,6 +197,27 @@ bool SystemConfig::Save() const
         Serial.printf("Wi-Fi %u: %s\n", i, _wifiNetworks[i].ssid.c_str());
 
     return true;
+}
+
+bool SystemConfig::SetWifiMostRecent(uint8_t index)
+{
+    if (_wifiCount == 0)
+        return false;
+
+    if (index >= _wifiCount)
+        index = 0;
+
+    if (index == _wifiMostRecent)
+        return true;
+
+    const uint8_t oldMostRecent = _wifiMostRecent;
+    _wifiMostRecent = index;
+
+    if (Save())
+        return true;
+
+    _wifiMostRecent = oldMostRecent;
+    return false;
 }
 
 uint8_t SystemConfig::GetTeamId() const
