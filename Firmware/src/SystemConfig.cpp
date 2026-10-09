@@ -15,6 +15,8 @@ namespace SystemConsts
     const char * const WifiMostRecent = "mostRecent";
     const char * const FTPUser = "ftpUser";
     const char * const FTPPass = "ftpPass";
+    const char * const GPSBaudRate = "gpsBaudrate";
+    const char * const GPSType = "gpsType";
 
     
 }
@@ -134,7 +136,9 @@ bool SystemConfig::Load()
     }
 
     _ftpUser = static_cast<String>(document[SystemConsts::FTPUser]);
-    _ftpPass = static_cast<String>(document[SystemConsts::FTPPass]);    
+    _ftpPass = static_cast<String>(document[SystemConsts::FTPPass]);
+    _gpsBaudRate = document[SystemConsts::GPSBaudRate] | 9600;
+    _gpsType = document[SystemConsts::GPSType] | 0;
 
 
     Serial.print("SystemConfig: Team ID = ");
@@ -176,6 +180,8 @@ bool SystemConfig::Save() const
 
     document[SystemConsts::FTPUser] = _ftpUser;
     document[SystemConsts::FTPPass] = _ftpPass;
+    document[SystemConsts::GPSBaudRate] = _gpsBaudRate;
+    document[SystemConsts::GPSType] = _gpsType;
 
 
     if (serializeJson(document, file) == 0)

@@ -3,6 +3,8 @@
     "teamId": 0,
     "playerId": 0,
     "friendlyFire": false,
+    "gpsBaudrate": 38400,
+    "gpsType": 0,
     "wifi": [
                 {
             "ssid": "AnotherNetwork",
