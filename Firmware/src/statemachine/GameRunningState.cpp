@@ -155,7 +155,7 @@ void GameRunningState::Entry()
     _stateData.zoneEngine.AddZoneEventListener(this);
     _stateData.zoneEngine.AddPickupEventListener(this);
 
-    _weaponManager.AddWeapon(5);
+    _weaponManager.AddWeapon(2);
 
     uint32_t elapsedTime = _stateData.systemTime.GetSeconds() - _stateData.gamePlan.GetGameDelayTime();
     Serial.printf("Seconds:%d Delay time: %d StartTime:%d\n",  _stateData.systemTime.GetSeconds(), _stateData.gamePlan.GetGameDelayTime(), _startTime);

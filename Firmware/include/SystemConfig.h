@@ -16,6 +16,9 @@ public:
     bool  GetFriendlyFire() const;
     bool  SetFriendlyFire(bool enabled);
 
+    uint32_t GetGpsBaudRate() const { return _gpsBaudRate; }
+    int GetGpsType() const { return _gpsType; }
+
     uint8_t GetWifiCount() const { return _wifiCount; }
     const String& GetWifiSSID(uint8_t index = 0) const { return _wifiNetworks[index].ssid; }
     const String& GetWifiPass(uint8_t index = 0) const { return _wifiNetworks[index].password; }
@@ -44,6 +47,8 @@ private:
     uint8_t _wifiMostRecent = 0;
     String _ftpUser;
     String _ftpPass;
+    uint32_t _gpsBaudRate = 9600;
+    int _gpsType = 0;
 
     bool Load();
     bool Save() const;

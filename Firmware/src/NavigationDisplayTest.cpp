@@ -66,8 +66,7 @@ void SetNavigationPlayerPosition(
 namespace
 {
     //SpoofNavigation navigation;
-    NavigationNMEA  navigation(Ports::GPS_RX,Ports::GPS_TX,38400);
-    GeoReference geoReference;
+
    
     IDisplay* theDisplay;
 
@@ -115,9 +114,12 @@ namespace
     SteppedZoom zoom(zoomSwitch);
     PacedLED muzzleLED(MUZZLE_LED);
     PacedLED hitLED(HIT_LED);
+    SystemConfig systemConfig;
+    NavigationNMEA  navigation(Ports::GPS_RX,Ports::GPS_TX,systemConfig.GetGpsBaudRate());
     SystemTime systemTime(navigation);
     WeaponConfig weaponConfig;
-    SystemConfig systemConfig;
+
+    GeoReference geoReference;
     ESP32LaserTag laserTag(IR_TXPORT, IR_RXPORT, IR_POWERLOW, IR_POWERMED ,IR_POWERHIGH);
     CombatLRServices stateData{systemConfig,displayManager, navigation, 
                                 zoneEngine, sounds, zoom,gamePlan, geoReference, laserTag, systemTime,
