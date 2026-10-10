@@ -24,9 +24,46 @@ public partial class ZoneEditPage : ContentPage
             zone.RadiusMetres.ToString("0.0");
         // The editor uses whole minutes; GamePlan/JSON remain seconds.
         StartTimeEntry.Text = Math.Max(0, (int)Math.Round(zone.StartTime / 60.0)).ToString();
-        LifespanEntry.Text = Math.Max(1, (int)Math.Round(zone.LifespanSeconds / 60.0)).ToString();
+        // A non-positive stored lifespan is displayed with the safe 5-minute default.
+        LifespanEntry.Text = (zone.LifespanSeconds <= 0
+            ? 5
+            : Math.Max(1, (int)Math.Round(zone.LifespanSeconds / 60.0))).ToString();
 
+        UpdateActiveValue(RadiusEntry, "Radius", "m");
+    }
 
+    private void NumericEntry_Focused(object? sender, FocusEventArgs e)
+    {
+        if (sender is Entry entry)
+            UpdateActiveValue(entry, GetEntryCaption(entry), GetEntryUnit(entry));
+    }
+
+    private void NumericEntry_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (sender is Entry entry && entry.IsFocused)
+            UpdateActiveValue(entry, GetEntryCaption(entry), GetEntryUnit(entry));
+    }
+
+    private static string GetEntryCaption(Entry entry) => entry.AutomationId switch
+    {
+        "RadiusEntry" => "Radius",
+        "StartTimeEntry" => "Start time",
+        "LifespanEntry" => "Lifespan",
+        _ => "Value"
+    };
+
+    private static string GetEntryUnit(Entry entry) => entry.AutomationId switch
+    {
+        "RadiusEntry" => "m",
+        "StartTimeEntry" or "LifespanEntry" => "min",
+        _ => string.Empty
+    };
+
+    private void UpdateActiveValue(Entry entry, string caption, string unit)
+    {
+        ActiveValueCaption.Text = caption;
+        var value = string.IsNullOrWhiteSpace(entry.Text) ? "—" : entry.Text.Trim();
+        ActiveValueLabel.Text = string.IsNullOrEmpty(unit) ? value : $"{value} {unit}";
     }
 
 
@@ -88,12 +125,11 @@ private static bool TryParseMinutes(
         {
             if (!TryParseMinutes(
                     LifespanEntry.Text,
-                    out var lifespanTime) ||
-                lifespanTime <= 0)
+                    out var lifespanTime))
             {
                 await DisplayAlert(
                     "Invalid Lifespan Time",
-                    "Lifespan must be greater than zero minutes.",
+                    "Enter a whole number of minutes (0 or greater).",
                     "OK");
 
                 return;
