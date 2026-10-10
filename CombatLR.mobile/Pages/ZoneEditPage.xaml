@@ -67,15 +67,22 @@
                         TextColor="White"
                         VerticalTextAlignment="Center" />
 
-                    <Entry
-                        x:Name="StartTimeEntry"
+                    <HorizontalStackLayout
                         Grid.Row="1"
                         Grid.Column="1"
-                        WidthRequest="90"
-                        Placeholder="0"
-                        Keyboard="Numeric"
-                        TextColor="White"
-                        HorizontalTextAlignment="End" />
+                        Spacing="4">
+                        <Entry
+                            x:Name="StartTimeEntry"
+                            WidthRequest="90"
+                            Placeholder="0"
+                            Keyboard="Numeric"
+                            TextColor="White"
+                            HorizontalTextAlignment="End" />
+                        <Label
+                            Text="min"
+                            TextColor="White"
+                            VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
 
                     <Label
                         Grid.Row="2"
@@ -84,15 +91,22 @@
                         TextColor="White"
                         VerticalTextAlignment="Center" />
 
-                    <Entry
-                        x:Name="LifespanEntry"
+                    <HorizontalStackLayout
                         Grid.Row="2"
                         Grid.Column="1"
-                        WidthRequest="90"
-                        Placeholder="0"
-                        Keyboard="Numeric"
-                        TextColor="White"
-                        HorizontalTextAlignment="End" />
+                        Spacing="4">
+                        <Entry
+                            x:Name="LifespanEntry"
+                            WidthRequest="90"
+                            Placeholder="0"
+                            Keyboard="Numeric"
+                            TextColor="White"
+                            HorizontalTextAlignment="End" />
+                        <Label
+                            Text="min"
+                            TextColor="White"
+                            VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
 
                 </Grid>
 
