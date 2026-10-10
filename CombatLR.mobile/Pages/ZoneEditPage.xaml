@@ -29,6 +29,30 @@
                     FontAttributes="Bold"
                     HorizontalOptions="Center" />
 
+                <!-- Large duplicate of the active numeric value, kept near the top
+                     of the dialog so it remains visible above the Android keypad. -->
+                <Border
+                    BackgroundColor="#263542"
+                    Stroke="#78B7E8"
+                    StrokeThickness="1"
+                    Padding="10">
+                    <VerticalStackLayout Spacing="2">
+                        <Label
+                            x:Name="ActiveValueCaption"
+                            Text="Current value"
+                            TextColor="#D0D8E0"
+                            FontSize="12"
+                            HorizontalTextAlignment="Center" />
+                        <Label
+                            x:Name="ActiveValueLabel"
+                            Text="—"
+                            TextColor="White"
+                            FontSize="28"
+                            FontAttributes="Bold"
+                            HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Border>
+
                 <Grid
                     ColumnDefinitions="*,Auto"
                     RowDefinitions="Auto,Auto,Auto"
@@ -48,10 +72,13 @@
 
                         <Entry
                             x:Name="RadiusEntry"
+                            AutomationId="RadiusEntry"
                             WidthRequest="90"
                             Keyboard="Numeric"
                             TextColor="White"
-                            HorizontalTextAlignment="End" />
+                            HorizontalTextAlignment="End"
+                            TextChanged="NumericEntry_TextChanged"
+                            Focused="NumericEntry_Focused" />
 
                         <Label
                             Text="m"
@@ -73,11 +100,14 @@
                         Spacing="4">
                         <Entry
                             x:Name="StartTimeEntry"
+                            AutomationId="StartTimeEntry"
                             WidthRequest="90"
-                            Placeholder="5"
+                            Placeholder="0"
                             Keyboard="Numeric"
                             TextColor="White"
-                            HorizontalTextAlignment="End" />
+                            HorizontalTextAlignment="End"
+                            TextChanged="NumericEntry_TextChanged"
+                            Focused="NumericEntry_Focused" />
                         <Label
                             Text="min"
                             TextColor="White"
@@ -97,11 +127,14 @@
                         Spacing="4">
                         <Entry
                             x:Name="LifespanEntry"
+                            AutomationId="LifespanEntry"
                             WidthRequest="90"
                             Placeholder="0"
                             Keyboard="Numeric"
                             TextColor="White"
-                            HorizontalTextAlignment="End" />
+                            HorizontalTextAlignment="End"
+                            TextChanged="NumericEntry_TextChanged"
+                            Focused="NumericEntry_Focused" />
                         <Label
                             Text="min"
                             TextColor="White"
