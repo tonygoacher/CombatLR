@@ -1,4 +1,4 @@
-﻿using CombatLR.mobile.Models;
+using CombatLR.mobile.Models;
 
 namespace CombatLR.mobile.Pages;
 
@@ -22,30 +22,31 @@ public partial class ZoneEditPage : ContentPage
 
         RadiusEntry.Text =
             zone.RadiusMetres.ToString("0.0");
-        StartTimeEntry.Text = zone.StartTime.ToString();
-
-        LifespanEntry.Text =
-          zone.LifespanSeconds.ToString(); ;
+        // The editor uses whole minutes; GamePlan/JSON remain seconds.
+        StartTimeEntry.Text = Math.Max(0, (int)Math.Round(zone.StartTime / 60.0)).ToString();
+        LifespanEntry.Text = Math.Max(0, (int)Math.Round(zone.LifespanSeconds / 60.0)).ToString();
 
 
     }
 
 
-private static bool TryParseSeconds(
+private static bool TryParseMinutes(
     string? text,
-    out int result)
+    out int resultSeconds)
 {
-    result = 0;
-
-    if (!int.TryParse(text, out var seconds))
+    resultSeconds = 0;
+    if (!int.TryParse(text, out var minutes) || minutes < 0)
         return false;
 
-    if (seconds < 0)
+    try
+    {
+        resultSeconds = checked(minutes * 60);
+        return true;
+    }
+    catch (OverflowException)
+    {
         return false;
-
-        result = seconds;
-
-    return true;
+    }
 }
 
     private async void Ok_Clicked(
@@ -65,13 +66,13 @@ private static bool TryParseSeconds(
             return;
         }
 
-        if (!TryParseSeconds(
+        if (!TryParseMinutes(
                 StartTimeEntry.Text,
                 out var startTime))
         {
             await DisplayAlert(
                 "Invalid Start Time",
-                "Enter time in seconds",
+                "Enter a whole number of minutes (0 or greater).",
                 "OK");
 
             return;
@@ -85,13 +86,13 @@ private static bool TryParseSeconds(
 
         if (LifespanEntry.IsEnabled)
         {
-            if (!TryParseSeconds(
+            if (!TryParseMinutes(
                     LifespanEntry.Text,
                     out var lifespanTime))
             {
                 await DisplayAlert(
                     "Invalid Lifespan Time",
-                    "Enter time in seconds",
+                    "Enter a whole number of minutes (0 or greater).",
                     "OK");
 
                 return;

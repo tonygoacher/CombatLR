@@ -95,6 +95,7 @@ namespace CombatLR.mobile.Pages
         public GamePlanEditorPage()
         {
             InitializeComponent();
+
             GameObjectTypePicker.SelectedIndexChanged +=
                 GameObjectTypePicker_SelectedIndexChanged;
             _locationService = new LocationService();
@@ -1386,6 +1387,9 @@ namespace CombatLR.mobile.Pages
 
         private void UpdateGameObjectControls()
         {
+            // This control now edits the zone schedule in the Gantt timeline;
+            // it is not a "show all objects" command.
+
             var homeAvailable =
                 _gamePlan.Home is not null;
 
@@ -2083,14 +2087,17 @@ namespace CombatLR.mobile.Pages
         }
 
 
-        private void ShowAllObjects_Clicked(
-    object? sender,
-    EventArgs e)
+        private async void ShowAllObjects_Clicked(
+            object? sender,
+            EventArgs e)
         {
-            if (GameObjectTypePicker.SelectedIndex != 0)
+            // Open the Gantt timeline to edit zone start times and lifespans.
+            // The button is disabled while Pickups mode is selected.
+            if (_gameObjectMode != GameObjectMode.Zone)
                 return;
 
-            ShowAllZones_Clicked(sender, e);
+            var timelinePage = new ZoneTimelinePage(_gamePlan);
+            await Navigation.PushModalAsync(timelinePage);
         }
 
         private void Hamburger_Clicked(
