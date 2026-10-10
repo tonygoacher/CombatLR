@@ -1,5 +1,3 @@
-global using CombatLR.mobile.Data;
-global using CombatLR.mobile.PageModels;
 global using CombatLR.mobile.Pages;
 global using CombatLR.mobile.Services;
 global using CombatLR.mobile.Utilities;

@@ -78,10 +78,6 @@ namespace CombatLR.mobile.Pages
  
 
 
-        private double _pinchStartZoom;
-        private double _pinchStartPanX;
-        private double _pinchStartPanY;
-        private double _pinchLastScale = 1.0;
         private GamePlan _gamePlan = new();
 
         // The containing directory is the project. Its directory name is the
