@@ -17,22 +17,6 @@
             HorizontalOptions="Fill"
             VerticalOptions="Fill">
 
-            <Button
-    Text="☰"
-    FontSize="24"
-    TextColor="White"
-    BackgroundColor="#CC000000"
-    BorderColor="White"
-    BorderWidth="1"
-    CornerRadius="18"
-    WidthRequest="44"
-    HeightRequest="44"
-    Padding="0"
-    HorizontalOptions="Start"
-    VerticalOptions="Start"
-    Margin="8,2,0,0"
-    ZIndex="30"
-    Clicked="Hamburger_Clicked" />
 
             <Image
                 x:Name="MapImage"
