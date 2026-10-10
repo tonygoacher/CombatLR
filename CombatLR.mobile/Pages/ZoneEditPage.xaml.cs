@@ -24,7 +24,7 @@ public partial class ZoneEditPage : ContentPage
             zone.RadiusMetres.ToString("0.0");
         // The editor uses whole minutes; GamePlan/JSON remain seconds.
         StartTimeEntry.Text = Math.Max(0, (int)Math.Round(zone.StartTime / 60.0)).ToString();
-        LifespanEntry.Text = Math.Max(0, (int)Math.Round(zone.LifespanSeconds / 60.0)).ToString();
+        LifespanEntry.Text = Math.Max(1, (int)Math.Round(zone.LifespanSeconds / 60.0)).ToString();
 
 
     }
@@ -88,11 +88,12 @@ private static bool TryParseMinutes(
         {
             if (!TryParseMinutes(
                     LifespanEntry.Text,
-                    out var lifespanTime))
+                    out var lifespanTime) ||
+                lifespanTime <= 0)
             {
                 await DisplayAlert(
                     "Invalid Lifespan Time",
-                    "Enter a whole number of minutes (0 or greater).",
+                    "Lifespan must be greater than zero minutes.",
                     "OK");
 
                 return;
