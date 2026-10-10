@@ -95,7 +95,6 @@ namespace CombatLR.mobile.Pages
         public GamePlanEditorPage()
         {
             InitializeComponent();
-
             GameObjectTypePicker.SelectedIndexChanged +=
                 GameObjectTypePicker_SelectedIndexChanged;
             _locationService = new LocationService();
@@ -1387,9 +1386,6 @@ namespace CombatLR.mobile.Pages
 
         private void UpdateGameObjectControls()
         {
-            // This control now edits the zone schedule in the Gantt timeline;
-            // it is not a "show all objects" command.
-
             var homeAvailable =
                 _gamePlan.Home is not null;
 
@@ -1966,6 +1962,55 @@ namespace CombatLR.mobile.Pages
                 $"Lifespan: {zone.LifespanSeconds}";
         }
 
+        private int GetNewZoneStartTime()
+        {
+            // Append after the latest finite zone end. A very large lifespan is
+            // the timeline's permanent-zone sentinel, so it must not push a new
+            // zone millions of seconds into the future.
+            var finiteEnds = _gamePlan.Zones
+                .Where(z => z.LifespanSeconds > 0 && z.LifespanSeconds < 1_000_000)
+                .Select(z => (long)Math.Max(0, z.StartTime) + z.LifespanSeconds)
+                .ToList();
+
+            var latestStart = _gamePlan.Zones.Count > 0
+                ? _gamePlan.Zones.Max(z => (long)Math.Max(0, z.StartTime))
+                : 0L;
+            var end = Math.Max(latestStart, finiteEnds.Count > 0 ? finiteEnds.Max() : 0L);
+
+            return (int)Math.Clamp(end, 0L, int.MaxValue);
+        }
+
+        private void CloseGapAfterZoneDeletion(int deletedIndex)
+        {
+            var zones = _gamePlan.Zones;
+            if (zones.Count == 0)
+                return;
+            if (deletedIndex == 0)
+            {
+                // The first remaining zone becomes Zone 0 and is anchored at zero.
+                zones[0].StartTime = 0;
+                return;
+            }
+            if (zones.Count < 2 || deletedIndex >= zones.Count)
+                return;
+
+            // Zone 0 remains anchored at zero. If removing a zone leaves a gap
+            // between its neighbours, shift the later schedule left just enough
+            // to close that gap. Existing overlaps and relative timings remain.
+            var previous = zones[deletedIndex - 1];
+            var next = zones[deletedIndex];
+            var previousExpiry = (long)previous.StartTime + previous.LifespanSeconds;
+            var gap = (long)next.StartTime - previousExpiry;
+            if (gap <= 0)
+                return;
+
+            for (var i = deletedIndex; i < zones.Count; i++)
+            {
+                var shifted = (long)zones[i].StartTime - gap;
+                zones[i].StartTime = (int)Math.Clamp(shifted, i == 0 ? 0L : 0L, int.MaxValue);
+            }
+        }
+
         private async void AddZone_Clicked(
     object? sender,
     EventArgs e)
@@ -1992,7 +2037,7 @@ namespace CombatLR.mobile.Pages
                     EastMetres = local.EastMetres,
                     NorthMetres = local.NorthMetres,
                     RadiusMetres = 50.0,
-                    StartTime = 0,
+                    StartTime = GetNewZoneStartTime(),
                     LifespanSeconds = 0
                 };
 
@@ -2031,7 +2076,7 @@ namespace CombatLR.mobile.Pages
                     EastMetres = local.EastMetres,
                     NorthMetres = local.NorthMetres,
                     RadiusMetres = 50.0,
-                    StartTime = 0,
+                    StartTime = GetNewZoneStartTime(),
                     LifespanSeconds = 0
                 };
 
@@ -2088,16 +2133,16 @@ namespace CombatLR.mobile.Pages
 
 
         private async void ShowAllObjects_Clicked(
-            object? sender,
-            EventArgs e)
+    object? sender,
+    EventArgs e)
         {
-            // Open the Gantt timeline to edit zone start times and lifespans.
-            // The button is disabled while Pickups mode is selected.
-            if (_gameObjectMode != GameObjectMode.Zone)
+            if (GameObjectTypePicker.SelectedIndex != 0)
                 return;
 
-            var timelinePage = new ZoneTimelinePage(_gamePlan);
-            await Navigation.PushModalAsync(timelinePage);
+            // Open the graphical zone timeline. The previous handler toggled
+            // the map's all-zones overlay instead of opening the timeline.
+            await Navigation.PushModalAsync(
+                new ZoneTimelinePage(_gamePlan));
         }
 
         private void Hamburger_Clicked(
@@ -2134,8 +2179,9 @@ namespace CombatLR.mobile.Pages
                 if (!confirmed)
                     return;
 
-                _gamePlan.Zones.RemoveAt(
-                    _currentZoneIndex);
+                var deletedIndex = _currentZoneIndex;
+                _gamePlan.Zones.RemoveAt(deletedIndex);
+                CloseGapAfterZoneDeletion(deletedIndex);
 
                 if (_gamePlan.Zones.Count == 0)
                 {
