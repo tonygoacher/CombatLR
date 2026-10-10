@@ -53,9 +53,7 @@
 		<MauiIcon Include="Resources\AppIcon\appicon.png" />
 
 		<!-- Splash Screen -->
-		<MauiSplashScreen Include="Resources\Splash\combatlr.png"
-                      Color="#000000"
-                      BaseSize="512,512" />
+		<MauiSplashScreen Include="Resources\Splash\combatlr.png" Color="#000000" BaseSize="512,512" />
 
 		<!-- Images -->
 		<MauiImage Include="Resources\Images\*" />
@@ -74,8 +72,6 @@
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
 		<PackageReference Include="CommunityToolkit.Maui" Version="12.3.0" />
-		<PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.8" />
-		<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.10" />
 		<PackageReference Include="Syncfusion.Maui.Toolkit" Version="1.0.8" />
 	</ItemGroup>
 
@@ -92,6 +88,13 @@
 	  <Compile Update="Pages\PickupEditPage.xaml.cs">
 	    <DependentUpon>PickupEditPage.xaml</DependentUpon>
 	  </Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Data\" />
+	  <Folder Include="PageModels\" />
+	  <Folder Include="Pages\Controls\" />
+	  <Folder Include="Properties\" />
 	</ItemGroup>
 	
 </Project>
