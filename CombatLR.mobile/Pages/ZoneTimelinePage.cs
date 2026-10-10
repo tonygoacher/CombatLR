@@ -201,18 +201,84 @@ public sealed class ZoneTimelinePage : ContentPage
         if (zoneIndex < 0 || zoneIndex >= _gamePlan.Zones.Count)
             return;
 
-        var zone = _gamePlan.Zones[zoneIndex];
+        var zones = _gamePlan.Zones;
+
+        // Snapshot the original schedule so edits preserve the intended yellow
+        // transition overlaps instead of introducing gaps or removing overlap.
+        var originalStarts = zones.Select(z => z.StartTime).ToArray();
+        var originalLifespans = zones.Select(z => z.LifespanSeconds).ToArray();
+
+        var zone = zones[zoneIndex];
         var editPage = new ZoneEditPage(zone, zoneIndex + 1);
         await Navigation.PushModalAsync(editPage);
         var changed = await editPage.Completion;
         if (!changed)
             return;
 
-        // Zone zero is the timeline origin; preserve the established game-plan rule.
-        if (_gamePlan.Zones.Count > 0)
-            _gamePlan.Zones[0].StartTime = 0;
-
+        ReconcileSchedule(zoneIndex, originalStarts, originalLifespans);
         UpdateCanvasSize();
+    }
+
+    private void ReconcileSchedule(
+        int editedIndex,
+        int[] originalStarts,
+        int[] originalLifespans)
+    {
+        var zones = _gamePlan.Zones;
+        if (zones.Count == 0)
+            return;
+
+        // Zone 0 is always the origin.
+        zones[0].StartTime = 0;
+
+        // Only repair a boundary if the edit would leave a genuine gap.
+        // Otherwise leave the lifespan/start values alone and let the overlap
+        // grow or shrink naturally. This preserves the user's edited value.
+        if (editedIndex > 0)
+        {
+            var previous = zones[editedIndex - 1];
+            var edited = zones[editedIndex];
+            var previousExpiry = (long)previous.StartTime + previous.LifespanSeconds;
+
+            if (previousExpiry < edited.StartTime)
+            {
+                // A later start would create a gap. Extend only the previous
+                // lifespan, retaining the incoming overlap from the old schedule.
+                var oldOverlap = Math.Max(0L,
+                    (long)originalStarts[editedIndex - 1] +
+                    originalLifespans[editedIndex - 1] -
+                    originalStarts[editedIndex]);
+                var requiredExpiry = (long)edited.StartTime + oldOverlap;
+                previous.LifespanSeconds = (int)Math.Clamp(
+                    requiredExpiry - previous.StartTime, 0L, int.MaxValue);
+            }
+        }
+
+        if (editedIndex + 1 < zones.Count)
+        {
+            var edited = zones[editedIndex];
+            var next = zones[editedIndex + 1];
+            var editedExpiry = (long)edited.StartTime + edited.LifespanSeconds;
+
+            if (editedExpiry < next.StartTime)
+            {
+                // A shorter lifespan (or later start) would leave a gap before
+                // the next zone. Move the downstream schedule only as far as
+                // needed, preserving the existing outgoing overlap duration.
+                var oldOverlap = Math.Max(0L,
+                    (long)originalStarts[editedIndex] +
+                    originalLifespans[editedIndex] -
+                    originalStarts[editedIndex + 1]);
+                var requiredNextStart = Math.Max(0L, editedExpiry - oldOverlap);
+                var shift = requiredNextStart - next.StartTime;
+
+                for (var i = editedIndex + 1; i < zones.Count; i++)
+                {
+                    zones[i].StartTime = (int)Math.Clamp(
+                        (long)originalStarts[i] + shift, 0L, int.MaxValue);
+                }
+            }
+        }
     }
 
     private sealed class TimelineDrawable : IDrawable
