@@ -365,7 +365,7 @@
                 x:Name="ShowAllObjectsButton"
                 Grid.Row="1"
                 Grid.Column="1"
-                Text="All"
+                Text="Timeline"
                 Style="{StaticResource ObjectPanelButton}"
                 Clicked="ShowAllObjects_Clicked" />
 
