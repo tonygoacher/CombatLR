@@ -2038,7 +2038,7 @@ namespace CombatLR.mobile.Pages
                     NorthMetres = local.NorthMetres,
                     RadiusMetres = 50.0,
                     StartTime = GetNewZoneStartTime(),
-                    LifespanSeconds = 0
+                    LifespanSeconds = 300
                 };
 
             _gamePlan.Zones.Add(zone);
@@ -2077,7 +2077,7 @@ namespace CombatLR.mobile.Pages
                     NorthMetres = local.NorthMetres,
                     RadiusMetres = 50.0,
                     StartTime = GetNewZoneStartTime(),
-                    LifespanSeconds = 0
+                    LifespanSeconds = 300
                 };
 
             _gamePlan.Zones.Add(zone);
@@ -2331,7 +2331,7 @@ namespace CombatLR.mobile.Pages
                     NorthMetres = local.NorthMetres,
                     Type = PickupType.Auto,
                     SpawnTimeSeconds = 0,
-                    LifespanSeconds = 0
+                    LifespanSeconds = 300
                 };
 
             zone.Pickups.Add(pickup);

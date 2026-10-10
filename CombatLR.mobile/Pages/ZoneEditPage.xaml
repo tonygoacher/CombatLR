@@ -74,7 +74,7 @@
                         <Entry
                             x:Name="StartTimeEntry"
                             WidthRequest="90"
-                            Placeholder="0"
+                            Placeholder="5"
                             Keyboard="Numeric"
                             TextColor="White"
                             HorizontalTextAlignment="End" />
