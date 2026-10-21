@@ -133,9 +133,16 @@ namespace CombatLR.mobile.Pages
         {
             InitializeComponent();
 
-            // NavigationPage's native toolbar back button bypasses the page's
-            // OnBackButtonPressed override, so replace it with a guarded action.
+            // This page is hosted by Shell, whose back arrow is separate from
+            // NavigationPage's back button. Hide that native arrow; the guarded
+            // Back toolbar action below is the only visible back control.
             NavigationPage.SetHasBackButton(this, false);
+            Shell.SetBackButtonBehavior(this, new BackButtonBehavior
+            {
+                IsVisible = false,
+                Command = new Command(async () =>
+                    await HandleBackNavigationAsync())
+            });
             ToolbarItems.Add(new ToolbarItem
             {
                 Text = "‹ Back",
