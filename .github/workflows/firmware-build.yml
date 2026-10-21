@@ -31,12 +31,3 @@ jobs:
       - name: Compile firmware
         working-directory: Firmware
         run: pio run -e esp32s3_n16r8
-
-      - name: Upload firmware binary
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: combatlr-firmware-esp32s3_n16r8
-          path: Firmware/.pio/build/esp32s3_n16r8/firmware.bin
-          if-no-files-found: error
-          retention-days: 14
