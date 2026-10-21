@@ -40,7 +40,7 @@ namespace
 
     size_t CalculateSelectionCount(size_t candidateCount, uint8_t allocationPercentage)
     {
-        if (candidateCount == 0)
+        if (candidateCount == 0 || allocationPercentage == 0)
             return 0;
 
         const double selected =
@@ -483,7 +483,7 @@ bool GamePlan::Load(const char* filename)
     for (JsonObject entry : distributionJson)
     {
         if (!entry["zone"].is<int>() ||
-            ( !entry["allocationPercentage"].isUnbound() && !entry["allocationPercentage"].is<int>() ) ||
+            (!entry["allocationPercentage"].isNull() && !entry["allocationPercentage"].is<int>()) ||
             !entry["healthPercentage"].is<int>() ||
             !entry["ammoPercentage"].is<int>() ||
             !entry["weaponPercentage"].is<int>())
