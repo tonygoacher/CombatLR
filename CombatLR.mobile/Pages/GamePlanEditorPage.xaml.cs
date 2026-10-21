@@ -120,6 +120,8 @@ namespace CombatLR.mobile.Pages
 
         private string CaptureCurrentStateSnapshot()
         {
+            // Serialise the live model each time; zone and pickup allocation
+            // editors update this shared GamePlan instance directly.
             return JsonSerializer.Serialize(new
             {
                 GamePlan = _gamePlan,
@@ -130,6 +132,18 @@ namespace CombatLR.mobile.Pages
         public GamePlanEditorPage()
         {
             InitializeComponent();
+
+            // NavigationPage's native toolbar back button bypasses the page's
+            // OnBackButtonPressed override, so replace it with a guarded action.
+            NavigationPage.SetHasBackButton(this, false);
+            ToolbarItems.Add(new ToolbarItem
+            {
+                Text = "‹ Back",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 0,
+                Command = new Command(async () =>
+                    await HandleBackNavigationAsync())
+            });
             GameObjectTypePicker.SelectedIndexChanged +=
                 GameObjectTypePicker_SelectedIndexChanged;
             _locationService = new LocationService();
