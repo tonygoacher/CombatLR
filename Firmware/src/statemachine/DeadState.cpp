@@ -1,7 +1,7 @@
 
 #include "ISounds.h"
 #include "statemachine/SystemStates.h"
-#include "stateMachine/DeadState.h"
+#include "statemachine/DeadState.h"
 #include "graphics/DisplayManager.h"
 #include "graphics/DisplayBackgroundCommand.h"
 
