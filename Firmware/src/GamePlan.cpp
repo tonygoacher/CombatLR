@@ -22,28 +22,6 @@ namespace
         uint8_t weapon;
     };
 
-    // Temporary per-zone distribution table.
-    // Indexed by zero-based zone number.
-    //
-    // These values are deliberately kept as a simple C++ table so that
-    // the same structure can later be represented directly in JSON.
-    constexpr PickupDistribution PickupDistributions[] =
-    {
-        { 20, 50, 30 },   // Zone 0
-        { 10, 50, 30 },   // Zone 1
-        { 10, 60, 30 },   // Zone 2
-        { 10, 60, 30 },   // Zone 3
-        { 10, 60, 30 },   // Zone 4
-        { 10, 60, 30 },   // Zone 5
-        { 10, 60, 30 },   // Zone 6
-        { 10, 60, 30 },   // Zone 7
-        { 10, 60, 30 },   // Zone 8
-        { 10, 60, 30 }    // Zone 9
-    };
-
-    constexpr size_t PickupDistributionCount =
-        sizeof(PickupDistributions) / sizeof(PickupDistributions[0]);
-
     constexpr PickupDistribution DefaultPickupDistribution = { 40, 40, 20 };
 
     double DistanceSquared(const Pickup& a, const Pickup& b)
@@ -349,12 +327,8 @@ namespace
 
     void AllocateZonePickups(
         Zone& zone,
-        size_t zoneIndex)
+        const PickupDistribution& distribution)
     {
-        const PickupDistribution& distribution =
-            (zoneIndex < PickupDistributionCount)
-                ? PickupDistributions[zoneIndex]
-                : DefaultPickupDistribution;
 
         /*
          * Fixed pickup groups are allocated independently.
@@ -488,6 +462,14 @@ bool GamePlan::Load(const char* filename)
         
     _gameDelayTime =
         document["gameDelayTime"].as<int>();
+
+    PickupDistribution pickupDistribution = DefaultPickupDistribution;
+    if (document["healthPercentage"].is<int>())
+        pickupDistribution.health = static_cast<uint8_t>(std::clamp(document["healthPercentage"].as<int>(), 0, 100));
+    if (document["ammoPercentage"].is<int>())
+        pickupDistribution.ammo = static_cast<uint8_t>(std::clamp(document["ammoPercentage"].as<int>(), 0, 100));
+    if (document["weaponPercentage"].is<int>())
+        pickupDistribution.weapon = static_cast<uint8_t>(std::clamp(document["weaponPercentage"].as<int>(), 0, 100));
   
 
     _valid = true;
@@ -569,7 +551,7 @@ bool GamePlan::Load(const char* filename)
 
         AllocateZonePickups(
             zone,
-            _zones.size());
+            pickupDistribution);
 
         _zones.push_back(
             std::move(zone));
