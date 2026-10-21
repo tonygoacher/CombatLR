@@ -196,6 +196,7 @@
                 <Button
                     x:Name="PickupAllocationButton"
                     Text="Pickup Allocation"
+                    IsEnabled="False"
                     Style="{StaticResource PanelButton}"
                     Clicked="EditPickupAllocation_Clicked" />
 
