@@ -146,11 +146,24 @@ namespace
                 candidates.push_back(pickup);
         }
 
+        if (candidates.empty())
+            return;
+
         const size_t selectionCount =
             CalculateSelectionCount(candidates.size(), allocationPercentage);
 
         if (selectionCount == 0)
+        {
+            // A configured 0% means no candidates of this type are retained.
+            for (auto it = zone.pickups.begin(); it != zone.pickups.end();)
+            {
+                if (it->second.type == type)
+                    it = zone.pickups.erase(it);
+                else
+                    ++it;
+            }
             return;
+        }
 
         if (selectionCount >= candidates.size())
             return;
