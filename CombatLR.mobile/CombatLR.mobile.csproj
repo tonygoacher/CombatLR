@@ -51,7 +51,7 @@
 	<ItemGroup>
 		<!-- Android adaptive icon: black background with a safely scaled transparent foreground. -->
 		<MauiIcon Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'"
-		          Include="Resources\AppIcon\appiconbg.svg"
+		          Include="Resources\AppIcon\appicon.svg"
 		          ForegroundFile="Resources\AppIcon\appiconfg.svg"
 		          ForegroundScale="0.78"
 		          Color="#000000" />
