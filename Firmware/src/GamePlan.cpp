@@ -11,15 +11,17 @@
 
 namespace
 {
-    // Temporary allocation percentage. This will eventually come from
-    // game configuration/JSON.
-    constexpr uint8_t PickupAllocationPercentage = 40;
-
     struct PickupDistribution
     {
         uint8_t health;
         uint8_t ammo;
         uint8_t weapon;
+    };
+
+    struct ZonePickupDistribution
+    {
+        size_t zone;
+        PickupDistribution distribution;
     };
 
     constexpr PickupDistribution DefaultPickupDistribution = { 40, 40, 20 };
@@ -463,13 +465,67 @@ bool GamePlan::Load(const char* filename)
     _gameDelayTime =
         document["gameDelayTime"].as<int>();
 
-    PickupDistribution pickupDistribution = DefaultPickupDistribution;
-    if (document["healthPercentage"].is<int>())
-        pickupDistribution.health = static_cast<uint8_t>(std::clamp(document["healthPercentage"].as<int>(), 0, 100));
-    if (document["ammoPercentage"].is<int>())
-        pickupDistribution.ammo = static_cast<uint8_t>(std::clamp(document["ammoPercentage"].as<int>(), 0, 100));
-    if (document["weaponPercentage"].is<int>())
-        pickupDistribution.weapon = static_cast<uint8_t>(std::clamp(document["weaponPercentage"].as<int>(), 0, 100));
+    std::vector<ZonePickupDistribution> pickupDistributions;
+    JsonArray distributionJson = document["zonePercentages"].as<JsonArray>();
+
+    if (distributionJson.isNull())
+    {
+        Serial.println("GamePlan: missing zonePercentages array");
+        return false;
+    }
+
+    for (JsonObject entry : distributionJson)
+    {
+        if (!entry["zone"].is<int>() ||
+            !entry["healthPercentage"].is<int>() ||
+            !entry["ammoPercentage"].is<int>() ||
+            !entry["weaponPercentage"].is<int>())
+        {
+            Serial.println("GamePlan: invalid zonePercentages entry");
+            return false;
+        }
+
+        const int zoneIndex = entry["zone"].as<int>();
+        if (zoneIndex < 0)
+        {
+            Serial.println("GamePlan: zonePercentages zone cannot be negative");
+            return false;
+        }
+
+        ZonePickupDistribution configured;
+        configured.zone = static_cast<size_t>(zoneIndex);
+        configured.distribution.health = static_cast<uint8_t>(
+            std::clamp(entry["healthPercentage"].as<int>(), 0, 100));
+        configured.distribution.ammo = static_cast<uint8_t>(
+            std::clamp(entry["ammoPercentage"].as<int>(), 0, 100));
+        configured.distribution.weapon = static_cast<uint8_t>(
+            std::clamp(entry["weaponPercentage"].as<int>(), 0, 100));
+        pickupDistributions.push_back(configured);
+    }
+
+    if (pickupDistributions.empty() ||
+        std::none_of(pickupDistributions.begin(), pickupDistributions.end(),
+            [](const ZonePickupDistribution& entry) { return entry.zone == 0; }))
+    {
+        Serial.println("GamePlan: zonePercentages must contain zone 0");
+        return false;
+    }
+
+    std::sort(pickupDistributions.begin(), pickupDistributions.end(),
+        [](const ZonePickupDistribution& a, const ZonePickupDistribution& b)
+        {
+            return a.zone < b.zone;
+        });
+
+    // A threshold may appear only once; duplicate zone IDs are ambiguous.
+    for (size_t i = 1; i < pickupDistributions.size(); ++i)
+    {
+        if (pickupDistributions[i - 1].zone == pickupDistributions[i].zone)
+        {
+            Serial.println("GamePlan: duplicate zone in zonePercentages");
+            return false;
+        }
+    }
   
 
     _valid = true;
@@ -549,9 +605,23 @@ bool GamePlan::Load(const char* filename)
             }
         }
 
+        // Apply the most recent configured distribution threshold. A
+        // threshold remains active until a later configured zone is reached.
+        const size_t zoneIndex = _zones.size();
+        const ZonePickupDistribution* activeDistribution = nullptr;
+        for (const auto& configured : pickupDistributions)
+        {
+            if (configured.zone > zoneIndex)
+                break;
+
+            activeDistribution = &configured;
+        }
+
         AllocateZonePickups(
             zone,
-            pickupDistribution);
+            activeDistribution != nullptr
+                ? activeDistribution->distribution
+                : DefaultPickupDistribution);
 
         _zones.push_back(
             std::move(zone));
