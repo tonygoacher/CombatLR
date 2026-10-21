@@ -43,12 +43,20 @@ public partial class GameControlPage : ContentPage
 
     protected override async void OnDisappearing()
     {
+        base.OnDisappearing();
+
         _networkService.StartGameAcknowledged -=
             NetworkService_StartGameAcknowledged;
 
-        await _networkService.StopDiscoveryAsync();
-
-        base.OnDisappearing();
+        try
+        {
+            await _networkService.StopDiscoveryAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"Game Control: discovery shutdown failed: {ex.Message}");
+        }
     }
 
     private async void DiscoverButton_Clicked(
