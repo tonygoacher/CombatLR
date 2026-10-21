@@ -133,21 +133,10 @@ namespace CombatLR.mobile.Pages
         {
             InitializeComponent();
 
-            // This page is hosted by Shell, whose back arrow is separate from
-            // NavigationPage's back button. Hide that native arrow; the guarded
-            // Back toolbar action below is the only visible back control.
-            NavigationPage.SetHasBackButton(this, false);
+            // Keep Shell's standard navigation-bar back arrow and appearance,
+            // but route its action through the unsaved-changes guard.
             Shell.SetBackButtonBehavior(this, new BackButtonBehavior
             {
-                IsVisible = false,
-                Command = new Command(async () =>
-                    await HandleBackNavigationAsync())
-            });
-            ToolbarItems.Add(new ToolbarItem
-            {
-                Text = "‹ Back",
-                Order = ToolbarItemOrder.Primary,
-                Priority = 0,
                 Command = new Command(async () =>
                     await HandleBackNavigationAsync())
             });
