@@ -1356,7 +1356,12 @@ namespace CombatLR.mobile.Pages
 
             if (!homeAvailable)
             {
-                AddObjectButton.IsEnabled = false;
+                // A valid map is enough to begin creating zones. Setting Home
+                // is still required before a zone can be placed, because its
+                // coordinates are stored relative to Home.
+                AddObjectButton.IsEnabled =
+                    _mapDefinition is not null &&
+                    _gameObjectMode == GameObjectMode.Zone;
                 PreviousZoneButton.IsEnabled = false;
                 NextZoneButton.IsEnabled = false;
                 DeleteObjectButton.IsEnabled = false;
@@ -1980,8 +1985,18 @@ namespace CombatLR.mobile.Pages
     object? sender,
     EventArgs e)
         {
-            if (_gamePlan.Home is null)
+            if (_mapDefinition is null ||
+                _coordinateService is null)
                 return;
+
+            if (_gamePlan.Home is null)
+            {
+                await DisplayAlert(
+                    "Add Zone",
+                    "Set Home before adding a zone.",
+                    "OK");
+                return;
+            }
 
             var coordinate =
                 await AcquireCoordinateAsync(
