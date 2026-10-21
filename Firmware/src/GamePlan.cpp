@@ -11,8 +11,8 @@
 
 namespace
 {
-    // Keep the existing selection ratio: select 40% of candidate pickups.
-    constexpr uint8_t PickupAllocationPercentage = 40;
+    // Legacy game plans default to selecting 40% of candidate pickups.
+    constexpr uint8_t DefaultPickupAllocationPercentage = 40;
 
     struct PickupDistribution
     {
@@ -24,6 +24,7 @@ namespace
     struct ZonePickupDistribution
     {
         size_t zone;
+        uint8_t allocationPercentage;
         PickupDistribution distribution;
     };
 
@@ -37,7 +38,7 @@ namespace
         return (dx * dx) + (dy * dy);
     }
 
-    size_t CalculateSelectionCount(size_t candidateCount)
+    size_t CalculateSelectionCount(size_t candidateCount, uint8_t allocationPercentage)
     {
         if (candidateCount == 0)
             return 0;
@@ -45,7 +46,7 @@ namespace
         const double selected =
             std::round(
                 static_cast<double>(candidateCount) *
-                static_cast<double>(PickupAllocationPercentage) /
+                static_cast<double>(allocationPercentage) /
                 100.0);
 
         return std::max<size_t>(1, static_cast<size_t>(selected));
@@ -131,7 +132,8 @@ namespace
 
     void SelectPickupGroup(
         Zone& zone,
-        PickupTypes type)
+        PickupTypes type,
+        uint8_t allocationPercentage)
     {
         std::vector<Pickup> candidates;
         candidates.reserve(zone.pickups.size());
@@ -145,7 +147,7 @@ namespace
         }
 
         const size_t selectionCount =
-            CalculateSelectionCount(candidates.size());
+            CalculateSelectionCount(candidates.size(), allocationPercentage);
 
         if (selectionCount == 0)
             return;
@@ -332,20 +334,21 @@ namespace
 
     void AllocateZonePickups(
         Zone& zone,
-        const PickupDistribution& distribution)
+        const PickupDistribution& distribution,
+        uint8_t allocationPercentage)
     {
 
         /*
          * Fixed pickup groups are allocated independently.
          */
-        SelectPickupGroup(zone, Health);
-        SelectPickupGroup(zone, Ammo);
-        SelectPickupGroup(zone, WeaponBonus);
+        SelectPickupGroup(zone, Health, allocationPercentage);
+        SelectPickupGroup(zone, Ammo, allocationPercentage);
+        SelectPickupGroup(zone, WeaponBonus, allocationPercentage);
 
         /*
          * Auto is allocated independently from the fixed groups.
          */
-        SelectPickupGroup(zone, Auto);
+        SelectPickupGroup(zone, Auto, allocationPercentage);
 
         /*
          * Auto pickups have no delayed spawn. They are present from
@@ -480,6 +483,7 @@ bool GamePlan::Load(const char* filename)
     for (JsonObject entry : distributionJson)
     {
         if (!entry["zone"].is<int>() ||
+            ( !entry["allocationPercentage"].isUnbound() && !entry["allocationPercentage"].is<int>() ) ||
             !entry["healthPercentage"].is<int>() ||
             !entry["ammoPercentage"].is<int>() ||
             !entry["weaponPercentage"].is<int>())
@@ -497,6 +501,9 @@ bool GamePlan::Load(const char* filename)
 
         ZonePickupDistribution configured;
         configured.zone = static_cast<size_t>(zoneIndex);
+        configured.allocationPercentage = entry["allocationPercentage"].is<int>()
+            ? static_cast<uint8_t>(std::clamp(entry["allocationPercentage"].as<int>(), 0, 100))
+            : DefaultPickupAllocationPercentage;
         configured.distribution.health = static_cast<uint8_t>(
             std::clamp(entry["healthPercentage"].as<int>(), 0, 100));
         configured.distribution.ammo = static_cast<uint8_t>(
@@ -624,7 +631,10 @@ bool GamePlan::Load(const char* filename)
             zone,
             activeDistribution != nullptr
                 ? activeDistribution->distribution
-                : DefaultPickupDistribution);
+                : DefaultPickupDistribution,
+            activeDistribution != nullptr
+                ? activeDistribution->allocationPercentage
+                : DefaultPickupAllocationPercentage);
 
         _zones.push_back(
             std::move(zone));
