@@ -29,7 +29,7 @@
 #include "statemachine/PowerUpState.h"
 #include "MAX98357ASounds.h"
 #include "statemachine/CombatLRStateMachine.h"
-#include "stateMachine/Services.h"
+#include "statemachine/Services.h"
 #include "IRLaserTag.h"
 #include "weapons/WeaponManager.h"
 #include "ESP32LaserTag.h"

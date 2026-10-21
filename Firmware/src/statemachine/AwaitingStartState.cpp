@@ -5,10 +5,10 @@
 
 #include "ISounds.h"
 #include "statemachine/SystemStates.h"
-#include "stateMachine/AwaitingStartState.h"
+#include "statemachine/AwaitingStartState.h"
 #include "graphics/DisplayManager.h"
 #include "graphics/DisplayBackgroundCommand.h"
-#include "statemachine/services.h"
+#include "statemachine/Services.h"
 #include "widgets/WiFiStatusWidget.h"
 #include "widgets/UIWidgetIds.h"
 #include "graphics/AddWidgetCommand.h"

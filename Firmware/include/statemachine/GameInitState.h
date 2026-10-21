@@ -5,7 +5,7 @@
 #include "stdint.h"
 #include "Pacer.h"
 
-#include "stateMachine/Services.h"
+#include "statemachine/Services.h"
 #include "Navigation.h"
 #include "GameCoordinate.h"
 #include "widgets/TextWidget.h"

@@ -14,6 +14,11 @@ public class GamePlan
     [JsonPropertyName("gameDelayTime")]
     public int GameDelayTime { get; set; } = 0;
 
+    public List<ZonePickupPercentage> ZonePercentages { get; set; } = new()
+    {
+        new ZonePickupPercentage { Zone = 0, AllocationPercentage = 40, HealthPercentage = 40, AmmoPercentage = 40, WeaponPercentage = 20 }
+    };
+
     public HomePosition? Home { get; set; }
 
     public List<GameZone> Zones { get; set; } = new();
@@ -33,6 +38,19 @@ public class GamePlan
             .DefaultIfEmpty(-1)
             .Max() + 1;
     }
+}
+
+public class ZonePickupPercentage
+{
+    public int Zone { get; set; }
+
+    // Percentage of candidate pickup locations retained by the firmware.
+    // Defaults to the legacy fixed 40% allocation for existing game plans.
+    public int AllocationPercentage { get; set; } = 40;
+
+    public int HealthPercentage { get; set; } = 40;
+    public int AmmoPercentage { get; set; } = 40;
+    public int WeaponPercentage { get; set; } = 20;
 }
 
 public class HomePosition
