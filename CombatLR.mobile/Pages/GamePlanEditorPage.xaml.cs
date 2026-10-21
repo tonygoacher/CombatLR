@@ -139,6 +139,7 @@ namespace CombatLR.mobile.Pages
 
         private async Task LoadMapAsync(string projectDirectory)
         {
+            PickupAllocationButton.IsEnabled = false;
             long loadMapStart = Environment.TickCount64;
 
             try
@@ -198,6 +199,7 @@ namespace CombatLR.mobile.Pages
                 if (File.Exists(gamePlanPath))
                 {
                     _gamePlan = await _gamePlanService.LoadAsync(gamePlanPath);
+                    PickupAllocationButton.IsEnabled = true;
                     _gamePlan.ProjectName =
                         System.IO.Path.GetFileName(projectDirectory) ?? string.Empty;
                     GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
@@ -382,6 +384,7 @@ namespace CombatLR.mobile.Pages
                 return;
             }
 
+            PickupAllocationButton.IsEnabled = false;
             _gamePlan = _gamePlanService.CreateNew();
             _gamePlan.ProjectName =
                 System.IO.Path.GetFileName(_projectDirectory) ?? string.Empty;
@@ -442,6 +445,7 @@ namespace CombatLR.mobile.Pages
                     _gamePlan,
                     filePath);
 
+                PickupAllocationButton.IsEnabled = true;
                 MapInfoLabel.Text =
                     $"PROJECT: {System.IO.Path.GetFileName(_projectDirectory)}\n" +
                     $"GAME PLAN SAVED\nVERSION: {_gamePlan.Version}";
