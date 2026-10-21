@@ -264,7 +264,6 @@ internal sealed class PickupAllocationPage : ContentPage
                 !TryRead(row.Health.Text, out var health) ||
                 !TryRead(row.Ammo.Text, out var ammo) ||
                 !TryRead(row.Weapon.Text, out var weapon) ||
-                zone < 0 ||
                 zone < 1 ||
                 zone > _plan.Zones.Count)
             {
