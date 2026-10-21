@@ -1,16 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-<g fill="none" stroke="#9BE52A" stroke-linecap="butt">
-<path stroke-width="26" d="M490 128 A365 365 0 0 0 125 493 M534 128 A365 365 0 0 1 899 493 M125 531 A365 365 0 0 0 490 896 M899 746 A365 365 0 0 1 534 896"/>
-<path stroke-width="9" opacity=".62" d="M396 213 A270 270 0 0 0 213 396 M628 213 A270 270 0 0 1 811 396 M213 628 A270 270 0 0 0 396 811 M628 811 A270 270 0 0 0 752 752"/>
-</g>
-<g fill="#9BE52A">
-<rect x="504" y="77" width="20" height="93"/><path d="M489 195 H535 L512 224 Z"/><rect x="504" y="854" width="20" height="93"/>
-<rect x="45" y="507" width="35" height="18"/><rect x="98" y="507" width="96" height="18"/><rect x="211" y="507" width="30" height="18"/>
-<rect x="944" y="507" width="35" height="18"/><rect x="883" y="507" width="35" height="18"/><rect x="813" y="507" width="30" height="18"/>
-<path d="M105 594 l19 -5 3 9 -19 5z M113 619 l19 -5 3 9 -19 5z M121 644 l19 -5 3 9 -19 5z M131 669 l19 -5 3 9 -19 5z M144 694 l19 -5 3 9 -19 5z M159 718 l17 -6 4 9 -17 6z M178 740 l16 -7 5 9 -16 7z M199 760 l15 -8 5 9 -15 8z"/>
-<path d="M919 594 l-19 -5 -3 9 19 5z M911 619 l-19 -5 -3 9 19 5z M903 644 l-19 -5 -3 9 19 5z M893 669 l-19 -5 -3 9 19 5z M880 694 l-17 -5 -4 9 17 5z M865 718 l-17 -6 -4 9 17 6z M846 740 l-16 -7 -5 9 16 7z M825 760 l-15 -8 -5 9 15 8z"/>
-</g>
-<path fill="#F4F4F4" d="M420 290 H602 L645 333 L600 378 L568 346 H447 L388 405 V566 L447 625 H608 L639 657 L597 700 H420 L333 613 V384 Z"/>
-<path fill="#9BE52A" d="M500 411 H535 V552 L557 575 H637 L673 611 H531 L500 580 Z"/>
-<path fill="#9BE52A" d="M683 411 H823 L858 446 V493 L820 529 L869 584 H815 L759 521 V496 H811 L827 480 V462 L813 448 H718 V584 H683 Z"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="210mm" height="297mm" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 21000 29700"
+ xmlns:xlink="http://www.w3.org/1999/xlink"
+ xmlns:xodm="http://www.corel.com/coreldraw/odm/2003">
+ <g id="Layer_x0020_1">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <image x="8964.25" y="13314.25" width="3071.5" height="3071.5" xlink:href="appiconfg_Images\appiconfg_ImgID1.png"/>
+ </g>
 </svg>
