@@ -306,7 +306,7 @@ internal sealed class PickupAllocationPage : ContentPage
     {
         var acceptedValue = entry.Text;
 
-        entry.Completed += async (_, _) =>
+        entry.Unfocused += async (_, _) =>
         {
             if (!TryRead(entry.Text, out var value) || value is < 0 or > 100)
             {
