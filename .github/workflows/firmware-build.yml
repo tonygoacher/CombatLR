@@ -1,12 +1,6 @@
 name: Firmware Build
 
 on:
-  push:
-    branches:
-      - "**"
-    paths:
-      - "Firmware/**"
-      - ".github/workflows/firmware-build.yml"
   pull_request:
     branches:
       - main
