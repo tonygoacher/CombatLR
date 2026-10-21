@@ -371,41 +371,6 @@ namespace CombatLR.mobile.Pages
                        System.IO.Path.Combine(directory, "map.json"));
         }
 
-        private async void NewGamePlan_Clicked(
-            object? sender,
-            EventArgs e)
-        {
-            if (_projectDirectory is null)
-            {
-                await DisplayAlert(
-                    "New Game Plan",
-                    "Open a project first.",
-                    "OK");
-                return;
-            }
-
-            PickupAllocationButton.IsEnabled = false;
-            _gamePlan = _gamePlanService.CreateNew();
-            _gamePlan.ProjectName =
-                System.IO.Path.GetFileName(_projectDirectory) ?? string.Empty;
-            GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
-            ClearZoneMarkers();
-            ClearPickupMarkers();
-
-            _currentZoneIndex = -1;
-            _currentPickupIndex = -1;
-
-            HomeMarker.IsVisible = false;
-            UpdateGameObjectControls();
-
-            MapInfoLabel.Text =
-                $"PROJECT: {System.IO.Path.GetFileName(_projectDirectory)}\n" +
-                "NEW GAME PLAN\n" +
-                "No Home\n" +
-                "0 Zones\n" +
-                "VERSION: 0 (unsaved)";
-        }
-
         private async void SaveGamePlan_Clicked(
             object? sender,
             EventArgs e)
