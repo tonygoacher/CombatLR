@@ -140,6 +140,7 @@ namespace CombatLR.mobile.Pages
         private async Task LoadMapAsync(string projectDirectory)
         {
             PickupAllocationButton.IsEnabled = false;
+            SetHomeButton.IsEnabled = false;
             long loadMapStart = Environment.TickCount64;
 
             try
@@ -179,6 +180,9 @@ namespace CombatLR.mobile.Pages
                 _mapDefinition = mapDefinition;
                 _coordinateService =
                     new MapCoordinateService(_mapDefinition);
+
+                // Home can only be set after both map files loaded successfully.
+                SetHomeButton.IsEnabled = true;
 
                 MapInfoLabel.Text =
                     $"PROJECT: {System.IO.Path.GetFileName(projectDirectory)}\n" +
