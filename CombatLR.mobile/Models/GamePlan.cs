@@ -16,7 +16,7 @@ public class GamePlan
 
     public List<ZonePickupPercentage> ZonePercentages { get; set; } = new()
     {
-        new ZonePickupPercentage { Zone = 0, HealthPercentage = 40, AmmoPercentage = 40, WeaponPercentage = 20 }
+        new ZonePickupPercentage { Zone = 0, AllocationPercentage = 40, HealthPercentage = 40, AmmoPercentage = 40, WeaponPercentage = 20 }
     };
 
     public HomePosition? Home { get; set; }
@@ -43,6 +43,11 @@ public class GamePlan
 public class ZonePickupPercentage
 {
     public int Zone { get; set; }
+
+    // Percentage of candidate pickup locations retained by the firmware.
+    // Defaults to the legacy fixed 40% allocation for existing game plans.
+    public int AllocationPercentage { get; set; } = 40;
+
     public int HealthPercentage { get; set; } = 40;
     public int AmmoPercentage { get; set; } = 40;
     public int WeaponPercentage { get; set; } = 20;
