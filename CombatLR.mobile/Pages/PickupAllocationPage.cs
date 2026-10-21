@@ -155,6 +155,7 @@ internal sealed class PickupAllocationPage : ContentPage
             Text = value.ToString(),
             Placeholder = placeholder,
             Keyboard = Keyboard.Numeric,
+            ReturnType = ReturnType.Done,
             FontSize = 13,
             HorizontalTextAlignment = TextAlignment.Center,
             TextColor = Colors.White,
@@ -306,7 +307,7 @@ internal sealed class PickupAllocationPage : ContentPage
     {
         var acceptedValue = entry.Text;
 
-        entry.Unfocused += async (_, _) =>
+        entry.Completed += async (_, _) =>
         {
             if (!TryRead(entry.Text, out var value) || value is < 0 or > 100)
             {
@@ -315,6 +316,7 @@ internal sealed class PickupAllocationPage : ContentPage
                     $"{fieldName} must be a whole number between 0 and 100.",
                     "OK");
                 entry.Text = acceptedValue;
+                entry.Focus();
                 return;
             }
 
