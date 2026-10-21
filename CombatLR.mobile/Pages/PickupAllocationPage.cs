@@ -20,6 +20,7 @@ internal sealed class PickupAllocationPage : ContentPage
     private sealed class ThresholdRow
     {
         public required Entry Zone { get; init; }
+        public required int AcceptedZoneId { get; set; }
         public required Entry Allocation { get; init; }
         public required Entry Health { get; init; }
         public required Entry Ammo { get; init; }
@@ -30,6 +31,7 @@ internal sealed class PickupAllocationPage : ContentPage
     private readonly GamePlan _plan;
     private readonly VerticalStackLayout _rowsLayout = new() { Spacing = 12 };
     private readonly List<ThresholdRow> _rows = new();
+    private Button? _addButton;
 
     public PickupAllocationPage(GamePlan plan)
     {
@@ -55,14 +57,22 @@ internal sealed class PickupAllocationPage : ContentPage
         foreach (var item in _plan.ZonePercentages.OrderBy(p => p.Zone))
             AddRow(item);
 
-        var addButton = new Button { Text = "Add zone threshold" };
-        addButton.Clicked += (_, _) =>
+        _addButton = new Button { Text = "Add zone threshold" };
+        UpdateAddButtonState(_addButton);
+        _addButton.Clicked += (_, _) =>
         {
-            var nextZone = _rows
-                .Select(r => ParseInt(r.Zone.Text, 0))
-                .DefaultIfEmpty(-1)
-                .Max() + 1;
+            var usedZones = _rows.Select(r => r.AcceptedZoneId).ToHashSet();
+            var nextZone = Enumerable.Range(0, _plan.Zones.Count)
+                .FirstOrDefault(zoneId => !usedZones.Contains(zoneId), -1);
+
+            if (nextZone < 0)
+            {
+                UpdateAddButtonState(_addButton);
+                return;
+            }
+
             AddRow(new ZonePickupPercentage { Zone = nextZone });
+            UpdateAddButtonState(_addButton);
         };
 
         var saveButton = new Button { Text = "Save", BackgroundColor = Colors.DarkGreen };
@@ -95,7 +105,7 @@ internal sealed class PickupAllocationPage : ContentPage
                     explanation,
                     CreateColumnHeadings(),
                     _rowsLayout,
-                    addButton,
+                    _addButton,
                     actions
                 }
             }
@@ -170,33 +180,61 @@ internal sealed class PickupAllocationPage : ContentPage
             FontSize = 12,
             Padding = new Thickness(8, 3),
             HorizontalOptions = LayoutOptions.End,
-            IsVisible = ParseInt(zone.Text, -1) != 0
-        };
-        zone.TextChanged += (_, _) =>
-        {
-            // Zone 0 is the required default threshold and cannot be removed.
-            remove.IsVisible = ParseInt(zone.Text, -1) != 0;
+            IsVisible = item.Zone != 0
         };
 
         var row = new VerticalStackLayout { Spacing = 4, Children = { grid, remove } };
-        remove.Clicked += (_, _) =>
-        {
-            if (_rows.Count <= 1 || ParseInt(zone.Text, -1) == 0)
-                return;
-
-            _rows.RemoveAll(r => ReferenceEquals(r.View, row));
-            _rowsLayout.Children.Remove(row);
-        };
-
-        _rows.Add(new ThresholdRow
+        var thresholdRow = new ThresholdRow
         {
             Zone = zone,
+            AcceptedZoneId = item.Zone,
             Allocation = allocation,
             Health = health,
             Ammo = ammo,
             Weapon = weapon,
             View = row
-        });
+        };
+
+        zone.Completed += async (_, _) =>
+        {
+            if (!TryRead(zone.Text, out var enteredZone) ||
+                enteredZone < 0 ||
+                enteredZone >= _plan.Zones.Count)
+            {
+                await DisplayAlert(
+                    "Unknown zone",
+                    $"Zone ID must be between 0 and {_plan.Zones.Count - 1}, matching a zone in the current game plan.",
+                    "OK");
+                zone.Text = thresholdRow.AcceptedZoneId.ToString();
+                return;
+            }
+
+            if (_rows.Any(r => !ReferenceEquals(r, thresholdRow) && r.AcceptedZoneId == enteredZone))
+            {
+                await DisplayAlert(
+                    "Duplicate zone",
+                    $"A threshold for zone {enteredZone} already exists. The new value has been ignored.",
+                    "OK");
+                zone.Text = thresholdRow.AcceptedZoneId.ToString();
+                return;
+            }
+
+            thresholdRow.AcceptedZoneId = enteredZone;
+            remove.IsVisible = enteredZone != 0;
+            UpdateAddButtonState(_addButton);
+        };
+
+        remove.Clicked += (_, _) =>
+        {
+            if (_rows.Count <= 1 || thresholdRow.AcceptedZoneId == 0)
+                return;
+
+            _rows.Remove(thresholdRow);
+            _rowsLayout.Children.Remove(row);
+            UpdateAddButtonState(_addButton);
+        };
+
+        _rows.Add(thresholdRow);
         _rowsLayout.Children.Add(row);
     }
 
@@ -241,6 +279,20 @@ internal sealed class PickupAllocationPage : ContentPage
 
         _plan.ZonePercentages = updated.OrderBy(p => p.Zone).ToList();
         await Navigation.PopModalAsync();
+    }
+
+    private void UpdateAddButtonState(Button? button)
+    {
+        if (button is null)
+            return;
+
+        var configuredZones = _rows
+            .Select(row => row.AcceptedZoneId)
+            .ToHashSet();
+
+        button.IsEnabled =
+            _plan.Zones.Count > 0 &&
+            Enumerable.Range(0, _plan.Zones.Count).Any(zoneId => !configuredZones.Contains(zoneId));
     }
 
     private static int ParseInt(string? text, int fallback) =>
