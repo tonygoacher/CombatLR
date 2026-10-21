@@ -1,167 +1,49 @@
-# Combatlr Map Builder — Stage 2
+# Combatlr Map Builder
 
-This stage adds the first usable map-selection workflow.
-
-## Features
-
-- Open an arbitrary-size source map image.
-- Enter the supplied map rotation angle.
-- Select two reference points.
-- Enter the real-world distance between the reference points.
-- Calculate metres/pixel.
-- Display the physical size represented by a 1280×960 Combatlr image.
-- Move the 1280×960 selection rectangle with the mouse.
-- Constrain the selection rectangle to the source image.
-- Zoom the map with the mouse wheel.
-- Export a PNG map and accompanying JSON metadata.
-
-## Important design rule
-
-The two reference points establish **scale only**.
-
-They do not define the output rectangle or its aspect ratio.
-
-The Combatlr output is always 1280×960.
-
-## Stage 3 interaction
-
-- Mouse-wheel zoom keeps the map point under the mouse cursor stationary.
-- The playfield can be dragged.
-- The playfield has top-left and bottom-right resize handles.
-- Resizing changes the physical area represented by the eventual 1280×960 output.
-- The exported image is always resampled to 1280×960.
-- The reference points remain independent of the playfield.
-
-GPS centre coordinates and GPS-to-pixel transformations are reserved for a later stage.
+`CombatlrMapBuilder/` contains the current Windows/WPF site-map calibration tool for CombatLR. It prepares a site map and its geographic metadata for use by the firmware and mobile app. Game objects and pickups are configured separately in the mobile app/game plan.
 
 ## Requirements
 
 - Windows
-- Visual Studio 2022 Community
 - .NET 8 SDK
-- Visual Studio workload: .NET desktop development
+- Visual Studio with the .NET desktop development workload, or another compatible .NET build environment
 
-No third-party packages are required.
+The project targets `net8.0-windows` and uses WPF plus `System.Drawing.Common`.
 
+## Workflow
 
-## Stage 4
+1. Open or create a project using the **File** menu.
+2. Open the source map image.
+3. Mark four calibration points, A, B, C and D, on the source image and enter the latitude and longitude for each point.
+4. Position and resize the playfield rectangle over the area to export. The playfield keeps the CombatLR 4:3 aspect ratio.
+5. Save the editable project if you want to continue working on it later.
+6. Choose **Export Site Package** when the image and all four GPS calibration points are complete.
 
-The playfield selection is locked to the Combatlr 1280×960 aspect ratio (4:3).
+The map can be zoomed for accurate point placement. The playfield can be moved and resized with the mouse.
 
-Resizing from either corner changes the physical coverage while preserving 4:3. The selection can still be moved freely inside the source image.
+## Calibration model
 
-All `Path` operations use fully-qualified `System.IO.Path` to avoid ambiguity with WPF's `System.Windows.Shapes.Path`.
+The four image/GPS correspondences are used to fit an affine transform from source-image pixel coordinates to local geographic east/north coordinates. The fit uses all four points; the workflow does not ask for a manually entered rotation angle.
 
+Calibration points are recorded in the coordinate system of the original source image. The selected playfield crop is then resampled to the fixed runtime image dimensions.
 
-## Stage 5
+## Exported site package
 
-- Map zoom now uses a WPF `LayoutTransform`, so the ScrollViewer scroll bars reflect the actual zoomed content size.
-- Zoom is centred on the current mouse position.
-- The playfield can be moved with right-click drag (left-click drag remains supported).
-- The playfield is hosted in a `Canvas`, so its position is explicitly controlled by its source-image coordinates.
-- The playfield is forced visible after loading/clearing calibration points.
-- `System.IO.Path` remains fully qualified.
+Export produces two files in the selected output directory:
 
+- `map.bmp` — a **1280 × 960 RGB565 BMP** for the CombatLR runtime.
+- `map.json` — versioned metadata describing the image dimensions, metres-per-pixel, source-image crop, geographic playfield centre and corners, and the A/B/C/D GPS calibration points.
 
-## Stage 6
+The firmware uses the calibration metadata and source crop to map between the runtime map and geographic coordinates. The mobile app uses the exported map package when preparing and controlling a game.
 
-Reference points now use their actual GPS coordinates.
+Export requires a source image and complete, valid A/B/C/D calibration. Editable `.combatlr` project files are separate from the exported runtime package and can be saved before calibration is complete.
 
-The builder calculates:
-- A→B real-world distance using the haversine formula.
-- A→B initial geographic bearing.
-- An image-derived rotation estimate from the image A→B vector and GPS bearing.
+## Build
 
-The calculated GPS distance is used for metres/pixel, so the user no longer needs to enter a separate distance.
+From this directory, with the .NET 8 SDK installed:
 
-The exported JSON includes GPS A/B coordinates and the calculated bearing.
+```sh
+dotnet build CombatlrMapBuilder.csproj
+```
 
-Map zoom uses a top-left-aligned workspace and keeps the exact image point under the mouse cursor stationary.
-
-
-## Stage 7
-
-The manual reference distance field has been restored.
-
-- GPS A/B coordinates are retained and provide a calculated GPS distance.
-- If the distance field is blank, the calculated GPS distance is automatically inserted.
-- The distance field remains editable, so a supplied/measured distance can be used as the authoritative calibration value.
-- The JSON records both the calibration distance and the GPS-derived distance when available.
-
-
-## Stage 8
-
-Playfield resizing now selects the dominant resize axis once when the drag starts. It no longer changes between horizontal and vertical sizing during the drag, eliminating the jumpy size behaviour.
-
-The opposite corner remains fixed and the 4:3 aspect ratio is maintained throughout the resize.
-
-Resize operations are also ignored unless a source image is loaded.
-
-
-## Stage 9 — Site Data
-
-MapBuilder is now explicitly a **site-data tool**, not a game-object editor.
-
-GPS coordinates for image A and B are the authoritative calibration. The builder calculates:
-
-- A→B distance
-- A→B bearing
-- metres/pixel
-- a geographic transform between image pixels and GPS coordinates
-
-The selected site area is exported as a 1280×960 PNG plus `map.json`.
-
-`map.json` includes the GPS coordinates of the selected area's centre and four corners, so the mobile app can consume the site map without needing to understand how it was created.
-
-Game objects are intentionally not part of MapBuilder and will belong in the mobile app/game JSON.
-
-
-## Stage 10 — MapBuilder project files
-
-MapBuilder now has an editable project format using the `.combatlr` extension.
-
-A project stores:
-- relative source PNG path
-- rotation
-- image A/B pixel positions
-- GPS A/B coordinates
-- calculated reference distance/bearing
-- selected site-area rectangle
-
-Project files can be opened and saved without exporting a deployable site package.
-
-The source image path is relative to the `.combatlr` file, so a project and its source image can be moved together.
-
-The deployable site package remains separate and contains the final map plus runtime site metadata.
-
-
-## Stage 11 — Save incomplete projects
-
-`.combatlr` project files can now be saved at any stage of the workflow.
-
-A project may contain:
-- no source image
-- a source image with no reference points
-- reference points without GPS
-- partially completed calibration
-- a partially positioned site area
-
-Loading such a project restores whatever information is present.
-
-**Export Site Package** remains strict and requires complete calibration and a valid map.
-
-This deliberately separates the editable working document from the deployable site data.
-
-
-## Stage 15 — compile fixes for RGB565 export
-
-This stage is based directly on Stage 14 and fixes the compile errors introduced by
-using the pixel dimensions as doubles.
-
-- `OutputWidth` and `OutputHeight` are now integer constants because they are pixel counts.
-- The resize handler uses `newHeight` for the intermediate calculation, avoiding duplicate
-  local `height` declarations.
-- `System.Drawing.Common` 8.0.0 is declared explicitly in the project.
-- No Windows Forms dependency is introduced.
-- WPF types remain untouched and the System.Drawing types remain fully qualified in the
-  export-only code.
+A successful build or hardware/runtime test is not implied by these instructions.

@@ -1,81 +1,79 @@
 # CombatLR
 
-CombatLR is an ESP32-based laser-tag game system with a companion .NET MAUI mobile app for configuring and controlling games. The repository also contains map-building tools and a GPS simulator to support site setup and development.
+CombatLR is a GPS-based combat royale / laser-tag system built around ESP32 game units and a companion .NET MAUI mobile application. The game units handle infrared firing and hit detection, audio, game state and display output. The mobile app is used to prepare game plans, work with site maps, discover and configure units, and control games.
 
-This README is a high-level entry point. See the project-specific documentation and configuration files for implementation details.
+This README describes the repository as it currently exists. Refer to the individual project files for implementation and build details.
 
 ## Repository layout
 
 | Path | Purpose |
 | --- | --- |
-| `Firmware/` | ESP32 firmware built with PlatformIO and the Arduino framework. Includes game/state logic, networking, GPS/navigation, zones, weapons, pickups, and display/graphics code. |
-| `CombatLR.mobile/` | .NET MAUI application for game-plan editing, map/coordinate handling, device discovery, and game control. |
-| `CombatLR_GpsSimulator/` | Windows/WPF tool for sending simulated NMEA GPS data to an ESP32 over a serial connection. |
-| `CombatlrMapBuilder/` | Map-building tool with project documentation in its directory. |
-| `MapBuilder/` | MapBuilder project and documentation. Check the project files before assuming this directory and `CombatlrMapBuilder/` are interchangeable. |
-| `Resources/` | Example map and game-plan resources. |
-| `Electronics/`, `DocsAndIdeas/` | Supporting electronics material, notes, and design ideas. |
+| `Firmware/` | ESP32-S3 firmware, built with PlatformIO and Arduino. Includes game state, timing and zones, GPS/map conversion, networking, weapons, pickups, audio, and display/graphics. |
+| `CombatLR.mobile/` | .NET MAUI mobile app for site maps, game-plan editing, player/team setup, device discovery and game control. |
+| `CombatlrMapBuilder/` | Windows/WPF tool for calibrating a site map and exporting the runtime map package. |
+| `CombatLR_GpsSimulator/` | Windows/WPF tool for supplying simulated NMEA GPS data during firmware development and testing. |
+| `Resources/` | Example site maps and game-plan resources. |
+| `Electronics/`, `DocsAndIdeas/` | Supporting hardware material, notes and design ideas. |
 
-## Main components
+The obsolete `MapBuilder/` project has been removed. `CombatlrMapBuilder/` is the current map-building application.
 
-### ESP32 firmware
+## Firmware
 
-The firmware project is in `Firmware/`. Its PlatformIO configuration is `Firmware/platformio.ini` and currently defines the `esp32s3_n16r8` environment for an ESP32-S3 board using the Arduino framework and LittleFS.
+The firmware project is in `Firmware/`. Its PlatformIO configuration is `Firmware/platformio.ini`, with the `esp32s3_n16r8` environment for the ESP32-S3 and LittleFS.
 
-The source is separated into areas including:
-
-- State machine and game control
-- Game plans, zones, and timing
-- GPS/navigation and map coordinates
-- Network commands and device discovery
-- Weapons and pickups
-- Display management, graphics, and widgets
-
-Build from the `Firmware/` directory with PlatformIO:
+Build from the firmware directory with PlatformIO CLI installed:
 
 ```sh
+cd Firmware
 pio run
 ```
 
-This command assumes PlatformIO CLI is installed and available on your PATH. A successful build has not yet been confirmed by this README.
+This documents the configured build entry point; it does not imply that a build or hardware test was run as part of this README update.
 
-### Mobile application
+## Mobile application
 
-The MAUI application is in `CombatLR.mobile/`. Open `CombatLR.mobile.slnx` in a compatible version of Visual Studio, or build the project with the .NET SDK installed:
+The MAUI project is in `CombatLR.mobile/`. Open `CombatLR.mobile.slnx` in a compatible Visual Studio installation. The project targets .NET 10 for Android and may include additional targets according to the operating system and installed workloads.
+
+A command-line build can be attempted with the .NET SDK and required workloads installed:
 
 ```sh
 dotnet build CombatLR.mobile/CombatLR.mobile.csproj
 ```
 
-The project currently targets .NET 10 for Android and conditionally adds other platform targets depending on the build operating system and installed workloads. Platform-specific builds may therefore require the corresponding SDKs and workloads.
+## Site-map calibration
 
-### GPS simulator and map tools
+The current map-building tool is `CombatlrMapBuilder/`. Its calibration uses four image control points, A, B, C and D, each associated with a GPS coordinate. The tool fits an affine transform between source-image pixels and local geographic east/north coordinates.
 
-The GPS simulator and map-building projects are separate Windows desktop applications. Their directories contain README files with usage notes and requirements. Read those instructions before building or using the tools.
+The selected playfield is exported as a **1280 × 960 RGB565 BMP** together with `map.json`. The JSON contains the source-image crop, playfield geographic coordinates, metres-per-pixel information and the four calibration reference points. Firmware consumes this metadata to relate map pixels to geographic positions. Orientation is derived from the calibration transform; a manually entered rotation angle is not the current calibration workflow.
 
-## Network protocol notes
+See [the CombatlrMapBuilder project guide](CombatlrMapBuilder/README.md) for tool-specific notes.
 
-The current mobile and firmware source defines UDP discovery on port **4210** and TCP command communication on port **4211**. FTP uses port **21**. Keep the mobile and firmware protocol definitions in sync when changing commands, fields, or identifier limits.
+## Network ports
+
+The current mobile and firmware source uses:
+
+- **UDP 4210** for device discovery
+- **TCP 4211** for commands
+- **FTP 21** for file transfer
+
+Keep mobile and firmware protocol definitions in sync when changing message fields, commands or identifier limits.
+
+## GPS simulator
+
+The `CombatLR_GpsSimulator/` project is a development utility for sending simulated NMEA GPS data to an ESP32 over a serial connection. See its [project guide](CombatLR_GpsSimulator/README.md) for usage details.
 
 ## Development workflow
 
 For changes that cross the mobile/firmware boundary:
 
-1. Inspect both sides of the protocol before editing.
-2. Agree expected behaviour and edge cases.
+1. Inspect the relevant code on both sides of the protocol.
+2. Agree the expected behaviour and edge cases.
 3. Keep changes focused and preserve unrelated behaviour.
-4. Build the affected project(s) and run available tests.
-5. Review the diff and test hardware-dependent behaviour on the actual device.
+4. Build the affected project and run available tests.
+5. Review the diff and verify hardware-dependent behaviour on real devices.
 
-The repository currently has no checked-in GitHub Actions workflow. Build commands above are suggested entry points based on the project configuration; they are not a claim that automated builds or hardware tests are already running.
+Do not assume that a successful desktop build verifies GPS reception, radio communication, infrared operation or other hardware-dependent behaviour.
 
-## Project documentation
+## Reporting problems
 
-- [GPS Simulator guide](CombatLR_GpsSimulator/README.md)
-- [CombatlrMapBuilder guide](CombatlrMapBuilder/README.md)
-- [MapBuilder guide](MapBuilder/README.md)
-- [Firmware navigation display production guide](Firmware/NavigationDisplayTest_ProductionGuide.md)
-
-## Contributions and issue reports
-
-When reporting a problem, include the affected component, steps to reproduce, expected and actual behaviour, relevant logs, and whether the issue was reproduced on hardware. Do not include credentials, private keys, Wi-Fi passwords, or other secrets in issues or commits.
+Include the affected component, steps to reproduce, expected and actual behaviour, relevant logs, and whether the problem was reproduced on hardware. Do not include credentials, private keys, Wi-Fi passwords or other secrets.
