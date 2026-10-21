@@ -256,10 +256,10 @@ namespace CombatLR.mobile.Pages
                     _gamePlan.ProjectName =
                         System.IO.Path.GetFileName(projectDirectory) ?? string.Empty;
                     GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
-                    UpdateGameObjectControls();
                     UpdateHomeMarker();
                     _currentZoneIndex = _gamePlan.Zones.Count > 0 ? 0 : -1;
                     _currentPickupIndex = -1;
+                    UpdateGameObjectControls();
                     RenderGameObjects();
 
                     MapInfoLabel.Text +=
