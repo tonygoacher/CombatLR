@@ -11,6 +11,9 @@
 
 namespace
 {
+    // Keep the existing selection ratio: select 40% of candidate pickups.
+    constexpr uint8_t PickupAllocationPercentage = 40;
+
     struct PickupDistribution
     {
         uint8_t health;
