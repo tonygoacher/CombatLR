@@ -169,12 +169,19 @@ internal sealed class PickupAllocationPage : ContentPage
             Text = "Remove threshold",
             FontSize = 12,
             Padding = new Thickness(8, 3),
-            HorizontalOptions = LayoutOptions.End
+            HorizontalOptions = LayoutOptions.End,
+            IsVisible = ParseInt(zone.Text, -1) != 0
         };
+        zone.TextChanged += (_, _) =>
+        {
+            // Zone 0 is the required default threshold and cannot be removed.
+            remove.IsVisible = ParseInt(zone.Text, -1) != 0;
+        };
+
         var row = new VerticalStackLayout { Spacing = 4, Children = { grid, remove } };
         remove.Clicked += (_, _) =>
         {
-            if (_rows.Count <= 1)
+            if (_rows.Count <= 1 || ParseInt(zone.Text, -1) == 0)
                 return;
 
             _rows.RemoveAll(r => ReferenceEquals(r.View, row));
