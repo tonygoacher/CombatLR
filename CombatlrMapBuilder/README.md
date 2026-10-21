@@ -1,31 +1,49 @@
-# CombatLR MapBuilder
+# Combatlr Map Builder
 
-MapBuilder prepares source map imagery and GPS calibration metadata for CombatLR's GPS-based combat royale game. It is a site-data tool: game objects and pickups are configured separately in the mobile app.
-
-## Current calibration format
-
-The runtime `map.json` format used by the ESP32 firmware contains **four GPS/image control points (A, B, C and D)**, with pixel coordinates in the **original source image**. The firmware fits an affine transform from those four correspondences to local east/north coordinates using least squares. The source-image crop is applied when converting positions to the exported 1280×960 map.
-
-Map orientation follows the fitted transform. A manually entered map heading or a legacy `RotationDegrees` value is **not** part of this four-point runtime calibration.
-
-## Important implementation mismatch
-
-**The WPF editor source currently checked into `MapBuilder/MainWindow.xaml.cs` still uses two reference points (A and B) and a rotation field.** The corresponding file in `CombatlrMapBuilder/` also needs checking before assuming it implements the newer workflow.
-
-That editor implementation does not match the four-point affine runtime format in `Firmware/include/MapReference.h` and `Firmware/src/MapReference.cpp`. This README documents the intended/current runtime contract, **not a verified four-point feature in the checked-in WPF editor**. Do not rely on the editor to produce compatible four-point map metadata until the mismatch is resolved.
-
-For an example of the runtime format, see `Resources/Alexandra/map.json`, which contains `SourceCrop` and `Reference.Points` A–D.
-
-## Site output
-
-The runtime map is **1280×960 pixels** (4:3). The selected source-image crop and GPS reference points are used to relate geographic positions to pixels in that exported image.
-
-Editable `.combatlr` projects and exported site packages are distinct. The editor's current project file and export behavior should be reviewed alongside any upgrade to four-point calibration.
+`CombatlrMapBuilder/` contains the current Windows/WPF site-map calibration tool for CombatLR. It prepares a site map and its geographic metadata for use by the firmware and mobile app. Game objects and pickups are configured separately in the mobile app/game plan.
 
 ## Requirements
 
-The checked-in WPF project targets **.NET 8 for Windows** and requires a Windows development environment with the .NET desktop workload. Refer to `CombatlrMapBuilder.csproj` for the current project settings.
+- Windows
+- .NET 8 SDK
+- Visual Studio with the .NET desktop development workload, or another compatible .NET build environment
 
-## Historical notes
+The project targets `net8.0-windows` and uses WPF plus `System.Drawing.Common`.
 
-Earlier MapBuilder stages used two points, a measured distance, bearing, and/or manually entered rotation. Those approaches are historical and must not be confused with the four-point affine calibration expected by the firmware.
+## Workflow
+
+1. Open or create a project using the **File** menu.
+2. Open the source map image.
+3. Mark four calibration points, A, B, C and D, on the source image and enter the latitude and longitude for each point.
+4. Position and resize the playfield rectangle over the area to export. The playfield keeps the CombatLR 4:3 aspect ratio.
+5. Save the editable project if you want to continue working on it later.
+6. Choose **Export Site Package** when the image and all four GPS calibration points are complete.
+
+The map can be zoomed for accurate point placement. The playfield can be moved and resized with the mouse.
+
+## Calibration model
+
+The four image/GPS correspondences are used to fit an affine transform from source-image pixel coordinates to local geographic east/north coordinates. The fit uses all four points; the workflow does not ask for a manually entered rotation angle.
+
+Calibration points are recorded in the coordinate system of the original source image. The selected playfield crop is then resampled to the fixed runtime image dimensions.
+
+## Exported site package
+
+Export produces two files in the selected output directory:
+
+- `map.bmp` — a **1280 × 960 RGB565 BMP** for the CombatLR runtime.
+- `map.json` — versioned metadata describing the image dimensions, metres-per-pixel, source-image crop, geographic playfield centre and corners, and the A/B/C/D GPS calibration points.
+
+The firmware uses the calibration metadata and source crop to map between the runtime map and geographic coordinates. The mobile app uses the exported map package when preparing and controlling a game.
+
+Export requires a source image and complete, valid A/B/C/D calibration. Editable `.combatlr` project files are separate from the exported runtime package and can be saved before calibration is complete.
+
+## Build
+
+From this directory, with the .NET 8 SDK installed:
+
+```sh
+dotnet build CombatlrMapBuilder.csproj
+```
+
+A successful build or hardware/runtime test is not implied by these instructions.
