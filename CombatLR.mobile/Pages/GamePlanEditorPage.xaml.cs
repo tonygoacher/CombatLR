@@ -86,7 +86,46 @@ namespace CombatLR.mobile.Pages
 
         private readonly GamePlanService _gamePlanService = new();
 
+        // Snapshot of the last successfully loaded or saved game plan.
+        private string? _savedStateSnapshot;
+
         private readonly GameObjectCoordinateService  _gameObjectCoordinateService;
+
+        protected override bool OnBackButtonPressed()
+        {
+            _ = HandleBackNavigationAsync();
+            return true;
+        }
+
+        private async Task HandleBackNavigationAsync()
+        {
+            if (_savedStateSnapshot is not null &&
+                !string.Equals(
+                    _savedStateSnapshot,
+                    CaptureCurrentStateSnapshot(),
+                    StringComparison.Ordinal))
+            {
+                var discardChanges = await DisplayAlert(
+                    "Unsaved Changes",
+                    "The game plan has changed since it was last saved. Are you sure you want to leave without saving?",
+                    "Leave",
+                    "Stay");
+
+                if (!discardChanges)
+                    return;
+            }
+
+            await Navigation.PopAsync();
+        }
+
+        private string CaptureCurrentStateSnapshot()
+        {
+            return JsonSerializer.Serialize(new
+            {
+                GamePlan = _gamePlan,
+                GameDelayTime = GameDelayTimeEntry.Text
+            });
+        }
 
         public GamePlanEditorPage()
         {
@@ -231,6 +270,9 @@ namespace CombatLR.mobile.Pages
 
                     MapInfoLabel.Text += "\nNO GAME PLAN";
                 }
+
+                // Treat the loaded plan (or the empty new plan) as the baseline.
+                _savedStateSnapshot = CaptureCurrentStateSnapshot();
             }
             catch (Exception ex)
             {
@@ -414,6 +456,7 @@ namespace CombatLR.mobile.Pages
                     _gamePlan,
                     filePath);
 
+                _savedStateSnapshot = CaptureCurrentStateSnapshot();
                 PickupAllocationButton.IsEnabled = true;
                 MapInfoLabel.Text =
                     $"PROJECT: {System.IO.Path.GetFileName(_projectDirectory)}\n" +
