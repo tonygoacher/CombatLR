@@ -7,7 +7,7 @@
 #include "statemachine/GameInitState.h"
 #include "statemachine/GameRunningState.h"
 #include "statemachine/GPSLockState.h"
-#include "statemachine/FtpState.h"
+#include "statemachine/FTPState.h"
 #include "statemachine/OTAState.h"
 #include "statemachine/ProvisioningState.h"
 #include "statemachine/DeadState.h"

@@ -1,7 +1,7 @@
 
 #include <vector>
 
-#include "stateMachine/GameRunningState.h"
+#include "statemachine/GameRunningState.h"
 #include "ISystemTime.h"
 #include "graphics/DisplayManager.h"
 #include "Navigation.h"
@@ -9,7 +9,7 @@
 #include "graphics/PlayerPositionCommand.h"
 #include "graphics/TurnMapToHeadingCommand.h"
 #include "graphics/ZoomCommand.h"
-#include "stateMachine/SystemStates.h"
+#include "statemachine/SystemStates.h"
 #include "IZoom.h"
 #include "PBSwitch.h"
 #include "ISounds.h"
@@ -21,7 +21,7 @@
 #include "graphics/AddWidgetCommand.h"
 #include "graphics/RemoveWidgetCommand.h"
 #include "widgets/UIWidgetIds.h"
-#include "ESP32Lasertag.h"
+#include "ESP32LaserTag.h"
 #include "PacedLED.h"
 
 
