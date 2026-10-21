@@ -14,6 +14,10 @@ public class GamePlan
     [JsonPropertyName("gameDelayTime")]
     public int GameDelayTime { get; set; } = 0;
 
+    public int HealthPercentage { get; set; } = 40;
+    public int AmmoPercentage { get; set; } = 40;
+    public int WeaponPercentage { get; set; } = 20;
+
     public HomePosition? Home { get; set; }
 
     public List<GameZone> Zones { get; set; } = new();
