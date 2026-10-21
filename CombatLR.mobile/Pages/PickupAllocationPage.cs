@@ -72,6 +72,7 @@ internal sealed class PickupAllocationPage : ContentPage
             }
 
             AddRow(new ZonePickupPercentage { Zone = nextZone });
+            SortRows();
             UpdateAddButtonState(_addButton);
         };
 
@@ -163,7 +164,7 @@ internal sealed class PickupAllocationPage : ContentPage
             Margin = 0
         };
 
-        var zone = MakeEntry(item.Zone, "0");
+        var zone = MakeEntry(item.Zone + 1, "1");
         var allocation = MakeEntry(item.AllocationPercentage, "40");
         var health = MakeEntry(item.HealthPercentage, "40");
         var ammo = MakeEntry(item.AmmoPercentage, "40");
@@ -209,13 +210,13 @@ internal sealed class PickupAllocationPage : ContentPage
             {
                 await DisplayAlert(
                     "Unknown zone",
-                    $"Zone ID must be between 0 and {_plan.Zones.Count - 1}, matching a zone in the current game plan.",
+                    $"Zone ID must be between 1 and {_plan.Zones.Count}, matching a zone in the current game plan.",
                     "OK");
-                zone.Text = thresholdRow.AcceptedZoneId.ToString();
+                zone.Text = (thresholdRow.AcceptedZoneId + 1).ToString();
                 return;
             }
 
-            if (_rows.Any(r => !ReferenceEquals(r, thresholdRow) && r.AcceptedZoneId == enteredZone))
+            if (_rows.Any(r => !ReferenceEquals(r, thresholdRow) && r.AcceptedZoneId == enteredZone - 1))
             {
                 await DisplayAlert(
                     "Duplicate zone",
@@ -225,8 +226,9 @@ internal sealed class PickupAllocationPage : ContentPage
                 return;
             }
 
-            thresholdRow.AcceptedZoneId = enteredZone;
-            remove.IsVisible = enteredZone != 0;
+            thresholdRow.AcceptedZoneId = enteredZone - 1;
+            remove.IsVisible = thresholdRow.AcceptedZoneId != 0;
+            SortRows();
             UpdateAddButtonState(_addButton);
         };
 
@@ -244,6 +246,13 @@ internal sealed class PickupAllocationPage : ContentPage
         _rowsLayout.Children.Add(row);
     }
 
+    private void SortRows()
+    {
+        _rowsLayout.Children.Clear();
+        foreach (var row in _rows.OrderBy(row => row.AcceptedZoneId))
+            _rowsLayout.Children.Add(row.View);
+    }
+
     private async void SaveClicked(object? sender, EventArgs e)
     {
         var updated = new List<ZonePickupPercentage>();
@@ -256,11 +265,12 @@ internal sealed class PickupAllocationPage : ContentPage
                 !TryRead(row.Ammo.Text, out var ammo) ||
                 !TryRead(row.Weapon.Text, out var weapon) ||
                 zone < 0 ||
-                zone >= _plan.Zones.Count)
+                zone < 1 ||
+                zone > _plan.Zones.Count)
             {
                 await DisplayAlert(
                     "Invalid values",
-                    $"Enter whole numbers, use zone IDs from 0 to {_plan.Zones.Count - 1}, and enter percentages from 0 to 100.",
+                    $"Enter whole numbers, use zone IDs from 1 to {_plan.Zones.Count}, and enter percentages from 0 to 100.",
                     "OK");
                 return;
             }
@@ -279,7 +289,7 @@ internal sealed class PickupAllocationPage : ContentPage
 
             updated.Add(new ZonePickupPercentage
             {
-                Zone = zone,
+                Zone = zone - 1,
                 AllocationPercentage = allocation,
                 HealthPercentage = health,
                 AmmoPercentage = ammo,
