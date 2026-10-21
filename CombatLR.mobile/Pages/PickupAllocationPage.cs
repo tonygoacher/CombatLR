@@ -205,8 +205,8 @@ internal sealed class PickupAllocationPage : ContentPage
         zone.Completed += async (_, _) =>
         {
             if (!TryRead(zone.Text, out var enteredZone) ||
-                enteredZone < 0 ||
-                enteredZone >= _plan.Zones.Count)
+                enteredZone < 1 ||
+                enteredZone > _plan.Zones.Count)
             {
                 await DisplayAlert(
                     "Unknown zone",
@@ -222,7 +222,7 @@ internal sealed class PickupAllocationPage : ContentPage
                     "Duplicate zone",
                     $"A threshold for zone {enteredZone} already exists. The new value has been ignored.",
                     "OK");
-                zone.Text = thresholdRow.AcceptedZoneId.ToString();
+                zone.Text = (thresholdRow.AcceptedZoneId + 1).ToString();
                 return;
             }
 
