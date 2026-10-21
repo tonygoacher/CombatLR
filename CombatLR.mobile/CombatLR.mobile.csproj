@@ -50,14 +50,9 @@
 
 	<ItemGroup>
 		<!-- Android adaptive icon: black background with a safely scaled transparent foreground. -->
-		<MauiIcon Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'"
-		          Include="Resources\AppIcon\appicon.svg"
-		          ForegroundFile="Resources\AppIcon\appiconfg.svg"
-		          ForegroundScale="0.78"
-		          Color="#000000" />
+		<MauiIcon Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'" Include="Resources\AppIcon\icon.png" 							BaseSize="128,128" Color="#000000" />
 		<!-- Keep the existing full artwork only on non-Android platforms. -->
-		<MauiIcon Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'android'"
-		          Include="Resources\AppIcon\appicon.png" />
+		<MauiIcon Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'android'" Include="Resources\AppIcon\appicon.png" />
 
 		<!-- Splash Screen -->
 		<MauiSplashScreen Include="Resources\Splash\combatlr.png" Color="#000000" BaseSize="512,512" />
