@@ -14,9 +14,10 @@ public class GamePlan
     [JsonPropertyName("gameDelayTime")]
     public int GameDelayTime { get; set; } = 0;
 
-    public int HealthPercentage { get; set; } = 40;
-    public int AmmoPercentage { get; set; } = 40;
-    public int WeaponPercentage { get; set; } = 20;
+    public List<ZonePickupPercentage> ZonePercentages { get; set; } = new()
+    {
+        new ZonePickupPercentage { Zone = 0, HealthPercentage = 40, AmmoPercentage = 40, WeaponPercentage = 20 }
+    };
 
     public HomePosition? Home { get; set; }
 
@@ -37,6 +38,14 @@ public class GamePlan
             .DefaultIfEmpty(-1)
             .Max() + 1;
     }
+}
+
+public class ZonePickupPercentage
+{
+    public int Zone { get; set; }
+    public int HealthPercentage { get; set; } = 40;
+    public int AmmoPercentage { get; set; } = 40;
+    public int WeaponPercentage { get; set; } = 20;
 }
 
 public class HomePosition
