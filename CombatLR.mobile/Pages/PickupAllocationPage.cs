@@ -115,7 +115,7 @@ internal sealed class PickupAllocationPage : ContentPage
     private static View CreateColumnHeadings()
     {
         var grid = CreateGrid();
-        string[] labels = { "Zone", "Select %", "Health", "Ammo", "Weapon" };
+        string[] labels = { "Zone", "Select %", "Health %", "Ammo %", "Weapon %" };
         for (var i = 0; i < labels.Length; i++)
         {
             grid.Add(new Label
@@ -167,6 +167,11 @@ internal sealed class PickupAllocationPage : ContentPage
         var health = MakeEntry(item.HealthPercentage, "40");
         var ammo = MakeEntry(item.AmmoPercentage, "40");
         var weapon = MakeEntry(item.WeaponPercentage, "20");
+
+        AttachPercentageValidation(allocation, "Select");
+        AttachPercentageValidation(health, "Health");
+        AttachPercentageValidation(ammo, "Ammo");
+        AttachPercentageValidation(weapon, "Weapon");
 
         grid.Add(zone, 0, 0);
         grid.Add(allocation, 1, 0);
@@ -254,7 +259,19 @@ internal sealed class PickupAllocationPage : ContentPage
             {
                 await DisplayAlert(
                     "Invalid values",
-                    $"Enter whole numbers and use zone IDs from 0 to {_plan.Zones.Count - 1}, matching the current game plan.",
+                    $"Enter whole numbers, use zone IDs from 0 to {_plan.Zones.Count - 1}, and enter percentages from 0 to 100.",
+                    "OK");
+                return;
+            }
+
+            if (allocation is < 0 or > 100 ||
+                health is < 0 or > 100 ||
+                ammo is < 0 or > 100 ||
+                weapon is < 0 or > 100)
+            {
+                await DisplayAlert(
+                    "Invalid percentage",
+                    "Select, Health, Ammo and Weapon percentages must each be between 0 and 100.",
                     "OK");
                 return;
             }
@@ -262,10 +279,10 @@ internal sealed class PickupAllocationPage : ContentPage
             updated.Add(new ZonePickupPercentage
             {
                 Zone = zone,
-                AllocationPercentage = Math.Clamp(allocation, 0, 100),
-                HealthPercentage = Math.Clamp(health, 0, 100),
-                AmmoPercentage = Math.Clamp(ammo, 0, 100),
-                WeaponPercentage = Math.Clamp(weapon, 0, 100)
+                AllocationPercentage = allocation,
+                HealthPercentage = health,
+                AmmoPercentage = ammo,
+                WeaponPercentage = weapon
             });
         }
 
@@ -283,6 +300,26 @@ internal sealed class PickupAllocationPage : ContentPage
 
         _plan.ZonePercentages = updated.OrderBy(p => p.Zone).ToList();
         await Navigation.PopModalAsync();
+    }
+
+    private void AttachPercentageValidation(Entry entry, string fieldName)
+    {
+        var acceptedValue = entry.Text;
+
+        entry.Completed += async (_, _) =>
+        {
+            if (!TryRead(entry.Text, out var value) || value is < 0 or > 100)
+            {
+                await DisplayAlert(
+                    "Invalid percentage",
+                    $"{fieldName} must be a whole number between 0 and 100.",
+                    "OK");
+                entry.Text = acceptedValue;
+                return;
+            }
+
+            acceptedValue = value.ToString();
+        };
     }
 
     private void UpdateAddButtonState(Button? button)
