@@ -2,6 +2,9 @@
   "version": 8,
   "projectName": "fern - Copy",
   "gameDelayTime": 30,
+  "healthPercentage": 40,
+  "ammoPercentage": 40,
+  "weaponPercentage": 20,
   "home": {
     "latitude": 53.55075063983786,
     "longitude": -1.9994074136255462
