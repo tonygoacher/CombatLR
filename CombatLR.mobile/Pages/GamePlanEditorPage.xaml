@@ -157,12 +157,6 @@
                     BackgroundColor="White" />
 
                 <Button
-    x:Name="NewButton"
-    Text="New"
-    Style="{StaticResource PanelButton}"
-    Clicked="NewGamePlan_Clicked" />
-
-                <Button
                     x:Name="SaveButton"
                     Text="Save"
                     Style="{StaticResource PanelButton}"
@@ -193,6 +187,13 @@
                     PlaceholderColor="LightGray"
                     Margin="0" />
 
+                <Button
+                    x:Name="PickupAllocationButton"
+                    Text="Pickup Allocation"
+                    IsEnabled="False"
+                    Style="{StaticResource PanelButton}"
+                    Clicked="EditPickupAllocation_Clicked" />
+
                 <BoxView
                     HeightRequest="1"
                     Margin="0,4"
@@ -201,6 +202,7 @@
                 <Button
                     x:Name="SetHomeButton"
                     Text="Set Home"
+                    IsEnabled="False"
                     Style="{StaticResource PanelButton}"
                     Clicked="SetHome_Clicked" />
 

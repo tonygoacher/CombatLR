@@ -86,11 +86,60 @@ namespace CombatLR.mobile.Pages
 
         private readonly GamePlanService _gamePlanService = new();
 
+        // Snapshot of the last successfully loaded or saved game plan.
+        private string? _savedStateSnapshot;
+
         private readonly GameObjectCoordinateService  _gameObjectCoordinateService;
+
+        protected override bool OnBackButtonPressed()
+        {
+            _ = HandleBackNavigationAsync();
+            return true;
+        }
+
+        private async Task HandleBackNavigationAsync()
+        {
+            if (_savedStateSnapshot is not null &&
+                !string.Equals(
+                    _savedStateSnapshot,
+                    CaptureCurrentStateSnapshot(),
+                    StringComparison.Ordinal))
+            {
+                var discardChanges = await DisplayAlert(
+                    "Unsaved Changes",
+                    "The game plan has changed since it was last saved. Are you sure you want to leave without saving?",
+                    "Leave",
+                    "Stay");
+
+                if (!discardChanges)
+                    return;
+            }
+
+            await Navigation.PopAsync();
+        }
+
+        private string CaptureCurrentStateSnapshot()
+        {
+            // Serialise the live model each time; zone and pickup allocation
+            // editors update this shared GamePlan instance directly.
+            return JsonSerializer.Serialize(new
+            {
+                GamePlan = _gamePlan,
+                GameDelayTime = GameDelayTimeEntry.Text
+            });
+        }
 
         public GamePlanEditorPage()
         {
             InitializeComponent();
+
+            // Keep Shell's standard navigation-bar back arrow and appearance,
+            // but route its action through the unsaved-changes guard.
+            Shell.SetBackButtonBehavior(this, new BackButtonBehavior
+            {
+                Command = new Command(async () =>
+                    await HandleBackNavigationAsync())
+            });
             GameObjectTypePicker.SelectedIndexChanged +=
                 GameObjectTypePicker_SelectedIndexChanged;
             _locationService = new LocationService();
@@ -139,6 +188,8 @@ namespace CombatLR.mobile.Pages
 
         private async Task LoadMapAsync(string projectDirectory)
         {
+            PickupAllocationButton.IsEnabled = false;
+            SetHomeButton.IsEnabled = false;
             long loadMapStart = Environment.TickCount64;
 
             try
@@ -179,6 +230,9 @@ namespace CombatLR.mobile.Pages
                 _coordinateService =
                     new MapCoordinateService(_mapDefinition);
 
+                // Home can only be set after both map files loaded successfully.
+                SetHomeButton.IsEnabled = true;
+
                 MapInfoLabel.Text =
                     $"PROJECT: {System.IO.Path.GetFileName(projectDirectory)}\n" +
                     "MAP LOADED\n" +
@@ -198,13 +252,14 @@ namespace CombatLR.mobile.Pages
                 if (File.Exists(gamePlanPath))
                 {
                     _gamePlan = await _gamePlanService.LoadAsync(gamePlanPath);
+                    PickupAllocationButton.IsEnabled = true;
                     _gamePlan.ProjectName =
                         System.IO.Path.GetFileName(projectDirectory) ?? string.Empty;
                     GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
-                    UpdateGameObjectControls();
                     UpdateHomeMarker();
                     _currentZoneIndex = _gamePlan.Zones.Count > 0 ? 0 : -1;
                     _currentPickupIndex = -1;
+                    UpdateGameObjectControls();
                     RenderGameObjects();
 
                     MapInfoLabel.Text +=
@@ -225,6 +280,9 @@ namespace CombatLR.mobile.Pages
 
                     MapInfoLabel.Text += "\nNO GAME PLAN";
                 }
+
+                // Treat the loaded plan (or the empty new plan) as the baseline.
+                _savedStateSnapshot = CaptureCurrentStateSnapshot();
             }
             catch (Exception ex)
             {
@@ -369,40 +427,6 @@ namespace CombatLR.mobile.Pages
                        System.IO.Path.Combine(directory, "map.json"));
         }
 
-        private async void NewGamePlan_Clicked(
-            object? sender,
-            EventArgs e)
-        {
-            if (_projectDirectory is null)
-            {
-                await DisplayAlert(
-                    "New Game Plan",
-                    "Open a project first.",
-                    "OK");
-                return;
-            }
-
-            _gamePlan = _gamePlanService.CreateNew();
-            _gamePlan.ProjectName =
-                System.IO.Path.GetFileName(_projectDirectory) ?? string.Empty;
-            GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
-            ClearZoneMarkers();
-            ClearPickupMarkers();
-
-            _currentZoneIndex = -1;
-            _currentPickupIndex = -1;
-
-            HomeMarker.IsVisible = false;
-            UpdateGameObjectControls();
-
-            MapInfoLabel.Text =
-                $"PROJECT: {System.IO.Path.GetFileName(_projectDirectory)}\n" +
-                "NEW GAME PLAN\n" +
-                "No Home\n" +
-                "0 Zones\n" +
-                "VERSION: 0 (unsaved)";
-        }
-
         private async void SaveGamePlan_Clicked(
             object? sender,
             EventArgs e)
@@ -442,6 +466,8 @@ namespace CombatLR.mobile.Pages
                     _gamePlan,
                     filePath);
 
+                _savedStateSnapshot = CaptureCurrentStateSnapshot();
+                PickupAllocationButton.IsEnabled = true;
                 MapInfoLabel.Text =
                     $"PROJECT: {System.IO.Path.GetFileName(_projectDirectory)}\n" +
                     $"GAME PLAN SAVED\nVERSION: {_gamePlan.Version}";
@@ -1387,7 +1413,12 @@ namespace CombatLR.mobile.Pages
 
             if (!homeAvailable)
             {
-                AddObjectButton.IsEnabled = false;
+                // A valid map is enough to begin creating zones. Setting Home
+                // is still required before a zone can be placed, because its
+                // coordinates are stored relative to Home.
+                AddObjectButton.IsEnabled =
+                    _mapDefinition is not null &&
+                    _gameObjectMode == GameObjectMode.Zone;
                 PreviousZoneButton.IsEnabled = false;
                 NextZoneButton.IsEnabled = false;
                 DeleteObjectButton.IsEnabled = false;
@@ -2011,8 +2042,18 @@ namespace CombatLR.mobile.Pages
     object? sender,
     EventArgs e)
         {
-            if (_gamePlan.Home is null)
+            if (_mapDefinition is null ||
+                _coordinateService is null)
                 return;
+
+            if (_gamePlan.Home is null)
+            {
+                await DisplayAlert(
+                    "Add Zone",
+                    "Set Home before adding a zone.",
+                    "OK");
+                return;
+            }
 
             var coordinate =
                 await AcquireCoordinateAsync(

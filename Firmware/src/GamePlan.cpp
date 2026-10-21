@@ -11,9 +11,8 @@
 
 namespace
 {
-    // Temporary allocation percentage. This will eventually come from
-    // game configuration/JSON.
-    constexpr uint8_t PickupAllocationPercentage = 40;
+    // Legacy game plans default to selecting 40% of candidate pickups.
+    constexpr uint8_t DefaultPickupAllocationPercentage = 40;
 
     struct PickupDistribution
     {
@@ -22,27 +21,12 @@ namespace
         uint8_t weapon;
     };
 
-    // Temporary per-zone distribution table.
-    // Indexed by zero-based zone number.
-    //
-    // These values are deliberately kept as a simple C++ table so that
-    // the same structure can later be represented directly in JSON.
-    constexpr PickupDistribution PickupDistributions[] =
+    struct ZonePickupDistribution
     {
-        { 20, 50, 30 },   // Zone 0
-        { 10, 50, 30 },   // Zone 1
-        { 10, 60, 30 },   // Zone 2
-        { 10, 60, 30 },   // Zone 3
-        { 10, 60, 30 },   // Zone 4
-        { 10, 60, 30 },   // Zone 5
-        { 10, 60, 30 },   // Zone 6
-        { 10, 60, 30 },   // Zone 7
-        { 10, 60, 30 },   // Zone 8
-        { 10, 60, 30 }    // Zone 9
+        size_t zone;
+        uint8_t allocationPercentage;
+        PickupDistribution distribution;
     };
-
-    constexpr size_t PickupDistributionCount =
-        sizeof(PickupDistributions) / sizeof(PickupDistributions[0]);
 
     constexpr PickupDistribution DefaultPickupDistribution = { 40, 40, 20 };
 
@@ -54,15 +38,15 @@ namespace
         return (dx * dx) + (dy * dy);
     }
 
-    size_t CalculateSelectionCount(size_t candidateCount)
+    size_t CalculateSelectionCount(size_t candidateCount, uint8_t allocationPercentage)
     {
-        if (candidateCount == 0)
+        if (candidateCount == 0 || allocationPercentage == 0)
             return 0;
 
         const double selected =
             std::round(
                 static_cast<double>(candidateCount) *
-                static_cast<double>(PickupAllocationPercentage) /
+                static_cast<double>(allocationPercentage) /
                 100.0);
 
         return std::max<size_t>(1, static_cast<size_t>(selected));
@@ -148,7 +132,8 @@ namespace
 
     void SelectPickupGroup(
         Zone& zone,
-        PickupTypes type)
+        PickupTypes type,
+        uint8_t allocationPercentage)
     {
         std::vector<Pickup> candidates;
         candidates.reserve(zone.pickups.size());
@@ -161,11 +146,24 @@ namespace
                 candidates.push_back(pickup);
         }
 
+        if (candidates.empty())
+            return;
+
         const size_t selectionCount =
-            CalculateSelectionCount(candidates.size());
+            CalculateSelectionCount(candidates.size(), allocationPercentage);
 
         if (selectionCount == 0)
+        {
+            // A configured 0% means no candidates of this type are retained.
+            for (auto it = zone.pickups.begin(); it != zone.pickups.end();)
+            {
+                if (it->second.type == type)
+                    it = zone.pickups.erase(it);
+                else
+                    ++it;
+            }
             return;
+        }
 
         if (selectionCount >= candidates.size())
             return;
@@ -349,24 +347,21 @@ namespace
 
     void AllocateZonePickups(
         Zone& zone,
-        size_t zoneIndex)
+        const PickupDistribution& distribution,
+        uint8_t allocationPercentage)
     {
-        const PickupDistribution& distribution =
-            (zoneIndex < PickupDistributionCount)
-                ? PickupDistributions[zoneIndex]
-                : DefaultPickupDistribution;
 
         /*
          * Fixed pickup groups are allocated independently.
          */
-        SelectPickupGroup(zone, Health);
-        SelectPickupGroup(zone, Ammo);
-        SelectPickupGroup(zone, WeaponBonus);
+        SelectPickupGroup(zone, Health, allocationPercentage);
+        SelectPickupGroup(zone, Ammo, allocationPercentage);
+        SelectPickupGroup(zone, WeaponBonus, allocationPercentage);
 
         /*
          * Auto is allocated independently from the fixed groups.
          */
-        SelectPickupGroup(zone, Auto);
+        SelectPickupGroup(zone, Auto, allocationPercentage);
 
         /*
          * Auto pickups have no delayed spawn. They are present from
@@ -488,6 +483,72 @@ bool GamePlan::Load(const char* filename)
         
     _gameDelayTime =
         document["gameDelayTime"].as<int>();
+
+    std::vector<ZonePickupDistribution> pickupDistributions;
+    JsonArray distributionJson = document["zonePercentages"].as<JsonArray>();
+
+    if (distributionJson.isNull())
+    {
+        Serial.println("GamePlan: missing zonePercentages array");
+        return false;
+    }
+
+    for (JsonObject entry : distributionJson)
+    {
+        if (!entry["zone"].is<int>() ||
+            (!entry["allocationPercentage"].isNull() && !entry["allocationPercentage"].is<int>()) ||
+            !entry["healthPercentage"].is<int>() ||
+            !entry["ammoPercentage"].is<int>() ||
+            !entry["weaponPercentage"].is<int>())
+        {
+            Serial.println("GamePlan: invalid zonePercentages entry");
+            return false;
+        }
+
+        const int zoneIndex = entry["zone"].as<int>();
+        if (zoneIndex < 0)
+        {
+            Serial.println("GamePlan: zonePercentages zone cannot be negative");
+            return false;
+        }
+
+        ZonePickupDistribution configured;
+        configured.zone = static_cast<size_t>(zoneIndex);
+        configured.allocationPercentage = entry["allocationPercentage"].is<int>()
+            ? static_cast<uint8_t>(std::clamp(entry["allocationPercentage"].as<int>(), 0, 100))
+            : DefaultPickupAllocationPercentage;
+        configured.distribution.health = static_cast<uint8_t>(
+            std::clamp(entry["healthPercentage"].as<int>(), 0, 100));
+        configured.distribution.ammo = static_cast<uint8_t>(
+            std::clamp(entry["ammoPercentage"].as<int>(), 0, 100));
+        configured.distribution.weapon = static_cast<uint8_t>(
+            std::clamp(entry["weaponPercentage"].as<int>(), 0, 100));
+        pickupDistributions.push_back(configured);
+    }
+
+    if (pickupDistributions.empty() ||
+        std::none_of(pickupDistributions.begin(), pickupDistributions.end(),
+            [](const ZonePickupDistribution& entry) { return entry.zone == 0; }))
+    {
+        Serial.println("GamePlan: zonePercentages must contain zone 0");
+        return false;
+    }
+
+    std::sort(pickupDistributions.begin(), pickupDistributions.end(),
+        [](const ZonePickupDistribution& a, const ZonePickupDistribution& b)
+        {
+            return a.zone < b.zone;
+        });
+
+    // A threshold may appear only once; duplicate zone IDs are ambiguous.
+    for (size_t i = 1; i < pickupDistributions.size(); ++i)
+    {
+        if (pickupDistributions[i - 1].zone == pickupDistributions[i].zone)
+        {
+            Serial.println("GamePlan: duplicate zone in zonePercentages");
+            return false;
+        }
+    }
   
 
     _valid = true;
@@ -567,9 +628,26 @@ bool GamePlan::Load(const char* filename)
             }
         }
 
+        // Apply the most recent configured distribution threshold. A
+        // threshold remains active until a later configured zone is reached.
+        const size_t zoneIndex = _zones.size();
+        const ZonePickupDistribution* activeDistribution = nullptr;
+        for (const auto& configured : pickupDistributions)
+        {
+            if (configured.zone > zoneIndex)
+                break;
+
+            activeDistribution = &configured;
+        }
+
         AllocateZonePickups(
             zone,
-            _zones.size());
+            activeDistribution != nullptr
+                ? activeDistribution->distribution
+                : DefaultPickupDistribution,
+            activeDistribution != nullptr
+                ? activeDistribution->allocationPercentage
+                : DefaultPickupAllocationPercentage);
 
         _zones.push_back(
             std::move(zone));

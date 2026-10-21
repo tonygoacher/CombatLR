@@ -3,7 +3,7 @@
 #include "PBSwitch.h"
 #include "graphics/Texture.h"
 #include "ISounds.h"
-#include "stateMachine/Services.h"
+#include "statemachine/Services.h"
 #include "graphics/DisplayManager.h"
 #include "weapons/WeaponConfig.h"
 #include "countof.h"
