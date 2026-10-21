@@ -249,9 +249,13 @@ internal sealed class PickupAllocationPage : ContentPage
                 !TryRead(row.Health.Text, out var health) ||
                 !TryRead(row.Ammo.Text, out var ammo) ||
                 !TryRead(row.Weapon.Text, out var weapon) ||
-                zone < 0)
+                zone < 0 ||
+                zone >= _plan.Zones.Count)
             {
-                await DisplayAlert("Invalid values", "Enter whole numbers. Zone IDs must be zero or greater.", "OK");
+                await DisplayAlert(
+                    "Invalid values",
+                    $"Enter whole numbers and use zone IDs from 0 to {_plan.Zones.Count - 1}, matching the current game plan.",
+                    "OK");
                 return;
             }
 
@@ -294,9 +298,6 @@ internal sealed class PickupAllocationPage : ContentPage
             _plan.Zones.Count > 0 &&
             Enumerable.Range(0, _plan.Zones.Count).Any(zoneId => !configuredZones.Contains(zoneId));
     }
-
-    private static int ParseInt(string? text, int fallback) =>
-        int.TryParse(text, out var value) ? value : fallback;
 
     private static bool TryRead(string? text, out int value) =>
         int.TryParse(text, out value);
