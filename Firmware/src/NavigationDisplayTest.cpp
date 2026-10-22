@@ -115,7 +115,7 @@ namespace
     PacedLED muzzleLED(MUZZLE_LED);
     PacedLED hitLED(HIT_LED);
     SystemConfig systemConfig;
-    NavigationNMEA  navigation(Ports::GPS_RX,Ports::GPS_TX,systemConfig.GetGpsBaudRate());
+    NavigationNMEA  navigation;
     SystemTime systemTime(navigation);
     WeaponConfig weaponConfig;
 
@@ -193,6 +193,9 @@ void NavigationDisplayTestBegin()
     hitLED.Fire(3000);
 
     systemConfig.Begin();
+
+    // If a different type of navigation class is created, this line may need changing
+    navigation.Setup(Ports::GPS_RX,Ports::GPS_TX,systemConfig.GetGpsBaudRate());
    
     sounds.Begin();
 

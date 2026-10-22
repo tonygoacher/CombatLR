@@ -10,6 +10,7 @@
 #include "graphics/TurnMapToHeadingCommand.h"
 #include "graphics/ZoomCommand.h"
 #include "statemachine/SystemStates.h"
+#include "SystemConfig.h"
 #include "IZoom.h"
 #include "PBSwitch.h"
 #include "ISounds.h"
@@ -53,19 +54,25 @@ uint16_t GameRunningState::Run()
   
         int shotPower = _stateData.weaponConfig.GetShotPower(ltData.shotPowerIndex);
         Serial.printf("Shot power %d\n", shotPower);
-        if(shotPower)
+        if( ltData.playerId != _stateData.systemConfig.GetPlayerId())   // Reject player ID that is the same. e.g. reflected own shot
         {
-            int newHealth = _player.TakeHealth(shotPower);
-            if(newHealth)
+            if(ltData.team != _stateData.systemConfig.GetTeamId() || _stateData.systemConfig.GetFriendlyFire())// Team must differ unless friendly fire enabled
             {
-                _stateData.hitLED.Fire(ShotHitLedTime);
-                _stateData.sounds.Play("/sounds/hit.wav");  
-            }
-            else
-            {
-                return SystemStates::Dead;
-            }
-        }
+                if(shotPower)
+                {
+                    int newHealth = _player.TakeHealth(shotPower);
+                    if(newHealth)
+                    {
+                        _stateData.hitLED.Fire(ShotHitLedTime);
+                        _stateData.sounds.Play("/sounds/hit.wav");  
+                    }
+                    else
+                    {
+                        return SystemStates::Dead;
+                    }
+                }
+            }                
+        }            
     }
 
     

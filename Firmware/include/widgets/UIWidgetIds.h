@@ -14,4 +14,5 @@ enum UIWidgetIds
     TeamID = 0x4007,
     IPAdrString= 0x4008,
     SSIDString= 0x4009,
+    GunIDString = 0x400a
 };
