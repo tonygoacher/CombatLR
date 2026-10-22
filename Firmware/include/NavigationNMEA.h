@@ -8,10 +8,9 @@
 class NavigationNMEA : public INavigation
 {
 public:
-    NavigationNMEA(
-        int8_t rxPin,
-        int8_t txPin,
-        uint32_t baud = 9600);
+    NavigationNMEA( );
+
+    void Setup(int8_t rxPin,int8_t txPin, uint32_t baud);
 
     bool Begin() override;
     bool Update() override;

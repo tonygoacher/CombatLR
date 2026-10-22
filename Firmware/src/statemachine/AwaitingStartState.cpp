@@ -112,7 +112,7 @@ void AwaitingStartState::EntryCommon()
                 new AddWidgetCommand(
                     textWidget)));    
 
-    WidgetPosition ssidTextPos={TextX, TextY+30};                    
+    WidgetPosition ssidTextPos={TextX, TextY+20};                    
      textWidget  = new TextWidget(UIWidgetIds::SSIDString, "", ssidTextPos,TextFont,MC_DATUM, TFT_WHITE, TFT_BLACK, 1);
     
     _services.displayManager.Send(
