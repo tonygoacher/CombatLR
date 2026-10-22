@@ -1,14 +1,14 @@
 {
     "mostRecent": 0,
     "teamId": 0,
-    "playerId": 0,
-    "friendlyFire": false,
+    "playerId": 1,
+    "friendlyFire": true,
     "gpsBaudrate": 38400,
     "gpsType": 0,
     "wifi": [
                 {
-            "ssid": "AnotherNetwork",
-            "password": "<password>"
+            "ssid": "TGTABLET",
+            "password": "OiTheGah"
         },
         {
             "ssid": "TGFERNTHORPE",

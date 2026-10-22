@@ -5,7 +5,7 @@
   "zonePercentages": [
     {
       "zone": 0,
-      "allocationPercentage": 40,
+      "allocationPercentage": 80,
       "healthPercentage": 40,
       "ammoPercentage": 40,
       "weaponPercentage": 20

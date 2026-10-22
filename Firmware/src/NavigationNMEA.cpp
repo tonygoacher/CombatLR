@@ -1,20 +1,31 @@
 #include "NavigationNMEA.h"
 #include <math.h>
 
-NavigationNMEA::NavigationNMEA(
-    int8_t rxPin,
-    int8_t txPin,
-    uint32_t baud)
+NavigationNMEA::NavigationNMEA()
 {
-    _baud = baud;
-    _rxPin = rxPin;
-    _txPin = txPin;
+    _rxPin = -1;
+    _txPin = -1;
 
     _serial = new HardwareSerial(1);
 }
 
+
+void NavigationNMEA::Setup(int8_t rxPin,int8_t txPin, uint32_t baud)
+{
+     _baud = baud;
+    _rxPin = rxPin;
+    _txPin = txPin;
+}
+
+
 bool NavigationNMEA::Begin()
 {
+    if(_rxPin == -1 || _txPin == -1)
+    {
+        Serial.println("NavigationNMEA: Serial port not configured");
+        return false;
+    }
+
     _serial->begin(
         _baud,
         SERIAL_8N1,
