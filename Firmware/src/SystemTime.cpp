@@ -17,6 +17,7 @@ void SystemTime::Reset()
     _baseGpsTime = 0.0;
     _lastGpsTime = 0.0;
     _lastGpsUpdateMillis = _baseMillis;
+    _gpsFeedStale = false;
 
     _gpsCatchupTargetTime = 0.0;
     _frozenSystemMilliseconds = 0;
@@ -57,6 +58,7 @@ bool SystemTime::Reset(const char* startTime)
     _baseGpsTime = 0.0;
     _lastGpsTime = 0.0;
     _lastGpsUpdateMillis = _baseMillis;
+    _gpsFeedStale = false;
 
     _gpsCatchupTargetTime = 0.0;
     _frozenSystemMilliseconds = 0;
@@ -133,6 +135,32 @@ void SystemTime::Update()
 
     if (gpsTime <= 0.0)
         return;
+
+    /*
+     * HasPosition() can remain true even when the NMEA feed has stopped.
+     * Detect a stale GPS clock by observing whether its time value advances.
+     * While stale, SystemTime continues from millis(). When GPS starts
+     * advancing again, normal discrepancy handling decides whether to resume
+     * immediately or freeze until GPS catches up.
+     */
+    if (_gpsSynchronized)
+    {
+        const double gpsAdvance =
+            TimeDifference(gpsTime, _lastGpsTime);
+
+        if (gpsAdvance > 0.0)
+        {
+            _lastGpsUpdateMillis = nowMillis;
+            _gpsFeedStale = false;
+        }
+        else if (nowMillis - _lastGpsUpdateMillis > 1500)
+        {
+            _gpsFeedStale = true;
+        }
+
+        if (_gpsFeedStale)
+            return;
+    }
 
     /*
      * If GPS returns behind the frozen clock, do not let time run
@@ -280,7 +308,6 @@ void SystemTime::Update()
     }
 
     _lastGpsTime = gpsTime;
-    _lastGpsUpdateMillis = nowMillis;
 }
 
 uint32_t SystemTime::GetMilliseconds() const
