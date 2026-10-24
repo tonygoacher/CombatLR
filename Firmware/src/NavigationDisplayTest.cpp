@@ -207,6 +207,7 @@ void NavigationDisplayTestBegin()
     if(!gamePlan.Load("/gameplan.json"))
     {
         Serial.println("Failed to load gameplan");
+        Serial.println(gamePlan.GetError());
         while(1)
         {};
     }

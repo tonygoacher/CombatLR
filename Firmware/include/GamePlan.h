@@ -32,6 +32,7 @@ public:
     bool Load(const char* filename);
 
     bool IsValid() const;
+    const String& GetError() const;
 
     int GetVersion() const;
     const String& GetProjectName() const { return _projectName;}
@@ -52,6 +53,7 @@ private:
     double _homeLongitude = 0.0;
 
     bool _valid = false;
+    String _error;
 
     const GamePlan* _gamePlan;
     IGameTime* _gameTime;
