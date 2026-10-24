@@ -243,7 +243,6 @@ void SystemTime::Update()
         _baseMillis = nowMillis;
         _baseGpsTime = gpsTime;
         _lastGpsTime = gpsTime;
-        _lastGpsUpdateMillis = nowMillis;
         _gpsSynchronized = true;
         return;
     }
