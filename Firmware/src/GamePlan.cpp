@@ -24,11 +24,35 @@ namespace
     struct ZonePickupDistribution
     {
         size_t zone;
+        size_t sourceIndex;
         uint8_t allocationPercentage;
         PickupDistribution distribution;
     };
 
     constexpr PickupDistribution DefaultPickupDistribution = { 40, 40, 20 };
+
+    bool IsFiniteNumber(JsonVariantConst value)
+    {
+        return value.is<double>() && std::isfinite(value.as<double>());
+    }
+
+    bool IsUnsignedInteger(JsonVariantConst value)
+    {
+        if (value.is<unsigned int>())
+            return true;
+
+        return value.is<int>() && value.as<int>() >= 0;
+    }
+
+    bool IsPercentage(JsonVariantConst value)
+    {
+        return value.is<int>() && value.as<int>() >= 0 && value.as<int>() <= 100;
+    }
+
+    String ArrayItemError(const char* arrayName, size_t index, const char* reason)
+    {
+        return String(arrayName) + "[" + String(static_cast<unsigned int>(index)) + "]: " + reason;
+    }
 
     double DistanceSquared(const Pickup& a, const Pickup& b)
     {
@@ -384,14 +408,20 @@ namespace
 
 bool GamePlan::Load(const char* filename)
 {
+    _error = "";
     _version = 0;
+    _projectName = "Untitled";
+    _gameDelayTime = 600;
     _homeLatitude = 0.0;
     _homeLongitude = 0.0;
     _valid = false;
     _zones.clear();
 
     if (filename == nullptr)
+    {
+        _error = "No game plan filename was provided";
         return false;
+    }
 
     /*
      * Use the application's filesystem. The gameplan is expected to
@@ -406,6 +436,7 @@ bool GamePlan::Load(const char* filename)
 
     if (!file)
     {
+        _error = String("Failed to open game plan file: ") + filename;
         Serial.printf(
             "GamePlan: failed to open %s\n",
             filename);
@@ -422,6 +453,7 @@ bool GamePlan::Load(const char* filename)
 
     if (error)
     {
+        _error = String("JSON parse failed: ") + error.c_str();
         Serial.printf(
             "GamePlan: JSON parse failed: %s\n",
             error.c_str());
@@ -432,8 +464,9 @@ bool GamePlan::Load(const char* filename)
     /*
      * version
      */
-    if (!document["version"].is<int>())
+    if (!document["version"].is<int>() || document["version"].as<int>() < 0)
     {
+        _error = "Missing or invalid version";
         Serial.println(
             "GamePlan: missing or invalid version");
 
@@ -449,15 +482,19 @@ bool GamePlan::Load(const char* filename)
 
     if (home.isNull())
     {
+        _error = "Missing home object";
         Serial.println(
             "GamePlan: missing home");
 
         return false;
     }
 
-    if (!home["latitude"].is<double>() ||
-        !home["longitude"].is<double>())
+    if (!IsFiniteNumber(home["latitude"]) ||
+        !IsFiniteNumber(home["longitude"]) ||
+        home["latitude"].as<double>() < -90.0 || home["latitude"].as<double>() > 90.0 ||
+        home["longitude"].as<double>() < -180.0 || home["longitude"].as<double>() > 180.0)
     {
+        _error = "Invalid home coordinates";
         Serial.println(
             "GamePlan: invalid home coordinates");
 
@@ -467,8 +504,14 @@ bool GamePlan::Load(const char* filename)
     _version =
         document["version"].as<int>();
 
+    if (!document["projectName"].isNull() && !document["projectName"].is<const char*>())
+    {
+        _error = "Invalid projectName; expected a string";
+        Serial.println("GamePlan: invalid projectName");
+        return false;
+    }
     _projectName = document["projectName"].as<String>();
-    if(_projectName.length() == 0)
+    if (_projectName.length() == 0)
     {
           _projectName="Untitled";
     }
@@ -481,26 +524,38 @@ bool GamePlan::Load(const char* filename)
         home["longitude"].as<double>();
 
         
-    _gameDelayTime =
-        document["gameDelayTime"].as<int>();
+    if (!document["gameDelayTime"].isNull())
+    {
+        if (!document["gameDelayTime"].is<int>() || document["gameDelayTime"].as<int>() < 0)
+        {
+            _error = "Invalid gameDelayTime; expected a non-negative integer";
+            Serial.println("GamePlan: invalid gameDelayTime");
+            return false;
+        }
+        _gameDelayTime = document["gameDelayTime"].as<int>();
+    }
 
     std::vector<ZonePickupDistribution> pickupDistributions;
     JsonArray distributionJson = document["zonePercentages"].as<JsonArray>();
 
     if (distributionJson.isNull())
     {
+        _error = "Missing zonePercentages array";
         Serial.println("GamePlan: missing zonePercentages array");
         return false;
     }
 
+    size_t distributionIndex = 0;
     for (JsonObject entry : distributionJson)
     {
         if (!entry["zone"].is<int>() ||
             (!entry["allocationPercentage"].isNull() && !entry["allocationPercentage"].is<int>()) ||
-            !entry["healthPercentage"].is<int>() ||
-            !entry["ammoPercentage"].is<int>() ||
-            !entry["weaponPercentage"].is<int>())
+            !IsPercentage(entry["healthPercentage"]) ||
+            !IsPercentage(entry["ammoPercentage"]) ||
+            !IsPercentage(entry["weaponPercentage"]) ||
+            (!entry["allocationPercentage"].isNull() && !IsPercentage(entry["allocationPercentage"])))
         {
+            _error = ArrayItemError("zonePercentages", distributionIndex, "invalid entry");
             Serial.println("GamePlan: invalid zonePercentages entry");
             return false;
         }
@@ -508,28 +563,29 @@ bool GamePlan::Load(const char* filename)
         const int zoneIndex = entry["zone"].as<int>();
         if (zoneIndex < 0)
         {
+            _error = ArrayItemError("zonePercentages", distributionIndex, "zone cannot be negative");
             Serial.println("GamePlan: zonePercentages zone cannot be negative");
             return false;
         }
 
         ZonePickupDistribution configured;
         configured.zone = static_cast<size_t>(zoneIndex);
+        configured.sourceIndex = distributionIndex;
         configured.allocationPercentage = entry["allocationPercentage"].is<int>()
-            ? static_cast<uint8_t>(std::clamp(entry["allocationPercentage"].as<int>(), 0, 100))
+            ? static_cast<uint8_t>(entry["allocationPercentage"].as<int>())
             : DefaultPickupAllocationPercentage;
-        configured.distribution.health = static_cast<uint8_t>(
-            std::clamp(entry["healthPercentage"].as<int>(), 0, 100));
-        configured.distribution.ammo = static_cast<uint8_t>(
-            std::clamp(entry["ammoPercentage"].as<int>(), 0, 100));
-        configured.distribution.weapon = static_cast<uint8_t>(
-            std::clamp(entry["weaponPercentage"].as<int>(), 0, 100));
+        configured.distribution.health = static_cast<uint8_t>(entry["healthPercentage"].as<int>());
+        configured.distribution.ammo = static_cast<uint8_t>(entry["ammoPercentage"].as<int>());
+        configured.distribution.weapon = static_cast<uint8_t>(entry["weaponPercentage"].as<int>());
         pickupDistributions.push_back(configured);
+        ++distributionIndex;
     }
 
     if (pickupDistributions.empty() ||
         std::none_of(pickupDistributions.begin(), pickupDistributions.end(),
             [](const ZonePickupDistribution& entry) { return entry.zone == 0; }))
     {
+        _error = "zonePercentages must contain zone 0";
         Serial.println("GamePlan: zonePercentages must contain zone 0");
         return false;
     }
@@ -545,27 +601,50 @@ bool GamePlan::Load(const char* filename)
     {
         if (pickupDistributions[i - 1].zone == pickupDistributions[i].zone)
         {
+            _error = ArrayItemError(
+                "zonePercentages",
+                pickupDistributions[i].sourceIndex,
+                "duplicate zone threshold");
             Serial.println("GamePlan: duplicate zone in zonePercentages");
             return false;
         }
     }
   
 
-    _valid = true;
-
     JsonArray zones =
         document["zones"].as<JsonArray>();
 
     if (zones.isNull())
     {
+        _error = "Missing zones array";
         Serial.println(
             "GamePlan: missing zones");
 
         return false;
     }
 
-    for (JsonObject zoneJson : zones)
+    size_t zoneArrayIndex = 0;
+    for (JsonVariantConst zoneValue : zones)
     {
+        if (!zoneValue.is<JsonObjectConst>())
+        {
+            _error = ArrayItemError("zones", zoneArrayIndex, "expected an object");
+            Serial.println("GamePlan: invalid zone entry");
+            return false;
+        }
+        JsonObjectConst zoneJson = zoneValue.as<JsonObjectConst>();
+        if (!IsFiniteNumber(zoneJson["eastMetres"]) ||
+            !IsFiniteNumber(zoneJson["northMetres"]) ||
+            !IsFiniteNumber(zoneJson["radiusMetres"]) ||
+            zoneJson["radiusMetres"].as<double>() <= 0.0 ||
+            !IsUnsignedInteger(zoneJson["startTime"]) ||
+            !IsUnsignedInteger(zoneJson["lifespanSeconds"]))
+        {
+            _error = ArrayItemError("zones", zoneArrayIndex, "invalid fields or values");
+            Serial.println("GamePlan: invalid zone fields");
+            return false;
+        }
+
         Zone zone;
 
         zone.eastMetres =
@@ -585,13 +664,42 @@ bool GamePlan::Load(const char* filename)
 
         zone.id = ZoneWidgetIdBase + _zones.size();
 
-        JsonArray pickups =
-            zoneJson["pickups"].as<JsonArray>();
+        JsonVariantConst pickupsValue = zoneJson["pickups"];
 
-        if (!pickups.isNull())
+        if (!pickupsValue.isNull() && !pickupsValue.is<JsonArrayConst>())
         {
-            for (JsonObject pickupJson : pickups)
+            _error = ArrayItemError("zones", zoneArrayIndex, "pickups must be an array");
+            Serial.println("GamePlan: invalid pickups array");
+            return false;
+        }
+        if (!pickupsValue.isNull())
+        {
+            JsonArrayConst pickups = pickupsValue.as<JsonArrayConst>();
+            size_t pickupArrayIndex = 0;
+            for (JsonVariantConst pickupValue : pickups)
             {
+                if (!pickupValue.is<JsonObjectConst>())
+                {
+                    _error = ArrayItemError("pickups", pickupArrayIndex, "expected an object");
+                    Serial.println("GamePlan: invalid pickup entry");
+                    return false;
+                }
+                JsonObjectConst pickupJson = pickupValue.as<JsonObjectConst>();
+                if (!IsFiniteNumber(pickupJson["eastMetres"]) ||
+                    !IsFiniteNumber(pickupJson["northMetres"]) ||
+                    !pickupJson["type"].is<int>() ||
+                    pickupJson["type"].as<int>() < Health ||
+                    pickupJson["type"].as<int>() > Auto ||
+                    !IsUnsignedInteger(pickupJson["spawnTimeSeconds"]) ||
+                    !IsUnsignedInteger(pickupJson["lifespanSeconds"]) ||
+                    !IsUnsignedInteger(pickupJson["id"]) ||
+                    pickupJson["id"].as<unsigned int>() > static_cast<unsigned int>(std::numeric_limits<int>::max()))
+                {
+                    _error = ArrayItemError("pickups", pickupArrayIndex, "invalid fields or values");
+                    Serial.println("GamePlan: invalid pickup fields");
+                    return false;
+                }
+
                 Pickup pickup;
 
                 pickup.eastMetres =
@@ -622,9 +730,15 @@ bool GamePlan::Load(const char* filename)
                 pickup.id =
                     pickupJson["id"].as<int>();
 
-                zone.pickups.emplace(
+                if (!zone.pickups.emplace(
                     pickup.id,
-                    pickup);
+                    pickup).second)
+                {
+                    _error = ArrayItemError("pickups", pickupArrayIndex, "duplicate pickup id in zone");
+                    Serial.println("GamePlan: duplicate pickup id in zone");
+                    return false;
+                }
+                ++pickupArrayIndex;
             }
         }
 
@@ -651,7 +765,10 @@ bool GamePlan::Load(const char* filename)
 
         _zones.push_back(
             std::move(zone));
+        ++zoneArrayIndex;
     }
+
+    _valid = true;
 
     Serial.printf(
         "GamePlan: loaded version %d\n",
@@ -668,6 +785,11 @@ bool GamePlan::Load(const char* filename)
 bool GamePlan::IsValid() const
 {
     return _valid;
+}
+
+const String& GamePlan::GetError() const
+{
+    return _error;
 }
 
 int GamePlan::GetVersion() const
