@@ -121,10 +121,9 @@ void SystemTime::Update()
         return;
 
     /*
-     * When GPS returns more than one second behind the millis()-based
-     * clock, hold SystemTime at its current value. The target is the
-     * GPS time that would have been reached had the last fix continued
-     * advancing at the millis() rate. Resume only when GPS reaches it.
+     * If GPS returns behind the frozen clock, do not let time run
+     * backwards. Resume only when GPS reaches the time the local
+     * clock had advanced to. TimeDifference handles midnight rollover.
      */
     if (_waitingForGpsCatchup)
     {
@@ -165,9 +164,9 @@ void SystemTime::Update()
     }
 
     /*
-     * Absolute game start mode. Re-anchor directly to the
-     * original start time. This gives late players the same
-     * game time as everyone else and avoids accumulated drift.
+     * Absolute game start mode. Re-anchor to the original start time,
+     * except when the restored GPS clock is over one second behind the
+     * millis-based game clock. In that case freeze until GPS catches up.
      */
     if (_startGpsTime != 0.0)
     {
@@ -177,9 +176,28 @@ void SystemTime::Update()
         if (gameDelta < 0.0)
             return;
 
-        _baseSystemMilliseconds =
+        const uint64_t gpsGameMilliseconds =
             static_cast<uint64_t>(gameDelta * 1000.0);
+        const uint32_t localGameMilliseconds = GetMilliseconds();
 
+        if (static_cast<uint64_t>(localGameMilliseconds) >
+            gpsGameMilliseconds + 1000ULL)
+        {
+            _frozenSystemMilliseconds = localGameMilliseconds;
+            _gpsCatchupTargetTime = _startGpsTime +
+                static_cast<double>(localGameMilliseconds) / 1000.0;
+            if (_gpsCatchupTargetTime >= 86400.0)
+                _gpsCatchupTargetTime -= 86400.0;
+
+            _waitingForGpsCatchup = true;
+
+            Serial.printf(
+                "SystemTime frozen for GPS catch-up; target %.3f\n",
+                _gpsCatchupTargetTime);
+            return;
+        }
+
+        _baseSystemMilliseconds = gpsGameMilliseconds;
         _baseMillis = nowMillis;
         _baseGpsTime = gpsTime;
         _lastGpsTime = gpsTime;
