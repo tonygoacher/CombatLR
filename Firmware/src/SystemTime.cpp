@@ -159,7 +159,21 @@ void SystemTime::Update()
         }
 
         if (_gpsFeedStale)
+        {
+            /*
+             * If the feed stalls while waiting for catch-up, stop waiting
+             * and let millis() carry on. A later advancing GPS fix will be
+             * checked against the now-current local time.
+             */
+            if (_waitingForGpsCatchup)
+            {
+                _baseSystemMilliseconds = _frozenSystemMilliseconds;
+                _baseMillis = nowMillis;
+                _waitingForGpsCatchup = false;
+            }
+
             return;
+        }
     }
 
     /*
