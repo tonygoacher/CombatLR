@@ -111,6 +111,20 @@ void SystemTime::Update()
      */
     if (!_navigation.HasPosition())
     {
+        /*
+         * GPS loss must never stop the local clock. If we were
+         * frozen waiting for GPS to catch up, resume millis-based
+         * progression from the frozen value while GPS is unavailable.
+         * On restoration, the normal discrepancy check can freeze it
+         * again if GPS is still more than one second behind.
+         */
+        if (_waitingForGpsCatchup)
+        {
+            _baseSystemMilliseconds = _frozenSystemMilliseconds;
+            _baseMillis = nowMillis;
+            _waitingForGpsCatchup = false;
+        }
+
         Serial.println("No position");
         return;
     }
