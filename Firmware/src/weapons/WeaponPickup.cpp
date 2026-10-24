@@ -1,8 +1,6 @@
 #include "weapons/WeaponPickup.h"
 
 #include "weapons/WeaponManager.h"
-#include "ZoneEngine.h"
-#include "weapons/IWeaponPickupTable.h"
 
 #include <algorithm>
 #include <cmath>
