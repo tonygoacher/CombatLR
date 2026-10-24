@@ -1,4 +1,3 @@
-
 #include "weapons/WeaponPickup.h"
 
 #include "weapons/WeaponManager.h"
@@ -6,38 +5,22 @@
 #include "weapons/IWeaponPickupTable.h"
 
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <vector>
 
 WeaponPickup::WeaponPickup(
     WeaponManager& weaponManager,
-    ZoneEngine& zoneEngine,
-    IWeaponPickupTable& pickupTable)
-    :
-    _weaponManager(weaponManager),
-    _zoneEngine(zoneEngine),
-    _pickupTable(pickupTable)
+    ZoneEngine&,
+    IWeaponPickupTable&)
+    : _weaponManager(weaponManager)
 {
     Serial.println("Weapons pickup");
 }
 
 void WeaponPickup::Collect()
 {
-    /*
-     * ZoneManager returns progression as 0.0 - 1.0.
-     * The pickup table uses 0 - 100.
-     */
-    const float progress =
-        std::clamp(
-            _zoneEngine.GetProgress(),
-            0.0f,
-            1.0f);
-
-    const uint8_t gameProgress =
-        static_cast<uint8_t>(
-            progress * 100.0f);
-
-    const WeaponType type =
-        SelectWeaponType(gameProgress);
+    const WeaponType type = SelectWeaponType();
 
     const WeaponManager::WeaponMap& weapons =
         _weaponManager.GetWeaponMap();
@@ -105,69 +88,75 @@ void WeaponPickup::Collect()
      * WeaponManager is responsible for creating the
      * weapon and establishing its initial ammunition.
      */
-    Serial.printf("Weapon pickup adding new weapoin %d\n", type);
+    Serial.printf("Weapon pickup adding new weapon %d\n", type);
     _weaponManager.AddWeapon(type);
 }
 
-WeaponType WeaponPickup::SelectWeaponType(
-    uint8_t gameProgress) const
+WeaponType WeaponPickup::SelectWeaponType() const
 {
-    const WeaponManager::WeaponMap& weapons =
-        _weaponManager.GetWeaponMap();
-
-    uint16_t totalChance = 0;
-
     /*
-     * Build the weighted pool from all weapon types.
+     * Weapon definitions are ordered from least powerful
+     * to most powerful in weapons.json. The type remains
+     * an identifier; the position in that ordered list is
+     * used only to calculate relative pickup weight.
      *
-     * The pickup table returns zero for weapons which
-     * are not yet available at the current progression.
+     * A moderate Gaussian curve reduces the probability
+     * of the weakest and strongest entries without making
+     * either impossible to obtain. No game-progress state
+     * or separate pickup table is involved.
      */
-    std::vector<WeaponType> availableTypes;
-    std::vector<uint8_t> chances;
+    const int numWeapons = _weaponManager.GetNumWeapons();
 
-    for (int typeValue = 0; typeValue < _weaponManager.GetNumWeapons(); ++typeValue)
+    if (numWeapons <= 0)
     {
-        const WeaponType type =
-            static_cast<WeaponType>(typeValue);
-
-        const uint8_t chance =
-            _pickupTable.GetPickupChance(
-                type,
-                gameProgress);
-        Serial.printf("Type: %d Chance %d\n", typeValue, chance);
-        if (chance == 0)
-            continue;
-
-        availableTypes.push_back(type);
-        chances.push_back(chance);
-
-        totalChance += chance;
-    }
-
-    Serial.printf("Total chance %d\n", totalChance);
-
-    if (availableTypes.empty())
-    {
-        /*
-         * No weapon is available according to the
-         * pickup table. This should normally indicate
-         * a configuration error.
-         */
-        Serial.println("No available weapon types for pickup");
+        Serial.println("No weapon definitions available for pickup");
         return 0;
     }
 
-    const uint16_t roll =
-        random(0, totalChance);
+    std::vector<WeaponType> availableTypes;
+    std::vector<uint32_t> weights;
+    availableTypes.reserve(numWeapons);
+    weights.reserve(numWeapons);
 
-    uint16_t accumulated = 0;
+    uint32_t totalWeight = 0;
+    const double midpoint = (numWeapons - 1) / 2.0;
+    const double halfRange = midpoint > 0.0 ? midpoint : 1.0;
 
-    for (size_t i = 0;
-         i < availableTypes.size();
-         ++i)
+    for (int index = 0; index < numWeapons; ++index)
     {
-        accumulated += chances[i];
+        const double normalizedRank =
+            (index - midpoint) / halfRange;
+
+        // Fixed moderate curve; the parameters can become game-plan settings later.
+        const double relativeWeight =
+            std::exp(-0.75 * normalizedRank * normalizedRank);
+
+        // Scale to integer weights for the weighted random selection.
+        const uint32_t weight =
+            static_cast<uint32_t>(relativeWeight * 1000.0 + 0.5);
+
+        if (weight == 0)
+            continue;
+
+        availableTypes.push_back(static_cast<WeaponType>(index));
+        weights.push_back(weight);
+        totalWeight += weight;
+    }
+
+    if (availableTypes.empty() || totalWeight == 0)
+    {
+        Serial.println("No valid weapon types for pickup");
+        return 0;
+    }
+
+    const uint32_t roll =
+        static_cast<uint32_t>(random(0, static_cast<long>(totalWeight)));
+
+    uint32_t accumulated = 0;
+
+    for (size_t i = 0; i < availableTypes.size(); ++i)
+    {
+        accumulated += weights[i];
 
         if (roll < accumulated)
             return availableTypes[i];
