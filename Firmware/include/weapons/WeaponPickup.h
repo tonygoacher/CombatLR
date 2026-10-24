@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include "weapons/Weapon.h"
@@ -19,11 +18,8 @@ public:
 
 private:
     WeaponManager& _weaponManager;
-    ZoneEngine& _zoneEngine;
-    IWeaponPickupTable& _pickupTable;
 
     static constexpr uint8_t MinPickupPercentage = 30;
 
-    WeaponType SelectWeaponType(
-        uint8_t gameProgress) const;
+    WeaponType SelectWeaponType() const;
 };
