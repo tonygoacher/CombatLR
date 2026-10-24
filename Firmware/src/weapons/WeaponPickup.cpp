@@ -7,10 +7,7 @@
 #include <cstdint>
 #include <vector>
 
-WeaponPickup::WeaponPickup(
-    WeaponManager& weaponManager,
-    ZoneEngine&,
-    IWeaponPickupTable&)
+WeaponPickup::WeaponPickup(WeaponManager& weaponManager)
     : _weaponManager(weaponManager)
 {
     Serial.println("Weapons pickup");
