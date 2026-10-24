@@ -14,7 +14,6 @@
 #include "Player.h"
 #include "weapons/AmmoPickup.h"
 #include "weapons/WeaponPickup.h"
-#include "weapons/JSONWeaponPickupTable.h"
 #include "IZoneEvent.h"
 #include "IPickupEvent.h"
 #include "SystemTime.h"
@@ -43,8 +42,7 @@ private:
     Player  _player;
     AmmoPickup _ammoPickup;
     WeaponPickup _weaponPickup;
-    JsonWeaponPickupTable _weaponPickupTable;
-                
+                  
     uint32_t _startTime;
     void CheckPickups();
 
