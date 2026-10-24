@@ -30,6 +30,7 @@ private:
     bool _gpsSynchronized = false;
     double _lastGpsTime = 0.0;
     uint32_t _lastGpsUpdateMillis = 0;
+    bool _gpsFeedStale = false;
 
     double _gpsCatchupTargetTime = 0.0;
     uint64_t _frozenSystemMilliseconds = 0;
