@@ -3,16 +3,11 @@
 #include "weapons/Weapon.h"
 
 class WeaponManager;
-class ZoneEngine;
-class IWeaponPickupTable;
 
 class WeaponPickup
 {
 public:
-    WeaponPickup(
-        WeaponManager& weaponManager,
-        ZoneEngine& zoneEngine,
-        IWeaponPickupTable& pickupTable);
+    explicit WeaponPickup(WeaponManager& weaponManager);
 
     void Collect();
 
