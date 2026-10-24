@@ -29,6 +29,11 @@ private:
     double _baseGpsTime = 0.0;
     bool _gpsSynchronized = false;
     double _lastGpsTime = 0.0;
+    uint32_t _lastGpsUpdateMillis = 0;
+
+    double _gpsCatchupTargetTime = 0.0;
+    uint64_t _frozenSystemMilliseconds = 0;
+    bool _waitingForGpsCatchup = false;
 
     double _startGpsTime = 0.0;
     bool _waitingForStart = false;
