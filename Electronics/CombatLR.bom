@@ -1,0 +1,18 @@
+C1, C2, C3, C4, C6     , 5 off  , 0.1uF , 0805
+C7                     , 1 off  , 100uF , CAP_865230357007
+J1                     , 1 off  ,       , CONN_SIL7
+J2                     , 1 off  ,       , CONN_SIL_2
+J3, J7                 , 2 off  ,       , CONN_SIL5
+J4, J5                 , 2 off  ,       , CONN_SIL3
+J6                     , 1 off  ,       , CONN_SIL4
+J8                     , 1 off  ,       , R-78E
+J9                     , 1 off  ,       , CONN_sil8
+Q1, Q2, Q3, Q4, Q5, Q6 , 6 off  ,       , IRLM0040TRPBF_TOP
+R1                     , 1 off  , 3R3   , R1206_TOP
+R2                     , 1 off  , 4R7   , R1206_TOP
+R3                     , 1 off  , 33R   , R1206_TOP
+R5                     , 1 off  , 51R   , R1206_TOP
+R6, R7, R8             , 3 off  , 47k   , 0805
+U1                     , 1 off  ,       , ESP32-S3 WROOM
+U2                     , 1 off  ,       , MAX98357A_I2S_MODULE
+U4                     , 1 off  ,       , LD1117
