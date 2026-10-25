@@ -16,6 +16,12 @@ void SystemTime::Reset()
     _gpsSynchronized = false;
     _baseGpsTime = 0.0;
     _lastGpsTime = 0.0;
+    _lastGpsUpdateMillis = _baseMillis;
+    _gpsFeedStale = false;
+
+    _gpsCatchupTargetTime = 0.0;
+    _frozenSystemMilliseconds = 0;
+    _waitingForGpsCatchup = false;
 
     _startGpsTime = 0.0;
     _waitingForStart = false;
@@ -51,6 +57,12 @@ bool SystemTime::Reset(const char* startTime)
     _gpsSynchronized = false;
     _baseGpsTime = 0.0;
     _lastGpsTime = 0.0;
+    _lastGpsUpdateMillis = _baseMillis;
+    _gpsFeedStale = false;
+
+    _gpsCatchupTargetTime = 0.0;
+    _frozenSystemMilliseconds = 0;
+    _waitingForGpsCatchup = false;
 
     _startGpsTime = startGpsTime;
     _waitingForStart = true;
@@ -76,6 +88,7 @@ bool SystemTime::Reset(const char* startTime)
                 _baseMillis = millis();
                 _baseGpsTime = gpsTime;
                 _lastGpsTime = gpsTime;
+                _lastGpsUpdateMillis = _baseMillis;
                 _gpsSynchronized = true;
                 _waitingForStart = false;
 
@@ -100,13 +113,88 @@ void SystemTime::Update()
      */
     if (!_navigation.HasPosition())
     {
+        /*
+         * GPS loss must never stop the local clock. If we were
+         * frozen waiting for GPS to catch up, resume millis-based
+         * progression from the frozen value while GPS is unavailable.
+         * On restoration, the normal discrepancy check can freeze it
+         * again if GPS is still more than one second behind.
+         */
+        if (_waitingForGpsCatchup)
+        {
+            _baseSystemMilliseconds = _frozenSystemMilliseconds;
+            _baseMillis = nowMillis;
+            _waitingForGpsCatchup = false;
+        }
+
         Serial.println("No position");
         return;
-    }    
+    }
+
     const double gpsTime = _navigation.GetGpsTime();
 
     if (gpsTime <= 0.0)
         return;
+
+    /*
+     * HasPosition() can remain true even when the NMEA feed has stopped.
+     * Detect a stale GPS clock by observing whether its time value advances.
+     * While stale, SystemTime continues from millis(). When GPS starts
+     * advancing again, normal discrepancy handling decides whether to resume
+     * immediately or freeze until GPS catches up.
+     */
+    if (_gpsSynchronized)
+    {
+        const double gpsAdvance =
+            TimeDifference(gpsTime, _lastGpsTime);
+
+        if (gpsAdvance > 0.0)
+        {
+            _lastGpsUpdateMillis = nowMillis;
+            _gpsFeedStale = false;
+        }
+        else if (nowMillis - _lastGpsUpdateMillis > 1500)
+        {
+            _gpsFeedStale = true;
+        }
+
+        if (_gpsFeedStale)
+        {
+            /*
+             * If the feed stalls while waiting for catch-up, stop waiting
+             * and let millis() carry on. A later advancing GPS fix will be
+             * checked against the now-current local time.
+             */
+            if (_waitingForGpsCatchup)
+            {
+                _baseSystemMilliseconds = _frozenSystemMilliseconds;
+                _baseMillis = nowMillis;
+                _waitingForGpsCatchup = false;
+            }
+
+            return;
+        }
+    }
+
+    /*
+     * If GPS returns behind the frozen clock, do not let time run
+     * backwards. Resume only when GPS reaches the time the local
+     * clock had advanced to. TimeDifference handles midnight rollover.
+     */
+    if (_waitingForGpsCatchup)
+    {
+        if (TimeDifference(gpsTime, _gpsCatchupTargetTime) < 0.0)
+            return;
+
+        _baseSystemMilliseconds = _frozenSystemMilliseconds;
+        _baseMillis = nowMillis;
+        _baseGpsTime = gpsTime;
+        _lastGpsTime = gpsTime;
+        _lastGpsUpdateMillis = nowMillis;
+        _gpsSynchronized = true;
+        _waitingForGpsCatchup = false;
+        return;
+    }
 
     /*
      * Waiting for the absolute game start. Establish T=0
@@ -124,6 +212,7 @@ void SystemTime::Update()
         _baseMillis = nowMillis;
         _baseGpsTime = gpsTime;
         _lastGpsTime = gpsTime;
+        _lastGpsUpdateMillis = nowMillis;
         _gpsSynchronized = true;
         _waitingForStart = false;
 
@@ -131,9 +220,9 @@ void SystemTime::Update()
     }
 
     /*
-     * Absolute game start mode. Re-anchor directly to the
-     * original start time. This gives late players the same
-     * game time as everyone else and avoids accumulated drift.
+     * Absolute game start mode. Re-anchor to the original start time,
+     * except when the restored GPS clock is over one second behind the
+     * millis-based game clock. In that case freeze until GPS catches up.
      */
     if (_startGpsTime != 0.0)
     {
@@ -143,9 +232,28 @@ void SystemTime::Update()
         if (gameDelta < 0.0)
             return;
 
-        _baseSystemMilliseconds =
+        const uint64_t gpsGameMilliseconds =
             static_cast<uint64_t>(gameDelta * 1000.0);
+        const uint32_t localGameMilliseconds = GetMilliseconds();
 
+        if (static_cast<uint64_t>(localGameMilliseconds) >
+            gpsGameMilliseconds + 1000ULL)
+        {
+            _frozenSystemMilliseconds = localGameMilliseconds;
+            _gpsCatchupTargetTime = _startGpsTime +
+                static_cast<double>(localGameMilliseconds) / 1000.0;
+            if (_gpsCatchupTargetTime >= 86400.0)
+                _gpsCatchupTargetTime -= 86400.0;
+
+            _waitingForGpsCatchup = true;
+
+            Serial.printf(
+                "SystemTime frozen for GPS catch-up; target %.3f\n",
+                _gpsCatchupTargetTime);
+            return;
+        }
+
+        _baseSystemMilliseconds = gpsGameMilliseconds;
         _baseMillis = nowMillis;
         _baseGpsTime = gpsTime;
         _lastGpsTime = gpsTime;
@@ -167,13 +275,33 @@ void SystemTime::Update()
 
         _baseGpsTime = gpsTime;
         _lastGpsTime = gpsTime;
+        _lastGpsUpdateMillis = nowMillis;
         _baseMillis = nowMillis;
         _gpsSynchronized = true;
         return;
     }
 
+    const uint32_t sinceLastGpsMillis =
+        nowMillis - _lastGpsUpdateMillis;
     const double gpsDelta =
         TimeDifference(gpsTime, _lastGpsTime);
+    const double expectedGpsAdvance =
+        static_cast<double>(sinceLastGpsMillis) / 1000.0;
+
+    if (expectedGpsAdvance - gpsDelta > 1.0)
+    {
+        _frozenSystemMilliseconds = GetMilliseconds();
+        _gpsCatchupTargetTime = _lastGpsTime + expectedGpsAdvance;
+        if (_gpsCatchupTargetTime >= 86400.0)
+            _gpsCatchupTargetTime -= 86400.0;
+
+        _waitingForGpsCatchup = true;
+
+        Serial.printf(
+            "SystemTime frozen for GPS catch-up; target %.3f\n",
+            _gpsCatchupTargetTime);
+        return;
+    }
 
     if (gpsDelta <= 0.0)
         return;
@@ -199,6 +327,9 @@ uint32_t SystemTime::GetMilliseconds() const
 {
     if (_waitingForStart)
         return 0;
+
+    if (_waitingForGpsCatchup)
+        return static_cast<uint32_t>(_frozenSystemMilliseconds);
 
     const uint32_t elapsedMillis =
         millis() - _baseMillis;
