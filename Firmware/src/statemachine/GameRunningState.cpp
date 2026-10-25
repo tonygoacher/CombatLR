@@ -32,9 +32,8 @@ GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, CombatLRServices&
 : _stateData(stateData), _gameTime(gameTime), _player(stateData.sounds, PlayerStartHealth),
  _weaponManager(weaponManager), 
  _ammoPickup(weaponManager),
- _weaponPickupTable("/wtable.json"),
  _startTime(0),
- _weaponPickup(weaponManager, stateData.zoneEngine, _weaponPickupTable)
+ _weaponPickup(weaponManager)
 {
 }
 
