@@ -4,29 +4,33 @@
 #include "State.h"
 #include "stdint.h"
 #include "Pacer.h"
+#include "statemachine/Services.h"
 
-
-class DisplayManager;
-class INavigation ;
 
 
 class GPSLockState : public State
 {
 public:
        
-    GPSLockState(DisplayManager& displayManager, INavigation& navigation);
+    GPSLockState(CombatLRServices& services);
     uint16_t Run() override;
     void Entry() override;
     void Exit() override;
 
-private:    
+private:  
+    
+    enum GPSLockStateEvents
+    {
+        UpdateHDOP,
+    };
+
+    void SetUpdateTimer();
 
     static const int TextX = 160;
     static const int TextY=180;
     static const int TextZoom = 2;
     static const int TextFont = 2;  
 
-    INavigation& _navigation;
-    DisplayManager& _display;
-    Pacer _pacer;
+    CombatLRServices& _services;
+
 };

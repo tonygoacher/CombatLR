@@ -16,8 +16,7 @@
 
 
 
-CombatLRStateMachine::CombatLRStateMachine(CombatLRServices& stateData, WeaponManager& weaponManager)
-:   _stateData(stateData), _weaponManager(weaponManager)
+CombatLRStateMachine::CombatLRStateMachine()
 {
     
 }
@@ -40,18 +39,18 @@ void CombatLRStateMachine::Start()
 
 
 
-void CombatLRStateMachine::Init()
+void CombatLRStateMachine::Init(CombatLRServices& services, WeaponManager& weaponManager)
 {
 
-    _states.insert(StateMapEntry(SystemStates::PowerUp, *new PowerUpState(_stateData)));
-    _states.insert(StateMapEntry(SystemStates::GPSLock, *new GPSLockState(_stateData.displayManager,_stateData.navigation)));
-    _states.insert(StateMapEntry(SystemStates::GameInit, *new GameInitState(_stateData)));
-    _states.insert(StateMapEntry(SystemStates::Dead,*new DeadState(_stateData)));
-    _states.insert(StateMapEntry(SystemStates::AwaitingStart,*new AwaitingStartState(_stateData)));
-    _states.insert(StateMapEntry(SystemStates::Ftp,*new FtpState(_stateData)));
-    _states.insert(StateMapEntry(SystemStates::GameRunning,*new GameRunningState(12000, _stateData, _weaponManager)));
-    _states.insert(StateMapEntry(SystemStates::Dead,*new DeadState(_stateData)));
-    _states.insert(StateMapEntry(SystemStates::OTA,*new OTAState(_stateData)));
-    _states.insert(StateMapEntry(SystemStates::Provisioning,*new ProvisioningState(_stateData)));    
+    _states.insert(StateMapEntry(SystemStates::PowerUp, *new PowerUpState(services)));
+    _states.insert(StateMapEntry(SystemStates::GPSLock, *new GPSLockState(services)));
+    _states.insert(StateMapEntry(SystemStates::GameInit, *new GameInitState(services)));
+    _states.insert(StateMapEntry(SystemStates::Dead,*new DeadState(services)));
+    _states.insert(StateMapEntry(SystemStates::AwaitingStart,*new AwaitingStartState(services)));
+    _states.insert(StateMapEntry(SystemStates::Ftp,*new FtpState(services)));
+    _states.insert(StateMapEntry(SystemStates::GameRunning,*new GameRunningState(12000, services, weaponManager)));
+    _states.insert(StateMapEntry(SystemStates::Dead,*new DeadState(services)));
+    _states.insert(StateMapEntry(SystemStates::OTA,*new OTAState(services)));
+    _states.insert(StateMapEntry(SystemStates::Provisioning,*new ProvisioningState(services)));    
 }
 

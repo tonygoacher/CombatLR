@@ -121,14 +121,15 @@ namespace
 
     GeoReference geoReference;
     ESP32LaserTag laserTag(IR_TXPORT, IR_RXPORT, IR_POWERLOW, IR_POWERMED ,IR_POWERHIGH);
-    CombatLRServices stateData{systemConfig,displayManager, navigation, 
+    CombatLRStateMachine stateMachine;
+    CombatLRServices services{stateMachine,systemConfig,displayManager, navigation, 
                                 zoneEngine, sounds, zoom,gamePlan, geoReference, laserTag, systemTime,
                                  weaponConfig, triggerSwitch, reloadSwitch, leftSwitch, zoomSwitch, rightSwitch,
                                  muzzleLED, hitLED};
 
 
-    WeaponManager weaponManager(stateData);
-    CombatLRStateMachine stateMachine(stateData,weaponManager);
+    WeaponManager weaponManager(services);
+
 
 };
 
@@ -230,7 +231,7 @@ void NavigationDisplayTestBegin()
     navigation.Begin();
 
 
-    stateMachine.Init();
+    stateMachine.Init(services,weaponManager);
     stateMachine.Start();
 
 }

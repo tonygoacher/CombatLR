@@ -21,11 +21,19 @@ public:
     void Entry() override;
     void Exit() override;
 
+
+
 private:    
-    CombatLRServices& _stateData;
+    enum GameInitStateEvents
+    {
+        Countdown,
+    };
 
-    Pacer _textPacer;
+    void SetCountdown();
 
+    CombatLRServices& _services;
+
+    static const int oneSecondsInms = 1000;
     static const int TextX = 280;
     static const int TextY=10;
     static const int TextZoom = 2;

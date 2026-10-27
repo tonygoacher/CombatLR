@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include "statemachine/GPSLockState.h"
+#include "statemachine/CombatLRStateMachine.h"
+#include "statemachine/GenericEvent.h"
 #include "ISounds.h"
 #include "graphics/DisplayManager.h"
 #include "Navigation.h"
@@ -14,25 +16,33 @@
 #include "widgets/UIWidgetIds.h"
 
 
-GPSLockState::GPSLockState(DisplayManager& displayManager, INavigation& navigation)
-: _display(displayManager),
- _navigation(navigation), _pacer(true)
+GPSLockState::GPSLockState(CombatLRServices& services)
+: _services(services)
 {  
     
 }
 
+
+void GPSLockState::SetUpdateTimer()
+{
+    GenericEvent textUpdate(GPSLockStateEvents::UpdateHDOP);
+    _services.stateMachine.ScheduleEvent(textUpdate,1000);
+}
+
+
 uint16_t GPSLockState::Run()
 {
-    _navigation.Update();
-    if(_pacer.Pace())
+    _services.navigation.Update();
+    auto event = _services.stateMachine.GetEvent();
+    if(event && event->GetType() == GPSLockStateEvents::UpdateHDOP)
     {
-
+        SetUpdateTimer();
         char gpsInfo[128];
-        snprintf(gpsInfo, 128, "HDOP:%.3f", _navigation.GetHDOP());
+        snprintf(gpsInfo, 128, "HDOP:%.3f", _services.navigation.GetHDOP());
         SetTextCommand* setText = new SetTextCommand(UIWidgetIds::GPSInfo, gpsInfo);
-        _display.Send(std::unique_ptr<IDisplayCommand>(setText));
+        _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(setText));
     }
-    if(_navigation.HasPosition())
+    if(_services.navigation.HasPosition())
     {
         return SystemStates::AwaitingStart;
     }
@@ -41,10 +51,8 @@ uint16_t GPSLockState::Run()
 
 void GPSLockState::Entry()
 {
-    _pacer.SetPace(1000);
 
-
-    _display.Send(
+    _services.displayManager.Send(
     std::unique_ptr<IDisplayCommand>(
         new DisplayBackgroundCommand(
             "/logo.bmp")));
@@ -52,21 +60,24 @@ void GPSLockState::Entry()
     WidgetPosition p(0,0);
 
     GPSStatusWidget* statusWidget = new GPSStatusWidget(UIWidgetIds::GPStatus,  
-         _display.GetTextureManager(),p, _navigation);
+         _services.displayManager.GetTextureManager(),p, _services.navigation);
     AddWidgetCommand* command =
     new AddWidgetCommand(statusWidget);     // NOTE GPS widget stays onscreen so not removed in ::Exit()
 
-    _display.Send(std::unique_ptr<IDisplayCommand>(command));
+   _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(command));
 
     WidgetPosition gpsText(TextX,TextY);
     TextWidget* textWidget = new TextWidget(UIWidgetIds::GPSInfo,"",gpsText,TextFont, MC_DATUM, TFT_WHITE, TFT_BLACK, TextZoom );
     command = new AddWidgetCommand(textWidget);
-    _display.Send(std::unique_ptr<IDisplayCommand>(command));
+    _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(command));
+
+    SetUpdateTimer();
 
 }
 void GPSLockState::Exit()
 {
+     _services.stateMachine.CancelAllEvents();
     RemoveWidgetCommand* remove = new RemoveWidgetCommand(UIWidgetIds::GPSInfo);
-     _display.Send(std::unique_ptr<IDisplayCommand>(remove));   
+     _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(remove));   
 
 }

@@ -7,6 +7,7 @@
 #include "Services.h"   
 
 
+
 class DisplayManager;
 class INavigation ;
 
@@ -21,6 +22,10 @@ public:
     void Exit() override;
 
 private:    
+    enum PowerUpStateEvents
+    {
+        MoveToNextState,
+    };
     CombatLRServices& _services;
-    Pacer _pacer;
+
 };
