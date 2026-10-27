@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "statemachine/GameInitState.h"
-#include "statemachine\CombatLRStateMachine.h"
-#include "statemachine\GenericEvent.h"
+#include "statemachine/CombatLRStateMachine.h"
+#include "statemachine/GenericEvent.h"
 #include "graphics/DisplayManager.h"
 #include "graphics/DisplayBackgroundCommand.h"
 #include "IZoom.h"
