@@ -27,7 +27,7 @@ public:
     void CancelEvent(int eventType);
 
     // Discard all queued and scheduled events.
-    void ClearAllEvents();
+    void CancelAllEvents();
 
     // Transfer ownership of the next available event to the caller.
     // Returns nullptr when no event is ready.

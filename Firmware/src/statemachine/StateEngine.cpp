@@ -54,7 +54,7 @@ void StateEngine::CancelEvent(int eventType)
 }
 
 
-void StateEngine::ClearAllEvents()
+void StateEngine::CancelAllEvents()
 {
     _eventQueue.clear();
     _scheduledEvents.clear();
