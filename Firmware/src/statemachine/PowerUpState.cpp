@@ -9,19 +9,23 @@
 #include "widgets/GPSStatusWidget.h"
 #include "widgets/UIWidgetIds.h"
 #include "PBSwitch.h"
+#include "statemachine/CombatLRStateMachine.h"
+#include "statemachine/GenericEvent.h"
+
+
 
 
 PowerUpState::PowerUpState(CombatLRServices& services)
-: _services(services),
-_pacer(true)
+: _services(services)
 {  
-    _pacer.SetPace(2000);
+
 }
 
 uint16_t PowerUpState::Run()
 {
     _services.navigation.Update();
-    if(_pacer.Pace())
+    auto event = _services.stateMachine.GetEvent();
+    if(event && event->GetType() == PowerUpState::MoveToNextState)
     {
 
 
@@ -48,7 +52,9 @@ uint16_t PowerUpState::Run()
 
 void PowerUpState::Entry()
 {
-    _pacer.SetPace(2000);
+
+    GenericEvent moveToNextStateEvent(PowerUpStateEvents::MoveToNextState);
+    _services.stateMachine.ScheduleEvent(moveToNextStateEvent, 2000);
 
 
     _services.displayManager.Send(

@@ -15,9 +15,11 @@ class ESP32LaserTag;
 class PacedLED;
 class GamePlan;
 class SystemConfig;
+class CombatLRStateMachine;
 
 struct CombatLRServices
 {
+    CombatLRStateMachine& stateMachine;
     SystemConfig& systemConfig;
     DisplayManager& displayManager;
     INavigation& navigation;

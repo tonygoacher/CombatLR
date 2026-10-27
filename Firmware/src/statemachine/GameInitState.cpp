@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include "statemachine/GameInitState.h"
+#include "statemachine/CombatLRStateMachine.h"
+#include "statemachine/GenericEvent.h"
 #include "graphics/DisplayManager.h"
 #include "graphics/DisplayBackgroundCommand.h"
 #include "IZoom.h"
@@ -25,23 +27,30 @@
 
 GameInitState::GameInitState(CombatLRServices& stateData)
 :
- _stateData(stateData), _textPacer(true)
+ _services(stateData)
 {
     Serial.println("GameInitState::GameInitState");
-    _textPacer.SetPace(1000);
 }
 
+
+
+void GameInitState::SetCountdown()
+{
+
+    GenericEvent  countdownTimer(GameInitState::Countdown);
+    _services.stateMachine.ScheduleEvent(countdownTimer, oneSecondsInms);
+}
 
 
 void GameInitState::Entry()
 {
     Serial.println("GameInitState::Entry");
-    _stateData.displayManager.Send(
+    _services.displayManager.Send(
     std::unique_ptr<IDisplayCommand>(
         new DisplayBackgroundCommand(
             "/map.bmp")));
      
-    _stateData.zoom.Reset();
+    _services.zoom.Reset();
      Serial.println("!!GameInitState::Entry");
 
 
@@ -52,12 +61,12 @@ void GameInitState::Entry()
 
      
      _textWidget->SetPosition(textPos);
-    _stateData.displayManager.Send(
+    _services.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new AddWidgetCommand(
                     _textWidget)));
 
-    _textPacer.SetPace(1000);            
+    SetCountdown();
 }
 
 
@@ -65,50 +74,52 @@ void GameInitState::Entry()
 
 uint16_t GameInitState::Run()
 {
-    _stateData.systemTime.Update();
+    _services.systemTime.Update();
     
-    if(_stateData.systemTime.GetSeconds() >= _stateData.gamePlan.GetGameDelayTime())
+    if(_services.systemTime.GetSeconds() >= _services.gamePlan.GetGameDelayTime())
     {
         return SystemStates::GameRunning;
     }
 
-    if(_textPacer.Pace())
+    auto event = _services.stateMachine.GetEvent();
+    if(event && event->GetType() == GameInitState::Countdown)
     {
+        SetCountdown();
 
-        Serial.printf("GameInitState T:%d\n", (int)_stateData.systemTime.GetSeconds());
+        Serial.printf("GameInitState T:%d\n", (int)_services.systemTime.GetSeconds());
 
-        uint32_t timeToGameStart = _stateData.gamePlan.GetGameDelayTime() - _stateData.systemTime.GetSeconds();
+        uint32_t timeToGameStart = _services.gamePlan.GetGameDelayTime() - _services.systemTime.GetSeconds();
  
         char newText[64];
 
         sprintf(newText,"%02d:%02d", timeToGameStart/60 , timeToGameStart%60);
 
-        _stateData.displayManager.Send(std::unique_ptr<IDisplayCommand>(new SetTextCommand(UIWidgetIds::CountdownTimer,newText)));
+        _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(new SetTextCommand(UIWidgetIds::CountdownTimer,newText)));
         
             
         if(timeToGameStart == 60)
         {
             Serial.println("T60");
-            _stateData.sounds.Play("/sounds/t60.wav");
+            _services.sounds.Play("/sounds/t60.wav");
         }
 
         if(timeToGameStart == 10)
         {
             Serial.println("T10");
-            _stateData.sounds.Play("/sounds/t10.wav");
+            _services.sounds.Play("/sounds/t10.wav");
         }
 
         if(timeToGameStart <= 5 && timeToGameStart)
         {
-            _stateData.sounds.Play("/sounds/countd.wav");
+            _services.sounds.Play("/sounds/countd.wav");
         }
     }
 
 
-    if(_stateData.navigation.Update())
+    if(_services.navigation.Update())
     {
         
-        NavigationData data = _stateData.navigation.GetData();
+        NavigationData data = _services.navigation.GetData();
 
 
 
@@ -117,34 +128,34 @@ uint16_t GameInitState::Run()
         * GameCoordinate system.
         */
         _playerPosition =
-            _stateData.geoReference.ToGameCoordinate(
+            _services.geoReference.ToGameCoordinate(
                 data.latitude,
                 data.longitude);
              
         
                
-        _stateData.displayManager.Send(
+        _services.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new PlayerPositionCommand(
                     _playerPosition)));
 
-        _stateData.displayManager.Send(
+        _services.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new TurnMapToHeadingCommand(
                     data.heading)));
 
         float zoom = 1.0f;
-        if(_stateData.zoom.GetZoom(zoom))
+        if(_services.zoom.GetZoom(zoom))
         {
             Serial.println(zoom);
-            _stateData.displayManager.Send(
+            _services.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new ZoomCommand(
                     zoom)));    
         }       
     }       
 
-    _stateData.zoneEngine.Update(0);
+    _services.zoneEngine.Update(0);
                     
 
     return SystemStates::GameInit;  
@@ -153,7 +164,9 @@ uint16_t GameInitState::Run()
 
 void GameInitState::Exit()
 {
-     _stateData.displayManager.Send(
+    _services.stateMachine.CancelAllEvents();
+    
+     _services.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new RemoveWidgetCommand(
                     _textWidget->GetId())));

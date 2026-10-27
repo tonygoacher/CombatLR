@@ -12,14 +12,10 @@ class WeaponManager;
 class CombatLRStateMachine : public StateEngine
 {
 public:
-    CombatLRStateMachine(CombatLRServices& stateData, WeaponManager& weaponManager);
-    void Init() ;
+    CombatLRStateMachine();
+    void Init(CombatLRServices& services, WeaponManager& weaponManager);
     void Start() override;
 
-private:
-    CombatLRServices& _stateData;
-    WeaponManager& _weaponManager;
-  
 };
 
 
