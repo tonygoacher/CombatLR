@@ -21,6 +21,11 @@ public:
     void Entry() override;
     void Exit() override;
 
+    enum GameInitStateEvents
+    {
+        MoveToNextState,
+    };
+
 private:    
     CombatLRServices& _stateData;
 
