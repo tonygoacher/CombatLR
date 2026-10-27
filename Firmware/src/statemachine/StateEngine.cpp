@@ -26,6 +26,41 @@ void StateEngine::ScheduleEvent(const IEvent& event, uint32_t timeInMs)
 }
 
 
+void StateEngine::CancelEvent(int eventType)
+{
+    for (auto iter = _eventQueue.begin(); iter != _eventQueue.end();)
+    {
+        if (*iter && (*iter)->GetType() == eventType)
+        {
+            iter = _eventQueue.erase(iter);
+        }
+        else
+        {
+            ++iter;
+        }
+    }
+
+    for (auto iter = _scheduledEvents.begin(); iter != _scheduledEvents.end();)
+    {
+        if (iter->event && iter->event->GetType() == eventType)
+        {
+            iter = _scheduledEvents.erase(iter);
+        }
+        else
+        {
+            ++iter;
+        }
+    }
+}
+
+
+void StateEngine::ClearAllEvents()
+{
+    _eventQueue.clear();
+    _scheduledEvents.clear();
+}
+
+
 void StateEngine::PromoteDueEvents(uint32_t now)
 {
     // Signed subtraction makes this comparison safe across millis() rollover,
