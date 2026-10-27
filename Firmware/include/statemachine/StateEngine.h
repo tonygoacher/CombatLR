@@ -23,6 +23,12 @@ public:
     // Delays must be less than 2^31 milliseconds for rollover-safe timing.
     void ScheduleEvent(const IEvent& event, uint32_t timeInMs);
 
+    // Cancel all queued or scheduled events with this event type.
+    void CancelEvent(int eventType);
+
+    // Discard all queued and scheduled events.
+    void ClearAllEvents();
+
     // Transfer ownership of the next available event to the caller.
     // Returns nullptr when no event is ready.
     std::unique_ptr<IEvent> GetEvent();
