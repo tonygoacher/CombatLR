@@ -9,7 +9,7 @@
 #include "countof.h"
 #include "PacedLED.h"
 
-
+/*
 
 AssaultRifle::AssaultRifle( WeaponType type, WeaponConfig& weaponConfig,CombatLRServices& services)
 : Weapon( type, weaponConfig,services),
@@ -321,3 +321,4 @@ const char * const AssaultRifle::GetMagInsertFilename()
 {
     return _weaponConfig.GetClipInsertSampleFilename(_type);
 }
+*/

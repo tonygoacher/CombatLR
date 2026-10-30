@@ -26,14 +26,16 @@ public:
     int GetMagCapacity(WeaponType type) const;
     int GetMaxAmmoReserve(WeaponType type) const;
     int GetDefaultAmmoCount(WeaponType type) const;
-    int GetMaxReload(WeaponType type) const;
     int GetBurst(WeaponType type) const;
     int GetBuildUpTime(WeaponType type) const;
     int GetPostBuildUpShotTime(WeaponType type) const;
+    int GetMaxReload(WeaponType type) const;
     int GetShotPower(WeaponType type) const;
     int GetMuzzleLEDTime(WeaponType type) const;
     int GetNumWeapons();
     IRPowerLevel GetIRPowerLevel(WeaponType type) const;
+    int InterShotTime(WeaponType type) const;
+    bool ManualCockingRequired(WeaponType type) const { return false;}
     
 
 private:
@@ -58,6 +60,7 @@ private:
         int postBuildUpShotTime;
         int shotPower;
         int muzzleLedTime;
+        int interShotTime;
         IRPowerLevel irPowerLevel;
     };
 

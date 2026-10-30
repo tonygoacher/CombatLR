@@ -36,7 +36,8 @@
 	  "maxReload": 200,
 	  "shotPower": 2,
 	  "muzzleLED": 30,
-	  "irPower": 1
+	  "irPower": 1,
+	  "rpm": 300
 	  
     },
     {
@@ -56,7 +57,8 @@
 	  "maxReload": 200,
 	  "shotPower": 3,
 	  "muzzleLED": 30,
-	  "irPower": 1
+	  "irPower": 1,
+	  "rpm": 450
     },
 	{
       "type": 3,
@@ -99,6 +101,7 @@
     },
 	{
       "type": 5,
+	  "burst":1,
 	  "name": "LaserSniper",
       "image": "/weapons/lasersnp.bmp",
       "shoot": "/sounds/lasersnp.wav",
@@ -118,6 +121,7 @@
 	{
       "type": 6,
 	  "name": "Laser",
+	  "burst": 1,
       "image": "/weapons/laser.bmp",
       "shoot": "/sounds/lasersht.wav",
       "clipInsert": "/sounds/insclip.wav",

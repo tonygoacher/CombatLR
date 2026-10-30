@@ -816,5 +816,5 @@ const std::vector<Zone>& GamePlan::GetZones() const
 
 const int GamePlan::GetGameDelayTime() const
 {
-    return _gameDelayTime;
+    return 2;//_gameDelayTime;
 }

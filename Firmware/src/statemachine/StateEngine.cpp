@@ -4,8 +4,8 @@
 #include <utility>
 
 
-StateEngine::StateEngine()
-: _currentState(0)
+StateEngine::StateEngine(const char * name)
+: _currentState(0), _name(name)
 {
     _currentState = _states.end();
 }
@@ -110,12 +110,12 @@ void StateEngine::Run()
                 while(1){};
             }
 
-            Serial.printf("Exiting state %d\n", _currentState->first);
+            Serial.printf("%s Exiting state %d\n", _name.c_str(), _currentState->first);
             _currentState->second.Exit();
 
 
             _currentState = iterNextState;
-            Serial.printf("Entering state %d\n", nextState);
+            Serial.printf("%s Entering state %d\n",_name.c_str(), nextState);
             _currentState->second.Entry();
         }
     }

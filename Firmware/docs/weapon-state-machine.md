@@ -30,7 +30,7 @@ stateDiagram-v2
     Idle --> BuildUp : triggerPressed [ammo > 0 and buildUpMs > 0]
     Idle --> Shoot : triggerPressed [ammo > 0 and buildUpMs == 0]
     Idle --> Empty : [ammo == 0]
-    Idle --> Reload : reloadRequested [ammo < magazineCapacity and not triggerHeld]
+    Idle --> Reload : reloadRequested [ammo < magazineCapacity and not triggerHeld and ammoAvailable > 0]
 
     BuildUp --> Idle : triggerReleased
     BuildUp --> Shoot : buildUpElapsed [triggerHeld and ammo > 0]

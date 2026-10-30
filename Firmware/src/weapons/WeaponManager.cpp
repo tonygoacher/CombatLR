@@ -37,12 +37,11 @@ void WeaponManager::Run()
     {
         if(_state == WMStates::Normal)
         {
-
-            if(_currentWeapon->second->Run())
+            _currentWeapon->second->Run();
+            if(_currentWeapon->second->Updated())
             {
                 ShowLoadout(_currentWeapon);
             }
-
 
             // Left or right button pressed and at least one weapon, move to show mode
             if(_stateData.leftSwitch.Pressed() || _stateData.rightSwitch.Pressed() && _weapons.size() > 0)
@@ -100,11 +99,10 @@ void WeaponManager::Run()
                 {
                     if(_currentWeapon != _weapons.end())
                     {
-                        _currentWeapon->second->Stop();
+                        _currentWeapon->second->Unslung();
                     }
                     
                     _currentWeapon = _displayWeapon;
-                    _currentWeapon->second->Start();
                 
                     _currentWeapon->second->Equip();
                 }                
@@ -138,8 +136,10 @@ void WeaponManager::Init()
 
 void WeaponManager::ShowLoadout(WeaponMap::iterator& weapon)
 {
+  
     uint16_t allAmmo = weapon->second->GetRemainingAmmo();
     uint16_t magAmmo = weapon->second->GetMagAmmo();
+
     char data[16];
     sprintf(data, "%02d :%03d", magAmmo, allAmmo);
 
@@ -185,7 +185,7 @@ bool WeaponManager::InsertWeapon(std::pair<WeaponMap::iterator, bool>& insertRes
             _currentWeapon = _displayWeapon = insertResult.first;
             ShowSelectWeapon();
             Serial.printf("Inserting weapon:%s Type: %d\n", _stateData.weaponConfig.GetName(_currentWeapon->second->GetWeaponType()),static_cast<int>(_currentWeapon->second->GetWeaponType()));
-            _currentWeapon->second->Start();
+            _currentWeapon->second->Init();
             ShowLoadout(_currentWeapon);
             result = true;
             _selectPacer.PacerReset();
@@ -209,9 +209,16 @@ void WeaponManager::AddWeapon(WeaponType type)
     else
     {
         Serial.printf("Adding weapon: %s Type: %d\n", _stateData.weaponConfig.GetName(type), type);
-        std::pair<WeaponMap::iterator, bool> result;
-        result = _weapons.emplace(type, std::make_shared<AssaultRifle>( type, _stateData.weaponConfig,  _stateData));    
-        InsertWeapon(result);
+        if(_weapons.find(type) == _weapons.end())
+        {
+            std::pair<WeaponMap::iterator, bool> result;
+            result = _weapons.emplace(type, std::make_shared<WeaponStateMachine>( type, _stateData));    
+            InsertWeapon(result);
+        }    
+        else
+        {
+            // Simply add ammo here if weapon aleady exists        
+        }            
     }        
 }
 

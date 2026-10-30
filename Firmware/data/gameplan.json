@@ -1,21 +1,28 @@
 {
-  "version": 8,
+  "version": 13,
   "projectName": "fern - Copy",
   "gameDelayTime": 30,
   "zonePercentages": [
     {
       "zone": 0,
-      "allocationPercentage": 80,
+      "allocationPercentage": 40,
       "healthPercentage": 40,
       "ammoPercentage": 40,
       "weaponPercentage": 20
     },
     {
-      "zone": 3,
+      "zone": 1,
       "allocationPercentage": 40,
-      "healthPercentage": 47,
-      "ammoPercentage": 49,
-      "weaponPercentage": 30
+      "healthPercentage": 40,
+      "ammoPercentage": 40,
+      "weaponPercentage": 20
+    },
+    {
+      "zone": 2,
+      "allocationPercentage": 40,
+      "healthPercentage": 55,
+      "ammoPercentage": 40,
+      "weaponPercentage": 20
     }
   ],
   "home": {
@@ -26,9 +33,9 @@
     {
       "eastMetres": 53.25766748962355,
       "northMetres": 34.9897227514712,
-      "radiusMetres": 100,
+      "radiusMetres": 101,
       "startTime": 0,
-      "lifespanSeconds": 120,
+      "lifespanSeconds": 300,
       "pickups": [
         {
           "eastMetres": 101.73478659320928,
@@ -228,8 +235,8 @@
       "eastMetres": 63.05479562759181,
       "northMetres": 3.208633254330563,
       "radiusMetres": 65,
-      "startTime": 100,
-      "lifespanSeconds": 120,
+      "startTime": 240,
+      "lifespanSeconds": 600,
       "pickups": [
         {
           "eastMetres": 102.44928700677033,
@@ -333,8 +340,8 @@
       "eastMetres": 54.02604103441673,
       "northMetres": -27.831562007305447,
       "radiusMetres": 30,
-      "startTime": 200,
-      "lifespanSeconds": 9999999,
+      "startTime": 720,
+      "lifespanSeconds": 10000020,
       "pickups": [
         {
           "eastMetres": 62.594156992743535,

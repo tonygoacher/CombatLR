@@ -1,0 +1,108 @@
+#pragma once
+
+#include "statemachine/weaponstatemachine/WeaponStateMachine.h"
+#include "weapons/WeaponManager.h"
+#include "statemachine/Services.h"
+
+class WeaponBaseState : public State
+{
+public:    
+    WeaponBaseState(CombatLRServices& services, WeaponStateMachine& weaponStateMachine)
+    : _services(services), _weaponStateMachine(weaponStateMachine)
+    {
+
+    }
+ 
+
+protected:
+    CombatLRServices&    _services;
+    WeaponStateMachine& _weaponStateMachine;
+
+};
+
+
+class Idle : public WeaponBaseState
+{
+public:
+    Idle(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
+
+    
+    void Entry() override;
+    uint16_t Run() override;
+    void Exit() override;
+
+};
+
+//////////////////////////////////////////////////////////////////////////////////////
+
+class Shoot : public WeaponBaseState
+{
+public:
+    Shoot(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
+
+    
+    void Entry() override;
+    uint16_t Run() override;
+    void Exit() override;
+private:
+    int ProcessPostShot();
+    void DoShot();
+    int _burstCount;
+};
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+class WaitForTriggerRelease  : public WeaponBaseState
+{
+public:
+    WaitForTriggerRelease(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
+
+    
+    void Entry();
+    uint16_t Run() override;
+    void Exit() ; 
+
+private:
+    static const uint16_t debounceTimeInms = 20;    
+    bool   _debounceTimeElapsed;
+};
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+class Empty  : public WeaponBaseState
+{
+public:
+    Empty(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
+
+    
+    void Entry();
+    uint16_t Run() override;
+    void Exit(){} ; 
+};    
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+class Reload  : public WeaponBaseState
+{
+public:
+    Reload(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
+
+    
+    void Entry();
+    uint16_t Run() override;
+    void Exit(){} ; 
+};  
+
+//////////////////////////////////////////////////////////////////////////////////////
+
+class Cocking  : public WeaponBaseState
+{
+public:
+    Cocking(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
+
+    
+    void Entry();
+    uint16_t Run() override;
+    void Exit(){} ; 
+};  
+

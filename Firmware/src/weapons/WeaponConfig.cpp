@@ -33,6 +33,7 @@ void WeaponConfig::PrintDef(WeaponDefinition& def)
     Serial.printf("Default ammo:    %d\n",def.defaultAmmoCount);
     Serial.printf("Max reload:      %d\n", def.maxReload);
     Serial.printf("Burst:           %d\n", def.burst);
+    Serial.printf("Inter shot time  %d\n", def.interShotTime);    
     Serial.printf("Build up time    %d\n", def.buildUpTime);
     Serial.printf("Post Build time  %d\n", def.postBuildUpShotTime);
     Serial.printf("Shot Power     %d\n", def.shotPower);    
@@ -124,6 +125,17 @@ bool WeaponConfig::Load()
 
         definition.buildUpFilename =
             weaponJson["buildUp"] | "";
+
+            
+        int roundsPerMin =
+            weaponJson["rpm"] | 60;
+        Serial.printf("Rounds/min %d\n", roundsPerMin);
+        if(roundsPerMin == 0)
+        {
+            roundsPerMin = 1;
+        }
+        definition.interShotTime = 60000 / roundsPerMin;         
+        Serial.printf("interShotTime  %d\n",  definition.interShotTime);       
 
         definition.insertClipTime =
             weaponJson["insertClipTime"] | 0;
@@ -313,6 +325,13 @@ int WeaponConfig::GetBurst(WeaponType type) const
     return weapon == nullptr ? 1 : weapon->burst;
 }
 
+
+int WeaponConfig::InterShotTime(
+    WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? 1000 : weapon->interShotTime;
+}
 
 
 const char* WeaponConfig::GetName(WeaponType type) const
