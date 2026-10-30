@@ -129,19 +129,28 @@ bool WeaponConfig::Load()
             
         definition.burst =
             weaponJson["burst"] | 1;
+        if(definition.burst == 0)
+        {
+            definition.burst = 1;
+        }
+
 
             
         int roundsPerMin =
             weaponJson["rpm"] | 0;
-        Serial.printf("Rounds/min %d\n", roundsPerMin);
 
         if(roundsPerMin == 0 || definition.burst == 1)
         {
-            roundsPerMin = 60000;       // This makes the inter shot time 1ms. This would be used of there was no rpm field. Normally for a none auto weapon
+            roundsPerMin = msInOneMinute;       // This makes the inter shot time 1ms. This would be used of there was no rpm field. Normally for a none auto weapon
         }
-        
-        definition.interShotTime = 60000 / roundsPerMin;         
-        Serial.printf("interShotTime  %d\n",  definition.interShotTime);       
+
+        definition.interShotTime = msInOneMinute / roundsPerMin;         
+   
+
+        if(definition.interShotTime < 50)   // IR pulse take ~ 32ms so need to clamp this
+        {
+            definition.interShotTime  = 50;
+        }
 
         definition.insertClipTime =
             weaponJson["insertClipTime"] | 0;

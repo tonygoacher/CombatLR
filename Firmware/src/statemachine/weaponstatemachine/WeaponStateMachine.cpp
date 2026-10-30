@@ -30,6 +30,7 @@ void WeaponStateMachine::Init()
 
 void WeaponStateMachine::Start()
 {
+    CancelAllEvents();
 
     // Preload the shot sample into the RAM cache
     const char *shotSample = _services.weaponConfig.GetShootSampleFilename(_type);

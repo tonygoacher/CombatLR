@@ -8,6 +8,7 @@
 #include "ISounds.h"
 #include "PBSwitch.h"
 #include "PacedLED.h"
+#include "SystemConfig.h"
 
 
 
@@ -81,9 +82,9 @@ void Shoot::DoShot()
 
     LaserTagData tagData;
 
-    tagData.team = 0;
-    tagData.playerId = 0;
-    tagData.shotPowerIndex = 0;     // This is an index into shot power table in weapons.json
+    tagData.team = _services.systemConfig.GetTeamId();
+    tagData.playerId = _services.systemConfig.GetPlayerId();
+    tagData.shotPowerIndex = _weaponStateMachine.GetWeaponType();     // This is an index into the weapons declared in weapons.json.
     _services.laserTag.SetIRPower(_services.weaponConfig.GetIRPowerLevel(_weaponStateMachine.GetWeaponType()));
 
     _services.laserTag.SendLasertagData(tagData);

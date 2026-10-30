@@ -39,6 +39,7 @@ public:
     
 
 private:
+    static const int msInOneMinute = 60000;
     struct WeaponDefinition
     {
         WeaponType type;
