@@ -127,13 +127,19 @@ bool WeaponConfig::Load()
             weaponJson["buildUp"] | "";
 
             
+        definition.burst =
+            weaponJson["burst"] | 1;
+
+            
         int roundsPerMin =
-            weaponJson["rpm"] | 60;
+            weaponJson["rpm"] | 0;
         Serial.printf("Rounds/min %d\n", roundsPerMin);
-        if(roundsPerMin == 0)
+
+        if(roundsPerMin == 0 || definition.burst == 1)
         {
-            roundsPerMin = 1;
+            roundsPerMin = 60000;       // This makes the inter shot time 1ms. This would be used of there was no rpm field. Normally for a none auto weapon
         }
+        
         definition.interShotTime = 60000 / roundsPerMin;         
         Serial.printf("interShotTime  %d\n",  definition.interShotTime);       
 
@@ -143,8 +149,6 @@ bool WeaponConfig::Load()
         definition.cockingTime =  
             weaponJson["cockingTime"] | 0;            
 
-        definition.burst =
-            weaponJson["burst"] | 1;
 
         definition.buildUpTime = 
             weaponJson["buildUpTime"] | 0;        
