@@ -34,9 +34,16 @@ uint16_t Idle::Run()
         return WeaponStateMachine::WeaponStates::EmptyState;
     }
 
-    if(_services.triggerSwitch.Pressed() && _services.weaponConfig.GetBuildUpTime(_weaponStateMachine.GetWeaponType()) == 0)
+    if(_services.triggerSwitch.Pressed())
     {
-        return WeaponStateMachine::WeaponStates::ShootState;
+        if(_services.weaponConfig.GetBuildUpTime(_weaponStateMachine.GetWeaponType()) == 0)
+        {
+            return WeaponStateMachine::WeaponStates::ShootState;
+        }
+        else
+        {
+             return WeaponStateMachine::WeaponStates::BuildUpState;
+        }
     }
 
     if(_services.reloadSwitch.Pressed() && _weaponStateMachine.GetMagAmmo() != _weaponStateMachine.GetMagCapacity() && _weaponStateMachine.GetRemainingAmmo())
@@ -334,3 +341,47 @@ uint16_t Cocking::Run()
     }
     return WeaponStateMachine::WeaponStates::CockingState;
 }            
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+// BUILDUP
+///////////////////////////////////////////////////////////////////////////
+
+BuildUp::BuildUp(CombatLRServices& services, WeaponStateMachine& weaponStateMachine)
+: WeaponBaseState(services, weaponStateMachine)
+{
+
+}
+
+void BuildUp::Entry()
+{
+    int weaponType = _weaponStateMachine.GetWeaponType();
+
+    _services.sounds.Play(_services.weaponConfig.GetBuildUpFilename(weaponType));
+    GenericEvent buildUpTime(WeaponStateMachine::WeaponStateEvents::BuildUpTime);
+    _weaponStateMachine.ScheduleEvent(buildUpTime, _services.weaponConfig.GetBuildUpTime(weaponType));
+}    
+
+uint16_t BuildUp::Run()
+{
+    auto event  = _weaponStateMachine.GetEvent();
+    if(event != nullptr && event->GetType() == WeaponStateMachine::WeaponStateEvents::BuildUpTime)
+    {
+        return WeaponStateMachine::WeaponStates::ShootState;
+    }
+
+    if(!_services.triggerSwitch.Read())
+    {
+        return WeaponStateMachine::WeaponStates::IdleState;
+    }
+
+    return WeaponStateMachine::WeaponStates::BuildUpState;
+}
+
+
+void BuildUp::Exit()
+{
+    _services.sounds.Stop();
+    _weaponStateMachine.CancelEvent(WeaponStateMachine::WeaponStateEvents::BuildUpTime);
+}

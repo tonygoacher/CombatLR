@@ -37,7 +37,7 @@
 	  "shotPower": 2,
 	  "muzzleLED": 30,
 	  "irPower": 1,
-	  "rpm": 300
+	  "rpm": 500
 	  
     },
     {
@@ -62,7 +62,7 @@
     },
 	{
       "type": 3,
-	  "burst": 1,
+	  "burst": 5,
 	  "name": "Blaster",
       "image": "/weapons/blaster.bmp",
       "shoot": "/sounds/blaster.wav",
@@ -77,7 +77,8 @@
 	  "maxReload": 200,
 	  "shotPower": 10,
 	  "muzzleLED": 30,
-	  "irPower": 1
+	  "irPower": 1,
+	  "rpm": 500
 	  
     },
 	{
@@ -125,6 +126,7 @@
       "image": "/weapons/laser.bmp",
       "shoot": "/sounds/lasersht.wav",
       "clipInsert": "/sounds/insclip.wav",
+	  "buildUp": "/sounds/laserbuild.wav",
       "cocking": "/sounds/reload.wav",
       "empty": "/sounds/empty.wav",
 	  "buildUpTime": 2264,

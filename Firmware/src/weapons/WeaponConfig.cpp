@@ -126,7 +126,6 @@ bool WeaponConfig::Load()
         definition.buildUpFilename =
             weaponJson["buildUp"] | "";
 
-            
         definition.burst =
             weaponJson["burst"] | 1;
         if(definition.burst == 0)

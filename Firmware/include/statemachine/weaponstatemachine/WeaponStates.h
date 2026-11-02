@@ -106,3 +106,15 @@ public:
     void Exit(){} ; 
 };  
 
+/////////////////////////////////////////////////////////////////////////////
+
+class BuildUp  : public WeaponBaseState
+{
+public:
+    BuildUp(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
+
+    
+    void Entry();
+    uint16_t Run() override;
+    void Exit(); 
+};  

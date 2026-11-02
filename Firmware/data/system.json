@@ -6,7 +6,11 @@
     "gpsBaudrate": 38400,
     "gpsType": 0,
     "wifi": [
-                {
+        {
+            "ssid": "TGHS",
+            "password": "OiTheGah"
+        },
+                { 
             "ssid": "TGTABLET",
             "password": "OiTheGah"
         },

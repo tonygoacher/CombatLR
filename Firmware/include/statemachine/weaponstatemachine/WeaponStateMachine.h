@@ -40,6 +40,7 @@ public:
         TriggerDebounce,       
         MagInsertTime, 
         CockingTime,
+        BuildUpTime,
     };
 private:
     bool _updated;    
