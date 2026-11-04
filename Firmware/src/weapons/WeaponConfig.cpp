@@ -33,9 +33,12 @@ void WeaponConfig::PrintDef(WeaponDefinition& def)
     Serial.printf("Default ammo:    %d\n",def.defaultAmmoCount);
     Serial.printf("Max reload:      %d\n", def.maxReload);
     Serial.printf("Burst:           %d\n", def.burst);
+    Serial.printf("Inter shot time  %d\n", def.interShotTime);    
     Serial.printf("Build up time    %d\n", def.buildUpTime);
     Serial.printf("Post Build time  %d\n", def.postBuildUpShotTime);
-    Serial.printf("Shot Power     %d\n", def.shotPower);    
+    Serial.printf("Shot Power       %d\n", def.shotPower);    
+    Serial.printf("Manual Cocking   %d\n", def.manualCocking);  
+    Serial.printf("Counted Reload   %d\n", def.countedReload);  
 
 }
 
@@ -125,14 +128,41 @@ bool WeaponConfig::Load()
         definition.buildUpFilename =
             weaponJson["buildUp"] | "";
 
+        definition.burst =
+            weaponJson["burst"] | 1;
+        if(definition.burst == 0)
+        {
+            definition.burst = 1;
+        }
+
+        definition.manualCocking =
+            weaponJson["manualCocking"] == 1;
+
+        definition.countedReload =
+            weaponJson["countedReload"] == 1;
+            
+        int roundsPerMin =
+            weaponJson["rpm"] | 0;
+
+        if(roundsPerMin == 0 || definition.burst == 1)
+        {
+            roundsPerMin = msInOneMinute;       // This makes the inter shot time 1ms. This would be used of there was no rpm field. Normally for a none auto weapon
+        }
+
+        definition.interShotTime = msInOneMinute / roundsPerMin;         
+   
+
+        if(definition.interShotTime < 50)   // IR pulse take ~ 32ms so need to clamp this
+        {
+            definition.interShotTime  = 50;
+        }
+
         definition.insertClipTime =
             weaponJson["insertClipTime"] | 0;
 
         definition.cockingTime =  
             weaponJson["cockingTime"] | 0;            
 
-        definition.burst =
-            weaponJson["burst"] | 1;
 
         definition.buildUpTime = 
             weaponJson["buildUpTime"] | 0;        
@@ -314,6 +344,13 @@ int WeaponConfig::GetBurst(WeaponType type) const
 }
 
 
+int WeaponConfig::InterShotTime(
+    WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? 1000 : weapon->interShotTime;
+}
+
 
 const char* WeaponConfig::GetName(WeaponType type) const
 {
@@ -375,4 +412,20 @@ IRPowerLevel WeaponConfig::GetIRPowerLevel(WeaponType type) const
 {
     const WeaponDefinition* weapon = Find(type);
     return weapon == nullptr ? IRPowerLevel::IRPowerLow : weapon->irPowerLevel;
+}
+
+
+
+
+bool WeaponConfig::GetManualCocking(WeaponType type) const
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? false : weapon->manualCocking;
+}
+
+
+bool WeaponConfig::GetCountedReload(WeaponType type) const
+{
+      const WeaponDefinition* weapon = Find(type);
+      return weapon == nullptr ? false : weapon->countedReload;
 }

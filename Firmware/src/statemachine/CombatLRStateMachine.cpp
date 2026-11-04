@@ -17,6 +17,7 @@
 
 
 CombatLRStateMachine::CombatLRStateMachine()
+: StateEngine("GameStateMachine")
 {
     
 }

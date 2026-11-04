@@ -26,17 +26,22 @@ public:
     int GetMagCapacity(WeaponType type) const;
     int GetMaxAmmoReserve(WeaponType type) const;
     int GetDefaultAmmoCount(WeaponType type) const;
-    int GetMaxReload(WeaponType type) const;
     int GetBurst(WeaponType type) const;
     int GetBuildUpTime(WeaponType type) const;
     int GetPostBuildUpShotTime(WeaponType type) const;
+    int GetMaxReload(WeaponType type) const;
     int GetShotPower(WeaponType type) const;
     int GetMuzzleLEDTime(WeaponType type) const;
+    bool GetManualCocking(WeaponType type) const; 
+    bool GetCountedReload(WeaponType type) const;
     int GetNumWeapons();
     IRPowerLevel GetIRPowerLevel(WeaponType type) const;
+    int InterShotTime(WeaponType type) const;
+
     
 
 private:
+    static const int msInOneMinute = 60000;
     struct WeaponDefinition
     {
         WeaponType type;
@@ -47,6 +52,7 @@ private:
         std::string cockingFilename;
         std::string emptyFilename;
         std::string buildUpFilename;
+        bool countedReload;
         int insertClipTime;
         int cockingTime;
         int magCapacity;
@@ -54,10 +60,12 @@ private:
         int defaultAmmoCount;
         int maxReload;
         int burst;
+        bool manualCocking;
         int buildUpTime;
         int postBuildUpShotTime;
         int shotPower;
         int muzzleLedTime;
+        int interShotTime;
         IRPowerLevel irPowerLevel;
     };
 
@@ -70,4 +78,5 @@ private:
 
     IRPowerLevel ConvertToPowerLevel(int powerLevel) const;
 };
+
 

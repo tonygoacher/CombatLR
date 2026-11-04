@@ -44,9 +44,13 @@ public:
         _type(type),
         _colour(TFT_WHITE)
     {
+        Serial.printf("Creating widget %X\n", this);
     }
 
-    virtual ~Widget() {};
+    virtual ~Widget() 
+    {
+        Serial.printf("Destroying widget %X\n", this);
+    };
 
 
     /*
