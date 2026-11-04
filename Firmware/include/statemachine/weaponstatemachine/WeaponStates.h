@@ -25,12 +25,9 @@ class Idle : public WeaponBaseState
 {
 public:
     Idle(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
-
-    
     void Entry() override;
-    uint16_t Run() override;
     void Exit() override;
-
+    uint16_t Run() override;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +100,7 @@ public:
     
     void Entry() override;
     uint16_t Run() override;
-    void Exit(){} ; 
+    void Exit() ; 
 };  
 
 /////////////////////////////////////////////////////////////////////////////
@@ -127,7 +124,24 @@ public:
     ManualCocking(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
 
     
-    void Entry() override{};
+    void Entry() override;
     uint16_t Run() override;
     void Exit() override{}; 
+};  
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+
+class CountedReload  : public WeaponBaseState
+{
+public:
+    CountedReload(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
+
+    
+    void Entry() override;
+    uint16_t Run() override;
+    void Exit() override; 
+private:
+    void  RoundInsert();
 };  

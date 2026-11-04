@@ -32,7 +32,8 @@ public:
     int GetMaxReload(WeaponType type) const;
     int GetShotPower(WeaponType type) const;
     int GetMuzzleLEDTime(WeaponType type) const;
-    bool GetManualCocking(WeaponType type); 
+    bool GetManualCocking(WeaponType type) const; 
+    bool GetCountedReload(WeaponType type) const;
     int GetNumWeapons();
     IRPowerLevel GetIRPowerLevel(WeaponType type) const;
     int InterShotTime(WeaponType type) const;
@@ -51,6 +52,7 @@ private:
         std::string cockingFilename;
         std::string emptyFilename;
         std::string buildUpFilename;
+        bool countedReload;
         int insertClipTime;
         int cockingTime;
         int magCapacity;
@@ -61,7 +63,7 @@ private:
         bool manualCocking;
         int buildUpTime;
         int postBuildUpShotTime;
-         int shotPower;
+        int shotPower;
         int muzzleLedTime;
         int interShotTime;
         IRPowerLevel irPowerLevel;

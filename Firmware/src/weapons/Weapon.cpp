@@ -31,10 +31,8 @@ uint16_t Weapon::GetDefaultAmmoCount()
 
 
 
-void Weapon::CompleteReload()   // Shift from remaining ammo into mag given mag capcity
+void Weapon::PerformReload(uint16_t required)   // Shift from remaining ammo into mag given mag capcity
 {
-    uint16_t required = GetMagCapacity() - _magAmmo;
-
     Serial.println("Complete reload");
     Serial.printf("Res: %d Req: %d \n", _reserveAmmo, required);
     if (_reserveAmmo >= required)
@@ -50,6 +48,20 @@ void Weapon::CompleteReload()   // Shift from remaining ammo into mag given mag 
     Serial.printf("Mag: %d\n", _magAmmo);
 
 }
+
+void Weapon::CompleteReload()   // Shift from remaining ammo into mag given mag capcity
+{
+    uint16_t required = GetMagCapacity() - _magAmmo;
+
+    PerformReload(required);
+}
+
+
+void Weapon::MoveToMag(uint16_t rounds)
+{
+    PerformReload(rounds);
+}
+
 
 
 uint16_t Weapon::GetMaxAmmoReserve()

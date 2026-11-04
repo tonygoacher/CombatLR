@@ -38,6 +38,7 @@ void WeaponConfig::PrintDef(WeaponDefinition& def)
     Serial.printf("Post Build time  %d\n", def.postBuildUpShotTime);
     Serial.printf("Shot Power       %d\n", def.shotPower);    
     Serial.printf("Manual Cocking   %d\n", def.manualCocking);  
+    Serial.printf("Counted Reload   %d\n", def.countedReload);  
 
 }
 
@@ -137,7 +138,8 @@ bool WeaponConfig::Load()
         definition.manualCocking =
             weaponJson["manualCocking"] == 1;
 
-
+        definition.countedReload =
+            weaponJson["countedReload"] == 1;
             
         int roundsPerMin =
             weaponJson["rpm"] | 0;
@@ -415,8 +417,15 @@ IRPowerLevel WeaponConfig::GetIRPowerLevel(WeaponType type) const
 
 
 
-bool WeaponConfig::GetManualCocking(WeaponType type)
+bool WeaponConfig::GetManualCocking(WeaponType type) const
 {
     const WeaponDefinition* weapon = Find(type);
     return weapon == nullptr ? false : weapon->manualCocking;
+}
+
+
+bool WeaponConfig::GetCountedReload(WeaponType type) const
+{
+      const WeaponDefinition* weapon = Find(type);
+      return weapon == nullptr ? false : weapon->countedReload;
 }

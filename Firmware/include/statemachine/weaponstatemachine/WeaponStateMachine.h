@@ -32,6 +32,7 @@ public:
         CockingState,
         EmptyState,
         ReloadState,
+        CountedReloadState,
     };
 
     enum WeaponStateEvents
@@ -41,6 +42,7 @@ public:
         MagInsertTime, 
         CockingTime,
         BuildUpTime,
+        CountedReloadRoundInsertTime,
     };
 private:
     bool _updated;    

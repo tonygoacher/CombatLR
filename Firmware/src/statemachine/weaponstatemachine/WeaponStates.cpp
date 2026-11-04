@@ -273,19 +273,29 @@ void Reload::Entry()
 {
     Serial.println("Entering RELOAD state");
 
-    const char *magInsert = _services.weaponConfig.GetClipInsertSampleFilename(_weaponStateMachine.GetWeaponType());
-    if(magInsert != nullptr)
+    // If a counted reload is required, do nothing here and move to counted reload state in Run()
+    if(!_services.weaponConfig.GetCountedReload(_weaponStateMachine.GetWeaponType()))
     {
-        _services.sounds.Play(magInsert);
+        const char *magInsert = _services.weaponConfig.GetClipInsertSampleFilename(_weaponStateMachine.GetWeaponType());
+        if(magInsert != nullptr)
+        {
+            _services.sounds.Play(magInsert);
+        }
+
+        GenericEvent magInsertTimer(WeaponStateMachine::WeaponStateEvents::MagInsertTime);
+        _weaponStateMachine.ScheduleEvent(magInsertTimer, _services.weaponConfig.GetInsertTime(_weaponStateMachine.GetWeaponType()));
     }
-
-    GenericEvent magInsertTimer(WeaponStateMachine::WeaponStateEvents::MagInsertTime);
-    _weaponStateMachine.ScheduleEvent(magInsertTimer, _services.weaponConfig.GetInsertTime(_weaponStateMachine.GetWeaponType()));
-
 }
 
 uint16_t Reload::Run()
 {
+    if(_services.weaponConfig.GetCountedReload(_weaponStateMachine.GetWeaponType()))
+    {
+        Serial.println("Counted reload required");
+        // Counted reload is required, move immediately to that state
+        return WeaponStateMachine::WeaponStates::CountedReloadState;       
+    }
+
     auto event = _weaponStateMachine.GetEvent();
     if(event != nullptr)
     {
@@ -342,7 +352,10 @@ uint16_t Cocking::Run()
     return WeaponStateMachine::WeaponStates::CockingState;
 }            
 
-
+void Cocking::Exit()
+{
+    _weaponStateMachine.CancelAllEvents();
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // BUILDUP
@@ -356,6 +369,7 @@ BuildUp::BuildUp(CombatLRServices& services, WeaponStateMachine& weaponStateMach
 
 void BuildUp::Entry()
 {
+    Serial.println("Entering BUILD_UP state");
     int weaponType = _weaponStateMachine.GetWeaponType();
 
     _services.sounds.Play(_services.weaponConfig.GetBuildUpFilename(weaponType));
@@ -383,7 +397,7 @@ uint16_t BuildUp::Run()
 void BuildUp::Exit()
 {
     _services.sounds.Stop();
-    _weaponStateMachine.CancelEvent(WeaponStateMachine::WeaponStateEvents::BuildUpTime);
+    _weaponStateMachine.CancelAllEvents();
 }
 
 
@@ -397,6 +411,11 @@ ManualCocking:: ManualCocking(CombatLRServices& services, WeaponStateMachine& we
     
 }
 
+void ManualCocking::Entry()
+{
+    Serial.println("Entering MANUAL_COCKING");
+}
+
 uint16_t ManualCocking::Run()
 {
     if(_services.reloadSwitch.Pressed())
@@ -404,5 +423,79 @@ uint16_t ManualCocking::Run()
         return WeaponStateMachine::WeaponStates::CockingState;
     }
 
+    if(_services.triggerSwitch.Pressed())
+    {
+        const char* emptySample = _services.weaponConfig.GetEmptyFilename(_weaponStateMachine.GetWeaponType());
+        if(emptySample != nullptr)
+        {
+            _services.sounds.Play(emptySample);
+        }
+    }
+
     return WeaponStateMachine::WeaponStates::ManualCockingRequired;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+// Counted reload
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+
+CountedReload::CountedReload(CombatLRServices& services, WeaponStateMachine& weaponStateMachine)
+: WeaponBaseState(services, weaponStateMachine)
+{
+    
+}
+
+void CountedReload::Entry()
+{
+    Serial.println("Entering COUNTED_RELOAD state");
+    Serial.print("Max reload ");Serial.println(_weaponStateMachine.GetSpaceInMag());
+    if(_weaponStateMachine.GetSpaceInMag())
+    {
+        RoundInsert();  // Rounds need to be added sgtart the timer and play the initial sample
+    }
+}
+
+void CountedReload::RoundInsert()
+{
+    const char *magInsert = _services.weaponConfig.GetClipInsertSampleFilename(_weaponStateMachine.GetWeaponType());
+    if(magInsert != nullptr)
+    {
+        _services.sounds.Play(magInsert);
+    }
+    GenericEvent countedReloadRoundTime(WeaponStateMachine::WeaponStateEvents::CountedReloadRoundInsertTime);
+    _weaponStateMachine.ScheduleEvent(countedReloadRoundTime, _services.weaponConfig.GetInsertTime(_weaponStateMachine.GetWeaponType()));  
+}
+
+uint16_t CountedReload::Run()
+{
+    if(_weaponStateMachine.GetReserveAndMagAmmo() == 0)  // If no ammo available then go straight to empty
+    {
+        return WeaponStateMachine::WeaponStates::EmptyState;
+    }
+
+    auto event = _weaponStateMachine.GetEvent();
+    if(event != nullptr && event->GetType() == WeaponStateMachine::WeaponStateEvents::CountedReloadRoundInsertTime) // Timer fired
+    {
+
+        _weaponStateMachine.MoveToMag(1);   // Add a single round to the mag
+        _weaponStateMachine.SetUpdated();   // This triggers a display update
+
+
+        if(_weaponStateMachine.GetSpaceInMag() && _weaponStateMachine.GetRemainingAmmo())    // If any more rounds can be added and there are rounds to add
+        {
+            RoundInsert();
+        }
+        else
+        {
+            return WeaponStateMachine::WeaponStates::CockingState;
+        }
+    }
+    return WeaponStateMachine::WeaponStates::CountedReloadState;
+}
+
+
+
+void CountedReload::Exit()
+{
+    _weaponStateMachine.CancelAllEvents();
 }

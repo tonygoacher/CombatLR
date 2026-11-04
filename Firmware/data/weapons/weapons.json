@@ -152,7 +152,7 @@
       "cocking": "/sounds/shotcock.wav",
 	  "manualCocking": 1,
       "empty": "/sounds/empty.wav",
-      "insertClipTime": 2400,
+      "insertClipTime": 600,
 	  "cockingTime":553,
 	  "magCapacity": 6,
 	  "maxAmmoReserve": 24,
@@ -160,7 +160,8 @@
 	  "maxReload": 6,
 	  "shotPower": 20,
 	  "muzzleLED": 200,
-	  "irPower": 1
+	  "irPower": 1,
+	  "countedReload": 1
     }
   ]
 }
