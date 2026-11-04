@@ -16,10 +16,7 @@ class AssaultRifle : public Weapon
 public:
     AssaultRifle(WeaponType type, WeaponConfig& weaponConfig,CombatLRServices& services);
     
-    bool Run() override;
     void AddAmmo(uint16_t addAmmo) override;
-    void Start() override;
-    void Stop() override;
     const char * const GetFilename() override;
     void Equip();
 

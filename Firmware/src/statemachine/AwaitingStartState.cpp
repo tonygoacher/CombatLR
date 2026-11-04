@@ -300,7 +300,6 @@ uint16_t AwaitingStartState::Run()
             Serial.println("Closing");
             return SystemStates::GameInit;   
         }
-        Serial.println("Awaiting network clear");
         return SystemStates::AwaitingStart;   
     }
     

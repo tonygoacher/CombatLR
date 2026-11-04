@@ -2,11 +2,12 @@
 #include "weapons/Weapon.h"
 #include "weapons/WeaponConfig.h"
 #include "graphics/TextureManager.h"
+#include  "statemachine/Services.h"
 #include "countof.h"
 
 
-Weapon::Weapon(WeaponType type, WeaponConfig& weaponConfig, CombatLRServices& services)
-:    _services(services), _magAmmo(0), _type(type), _weaponConfig(weaponConfig)
+Weapon::Weapon(WeaponType type,  CombatLRServices& services)
+:    _services(services), _magAmmo(0), _type(type)
 {
     _reserveAmmo = GetDefaultAmmoCount();
     CompleteReload();
@@ -18,22 +19,20 @@ Weapon::Weapon(WeaponType type, WeaponConfig& weaponConfig, CombatLRServices& se
 
 uint16_t Weapon::GetMaxReload()
 {
-    return _weaponConfig.GetMaxReload(_type);
+    return _services.weaponConfig.GetMaxReload(_type);
 }
 
 
 
 uint16_t Weapon::GetDefaultAmmoCount()
 {
-    return _weaponConfig.GetDefaultAmmoCount(_type);
+    return _services.weaponConfig.GetDefaultAmmoCount(_type);
 }
 
 
 
-void Weapon::CompleteReload()   // Shift from remaining ammo into mag given mag capcity
+void Weapon::PerformReload(uint16_t required)   // Shift from remaining ammo into mag given mag capcity
 {
-    uint16_t required = GetMagCapacity() - _magAmmo;
-
     Serial.println("Complete reload");
     Serial.printf("Res: %d Req: %d \n", _reserveAmmo, required);
     if (_reserveAmmo >= required)
@@ -50,15 +49,43 @@ void Weapon::CompleteReload()   // Shift from remaining ammo into mag given mag 
 
 }
 
+void Weapon::CompleteReload()   // Shift from remaining ammo into mag given mag capcity
+{
+    uint16_t required = GetMagCapacity() - _magAmmo;
+
+    PerformReload(required);
+}
+
+
+void Weapon::MoveToMag(uint16_t rounds)
+{
+    PerformReload(rounds);
+}
+
+
 
 uint16_t Weapon::GetMaxAmmoReserve()
 {
-    return _weaponConfig.GetMaxAmmoReserve(_type);
+    return _services.weaponConfig.GetMaxAmmoReserve(_type);
 }
 
 
 
 uint16_t Weapon::GetMagCapacity()
 {
-    return _weaponConfig.GetMagCapacity(_type);
+    return _services.weaponConfig.GetMagCapacity(_type);
 }
+
+
+void Weapon::TakeShot()
+{
+    if(_magAmmo > 0)
+    {
+        _magAmmo--;
+    }
+    else
+    {
+        _magAmmo = 0;
+    }
+}
+

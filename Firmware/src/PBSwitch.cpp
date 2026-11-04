@@ -4,6 +4,7 @@
 PBSwitch::PBSwitch(bool oneShot) {
     _oneShot = oneShot;
     _port = 255; // Indicates uninitialized
+
     _debouncedState = false;
     _lastDebouncedState = false;
     _lastDebounceTime = 0;
@@ -17,51 +18,65 @@ PBSwitch::PBSwitch(uint8_t port, bool oneShot) : PBSwitch(oneShot) {
 void PBSwitch::Init(uint8_t port) {
     _port = port;
     pinMode(_port, INPUT_PULLUP);
-    
+
     // Initialize state based on current pin status
     _debouncedState = (digitalRead(_port) == LOW);
     _lastDebouncedState = _debouncedState;
+
+    _lastDebounceTime = millis();
 }
 
+// Read instantaneous physical pin state
 bool PBSwitch::RawRead() {
     if (_port == 255) return false;
-    
-    // Assumes INPUT_PULLUP (LOW means the button is pressed down)
-    return (digitalRead(_port) == LOW); 
+
+    // INPUT_PULLUP: LOW means pressed
+    return (digitalRead(_port) == LOW);
 }
 
-bool PBSwitch::Pressed() {
+// Update and return debounced physical state
+bool PBSwitch::UpdateDebounce() {
     if (_port == 255) return false;
 
-    // Read the current physical state of the pin (LOW = pressed)
     bool currentRawPressed = (digitalRead(_port) == LOW);
 
     if (currentRawPressed) {
-        // IMMEDIATE ON: Register as pressed immediately and reset the debounce timer
+        // IMMEDIATE ON
         _lastDebounceTime = millis();
         _debouncedState = true;
-    } else {
-        // DEBOUNCED OFF: Only register as released if it has been physically 
-        // unpressed for longer than the debounce delay
+    }
+    else {
+        // DEBOUNCED OFF
         if ((millis() - _lastDebounceTime) > _debounceDelay) {
             _debouncedState = false;
         }
     }
 
-    bool isPressed = false;
+    return _debouncedState;
+}
+
+// Read debounced state without consuming one-shot transition
+bool PBSwitch::Read() {
+    return UpdateDebounce();
+}
+
+// Read button press (one-shot or continuous)
+bool PBSwitch::Pressed() {
+    bool state = UpdateDebounce();
+
+    bool result;
 
     if (_oneShot) {
-        // Return true ONLY on the exact transition from unpressed to pressed
-        if (_debouncedState && !_lastDebouncedState) {
-            isPressed = true;
-        }
-    } else {
-        // Return true continuously as long as it is considered held down
-        isPressed = _debouncedState;
+        // Return true only on transition from released to pressed
+        result = state && !_lastDebouncedState;
+    }
+    else {
+        // Return true continuously while held
+        result = state;
     }
 
-    // Save the debounced state for the next cycle's edge detection
-    _lastDebouncedState = _debouncedState;
+    // Update edge detection state
+    _lastDebouncedState = state;
 
-    return isPressed;
+    return result;
 }

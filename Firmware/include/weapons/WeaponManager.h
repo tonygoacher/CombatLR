@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <map>
 #include "statemachine/Services.h"
+#include "statemachine/weaponstatemachine/WeaponStateMachine.h"
 #include "Pacer.h"
 
 
@@ -23,7 +24,7 @@ class WeaponManager
 
 
 public:
-    typedef std::map<WeaponType, std::shared_ptr<Weapon>> WeaponMap;
+    typedef std::map<WeaponType, std::shared_ptr<WeaponStateMachine>> WeaponMap;
 
     WeaponManager(CombatLRServices& stateData);
     void Init();
@@ -46,7 +47,7 @@ private:
 
 
 
-    typedef std::pair<WeaponType, std::shared_ptr<Weapon>> WeaponPair;
+    typedef std::pair<WeaponType, std::shared_ptr<WeaponStateMachine>> WeaponPair;
     WeaponMap _weapons;
     WeaponMap::iterator _currentWeapon;
     WeaponMap::iterator _displayWeapon;

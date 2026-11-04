@@ -2,6 +2,7 @@
 
 #include "IEvent.h"
 #include "State.h"
+#include <string>
 
 #include <cstdint>
 #include <deque>
@@ -12,8 +13,9 @@
 class StateEngine
 {
 public:
-    StateEngine();
+    StateEngine(const char * name);
     virtual void Start() = 0;
+    
     void Run();
 
     // Events are cloned, so the caller retains ownership of the original.
@@ -52,4 +54,6 @@ protected:
     std::vector<ScheduledEvent> _scheduledEvents;
 
     static const int FirstState = 0;
+
+    std::string _name;
 };

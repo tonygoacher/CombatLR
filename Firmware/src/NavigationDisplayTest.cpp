@@ -106,7 +106,7 @@ namespace
     MAX98357ASounds sounds(LittleFS,BCLK,LRC,I2S_DATA);
     NavigationData data;
     Pacer zoneUpdatePacer(true);
-    PBSwitch triggerSwitch(Ports::TRIGGER, false);
+    PBSwitch triggerSwitch(Ports::TRIGGER, true);
     PBSwitch reloadSwitch(Ports::RELOAD, true);
     PBSwitch leftSwitch(Ports::LEFT, true);
     PBSwitch zoomSwitch(Ports::ZOOM, true);
