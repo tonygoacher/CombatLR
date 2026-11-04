@@ -128,7 +128,7 @@ int Shoot::ProcessPostShot()
     }
 
     // If there is any burst left, and the trigger is down and we have ammo then do another shot
-    if(_burstCount !=0 &&  _weaponStateMachine.GetMagAmmo() && _services.triggerSwitch.RawRead())
+    if(_burstCount !=0 &&  _weaponStateMachine.GetMagAmmo() && _services.triggerSwitch.Read())
     {
         DoShot();  
         return WeaponStateMachine::WeaponStates::ShootState;
@@ -199,9 +199,9 @@ uint16_t WaitForTriggerRelease::Run()
         // Trigger is stably released.
         if (_weaponStateMachine.GetMagAmmo() > 0)
         {
-            if(_services.weaponConfig.ManualCockingRequired(_weaponStateMachine.GetWeaponType()))
+            if(_services.weaponConfig.GetManualCocking(_weaponStateMachine.GetWeaponType()))
             {
-                return WeaponStateMachine::WeaponStates::AwaitCockingState;
+                return WeaponStateMachine::WeaponStates::ManualCockingRequired;
             }
             return WeaponStateMachine::WeaponStates::IdleState;
         }
@@ -384,4 +384,25 @@ void BuildUp::Exit()
 {
     _services.sounds.Stop();
     _weaponStateMachine.CancelEvent(WeaponStateMachine::WeaponStateEvents::BuildUpTime);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//MANUAL COCKING
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+ManualCocking:: ManualCocking(CombatLRServices& services, WeaponStateMachine& weaponStateMachine)
+: WeaponBaseState(services, weaponStateMachine)
+{
+    
+}
+
+uint16_t ManualCocking::Run()
+{
+    if(_services.reloadSwitch.Pressed())
+    {
+        return WeaponStateMachine::WeaponStates::CockingState;
+    }
+
+    return WeaponStateMachine::WeaponStates::ManualCockingRequired;
 }

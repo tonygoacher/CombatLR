@@ -28,7 +28,7 @@ public:
         BuildUpState,
         ShootState,
         WaitForTriggerReleaseState,
-        AwaitCockingState,
+        ManualCockingRequired,
         CockingState,
         EmptyState,
         ReloadState,

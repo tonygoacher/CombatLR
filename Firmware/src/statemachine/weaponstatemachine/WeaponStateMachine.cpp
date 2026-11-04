@@ -24,6 +24,7 @@ void WeaponStateMachine::Init()
     _states.insert(StateMapEntry(WeaponStateMachine::WeaponStates::EmptyState, *new Empty(_services, *this)));
     _states.insert(StateMapEntry(WeaponStateMachine::WeaponStates::CockingState, *new Cocking(_services, *this)));
     _states.insert(StateMapEntry(WeaponStateMachine::WeaponStates::BuildUpState, *new BuildUp(_services, *this)));
+    _states.insert(StateMapEntry(WeaponStateMachine::WeaponStates::ManualCockingRequired, *new ManualCocking(_services, *this)));    
     Start();
 }
 

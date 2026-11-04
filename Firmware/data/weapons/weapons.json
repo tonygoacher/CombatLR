@@ -140,6 +140,27 @@
 	  "shotPower": 50,
 	  "muzzleLED": 800,
 	  "irPower": 1
+    },
+
+	{
+      "type": 7,
+	  "name": "Shotgun",
+	  "burst": 1,
+      "image": "/weapons/shotgun.bmp",
+      "shoot": "/sounds/shotshoot.wav",
+      "clipInsert": "/sounds/shotreload.wav",
+      "cocking": "/sounds/shotcock.wav",
+	  "manualCocking": 1,
+      "empty": "/sounds/empty.wav",
+      "insertClipTime": 2400,
+	  "cockingTime":553,
+	  "magCapacity": 6,
+	  "maxAmmoReserve": 24,
+	  "defaultAmmoCount": 8,
+	  "maxReload": 6,
+	  "shotPower": 20,
+	  "muzzleLED": 200,
+	  "irPower": 1
     }
   ]
 }

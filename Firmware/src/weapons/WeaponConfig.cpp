@@ -36,7 +36,8 @@ void WeaponConfig::PrintDef(WeaponDefinition& def)
     Serial.printf("Inter shot time  %d\n", def.interShotTime);    
     Serial.printf("Build up time    %d\n", def.buildUpTime);
     Serial.printf("Post Build time  %d\n", def.postBuildUpShotTime);
-    Serial.printf("Shot Power     %d\n", def.shotPower);    
+    Serial.printf("Shot Power       %d\n", def.shotPower);    
+    Serial.printf("Manual Cocking   %d\n", def.manualCocking);  
 
 }
 
@@ -132,6 +133,9 @@ bool WeaponConfig::Load()
         {
             definition.burst = 1;
         }
+
+        definition.manualCocking =
+            weaponJson["manualCocking"] == 1;
 
 
             
@@ -406,4 +410,13 @@ IRPowerLevel WeaponConfig::GetIRPowerLevel(WeaponType type) const
 {
     const WeaponDefinition* weapon = Find(type);
     return weapon == nullptr ? IRPowerLevel::IRPowerLow : weapon->irPowerLevel;
+}
+
+
+
+
+bool WeaponConfig::GetManualCocking(WeaponType type)
+{
+    const WeaponDefinition* weapon = Find(type);
+    return weapon == nullptr ? false : weapon->manualCocking;
 }

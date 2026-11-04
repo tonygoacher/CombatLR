@@ -32,10 +32,11 @@ public:
     int GetMaxReload(WeaponType type) const;
     int GetShotPower(WeaponType type) const;
     int GetMuzzleLEDTime(WeaponType type) const;
+    bool GetManualCocking(WeaponType type); 
     int GetNumWeapons();
     IRPowerLevel GetIRPowerLevel(WeaponType type) const;
     int InterShotTime(WeaponType type) const;
-    bool ManualCockingRequired(WeaponType type) const { return false;}
+
     
 
 private:
@@ -57,9 +58,10 @@ private:
         int defaultAmmoCount;
         int maxReload;
         int burst;
+        bool manualCocking;
         int buildUpTime;
         int postBuildUpShotTime;
-        int shotPower;
+         int shotPower;
         int muzzleLedTime;
         int interShotTime;
         IRPowerLevel irPowerLevel;
@@ -74,4 +76,5 @@ private:
 
     IRPowerLevel ConvertToPowerLevel(int powerLevel) const;
 };
+
 

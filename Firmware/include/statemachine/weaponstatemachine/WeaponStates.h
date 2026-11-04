@@ -58,9 +58,9 @@ public:
     WaitForTriggerRelease(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
 
     
-    void Entry();
+    void Entry()override;
     uint16_t Run() override;
-    void Exit() ; 
+    void Exit() override; 
 
 private:
     static const uint16_t debounceTimeInms = 20;    
@@ -75,7 +75,7 @@ public:
     Empty(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
 
     
-    void Entry();
+    void Entry() override;
     uint16_t Run() override;
     void Exit(){} ; 
 };    
@@ -88,7 +88,7 @@ public:
     Reload(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
 
     
-    void Entry();
+    void Entry() override;
     uint16_t Run() override;
     void Exit(){} ; 
 };  
@@ -101,7 +101,7 @@ public:
     Cocking(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
 
     
-    void Entry();
+    void Entry() override;
     uint16_t Run() override;
     void Exit(){} ; 
 };  
@@ -114,7 +114,20 @@ public:
     BuildUp(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
 
     
-    void Entry();
+    void Entry() override;
     uint16_t Run() override;
-    void Exit(); 
+    void Exit() override;
+};  
+
+/////////////////////////////////////////////////////////////////////////////
+
+class ManualCocking  : public WeaponBaseState
+{
+public:
+    ManualCocking(CombatLRServices& services, WeaponStateMachine& weaponStateMachine);
+
+    
+    void Entry() override{};
+    uint16_t Run() override;
+    void Exit() override{}; 
 };  
