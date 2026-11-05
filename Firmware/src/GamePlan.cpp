@@ -662,7 +662,7 @@ bool GamePlan::Load(const char* filename)
         zone.lifespanSeconds =
             zoneJson["lifespanSeconds"].as<uint32_t>();
 
-        zone.id = ZoneWidgetIdBase + _zones.size();
+        zone.id = ZoneWidgetIdBase + _zones.size(); // Zones.size() used here to create a zero based index for the zone ID We add ZoneWidgetIdBase as an offsey to keep zobneIDs aways from map widget IDs
 
         JsonVariantConst pickupsValue = zoneJson["pickups"];
 

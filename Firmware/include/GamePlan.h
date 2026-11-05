@@ -42,7 +42,7 @@ public:
     const std::vector<Zone>& GetZones() const;
     const int GetGameDelayTime() const;
 
-    static constexpr int ZoneWidgetIdBase = 0x80000;
+    static constexpr int ZoneWidgetIdBase = 0xE000; // This should be below the GUI widget IDs so they are always on top
 private:
 
     String _projectName;

@@ -290,12 +290,11 @@ float ST7789VDisplay::GetRotation() const
 void ST7789VDisplay::RemovedWidget(uint32_t widgetId)
 {
     WidgetCollection::iterator widgetIterator = _widgets.find(widgetId);
-    Serial.printf("Display removing widget %d\n", widgetId);
+    Serial.printf("Display removing widget 0x%x\n", widgetId);
     if(widgetIterator != _widgets.end())
     {
         Serial.println("Found");
-        free(widgetIterator->second);
-        _widgets.erase(widgetIterator);
+         _widgets.erase(widgetIterator);
     }
     else
     {
@@ -346,15 +345,19 @@ float ST7789VDisplay::GetMapZoom() const
  * =============================================================
  */
 
-uint16_t ST7789VDisplay::AddWidget(
-    Widget* widget)
+uint16_t ST7789VDisplay::AddWidget(std::unique_ptr<Widget> widget)
 {
     uint16_t id = 0;
+   
     if (widget != nullptr)
     {
-        Serial.printf("Adding widget %lx Type %d to renderer\n", widget->GetId(), widget->GetType());
-        _widgets.insert(std::pair<uint16_t , Widget*>( widget->GetId(), widget));
+        Serial.printf("Adding widget %lx Type 0x%x 0x%x to renderer\n", widget->GetId(), widget->GetType(), widget.get());
+        _widgets.insert(std::pair<uint16_t , std::unique_ptr<Widget>>(widget->GetId(), std::move(widget)));
     }    
+    else
+    {
+        Serial.printf("ST7789VDisplay Adding widget NULL");
+    }
     return id;
 }
 
@@ -370,10 +373,9 @@ bool ST7789VDisplay::RemoveWidget(
 {
     bool result = false;
     Serial.printf("Removeing widget %d\n", widgetId);
-    std::map<uint16_t, Widget*>::iterator widgetIter = _widgets.find(widgetId);
+    std::map<uint16_t, std::unique_ptr<Widget>>::iterator widgetIter = _widgets.find(widgetId);
     if(widgetIter != _widgets.end())
     {
-        delete (widgetIter->second);
         _widgets.erase(widgetIter);
         Serial.println("Removed");
         result = true;
@@ -1208,7 +1210,7 @@ void ST7789VDisplay::SetText(uint32_t widgetId,  const std::string& newText)
       {           
             if(widgetIterator->second->GetType() == WidgetType::Text)
             {
-                 TextWidget* textWidget = static_cast<TextWidget*> (widgetIterator->second);
+                 TextWidget* textWidget = static_cast<TextWidget*> (widgetIterator->second.get());
                  textWidget->SetText(newText.c_str());
             }
             else
@@ -1244,7 +1246,7 @@ void ST7789VDisplay::SetWidgetTexture(uint32_t widgetId, const char * const file
       {           
             if(widgetIterator->second->GetType() == WidgetType::Texture)
             {
-                 TextureWidget* textureWidget = static_cast<TextureWidget*> (widgetIterator->second);
+                 TextureWidget* textureWidget = static_cast<TextureWidget*> (widgetIterator->second.get());
                  textureWidget->SetTexture(filename);
             }
             else

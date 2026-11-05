@@ -3,10 +3,6 @@
 
 
 
-TextWidget::~TextWidget()
-{
-    Serial.printf("TextWidget %d destroyed\n", GetId());
-}
 
 
 void TextWidget::Render(IDisplayContext& context)

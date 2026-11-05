@@ -109,19 +109,16 @@ void AwaitingStartState::EntryCommon()
     
     _services.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
-                new AddWidgetCommand(
-                    textWidget)));    
+                new AddWidgetCommand(textWidget)));    
 
     WidgetPosition ssidTextPos={TextX, TextY+20};                    
      textWidget  = new TextWidget(UIWidgetIds::SSIDString, "", ssidTextPos,TextFont,MC_DATUM, TFT_WHITE, TFT_BLACK, 1);
     
     _services.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
-                new AddWidgetCommand(
-                    textWidget)));   
+                new AddWidgetCommand(textWidget)));   
     
-    WiFi.mode(
-        WIFI_STA);
+    WiFi.mode(WIFI_STA);
 
     _wifiIndex = _services.systemConfig.GetWifiMostRecent();
     _connectionShown = false;
