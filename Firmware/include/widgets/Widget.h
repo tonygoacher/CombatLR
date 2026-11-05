@@ -44,12 +44,12 @@ public:
         _type(type),
         _colour(TFT_WHITE)
     {
-        Serial.printf("Creating widget %X\n", this);
+        Serial.printf("Creating widgetID: 0x%x %X\n", _id,this);
     }
 
     virtual ~Widget() 
     {
-        Serial.printf("Destroying widget %X\n", this);
+        Serial.printf("Destroying widget 0x%x  %X\n", _id , this);
     };
 
 

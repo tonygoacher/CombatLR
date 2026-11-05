@@ -40,8 +40,7 @@ public:
     float GetMapZoom() const override;
 
 
-    uint16_t AddWidget(
-        Widget* widget) override;
+    uint16_t  AddWidget(std::unique_ptr<Widget> widget);
 
 
     bool RemoveWidget(
@@ -78,8 +77,8 @@ public:
 
 private:
 
-    typedef std::pair<uint16_t, Widget*>  WidgetEntry;
-    typedef  std::map<uint16_t , Widget*>WidgetCollection;
+    typedef std::pair<uint16_t, std::unique_ptr<Widget>>  WidgetEntry;
+    typedef  std::map<uint16_t , std::unique_ptr<Widget>> WidgetCollection;
     WidgetCollection _widgets;
 
 

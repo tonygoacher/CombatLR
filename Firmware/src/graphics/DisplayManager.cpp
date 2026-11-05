@@ -109,6 +109,13 @@ bool DisplayManager::Begin()
 bool DisplayManager::Send(
     std::unique_ptr<IDisplayCommand> command)
 {
+    if(command->GetType() == DisplayCommandType::RemoveWidget)
+    {
+        uint16_t id = static_cast<const RemoveWidgetCommand*>(command.get())->GetWidgetId();
+
+
+        Serial.printf("Queing remove widget 0x%x\n", id);
+    }
     if (!command ||
         _queueMutex == nullptr)
     {
@@ -209,7 +216,7 @@ void DisplayManager::DisplayTask()
     }
 }
 
-void DisplayManager::ProcessCommand(const IDisplayCommand* command)
+void DisplayManager::ProcessCommand( IDisplayCommand* command)
 {
    switch (command->GetType())
     {
@@ -265,9 +272,7 @@ void DisplayManager::ProcessCommand(const IDisplayCommand* command)
         case DisplayCommandType::AddWidget:
         {
             AddWidget(
-                static_cast<
-                    const AddWidgetCommand*>(
-                        command));
+                static_cast<AddWidgetCommand*>(command));
 
            
         }
@@ -403,15 +408,16 @@ void DisplayManager::ConfigureMap(const ConfigureMapCommand * command)
     _display->SetMapConfigData(command->GetMapConfigData());
 }
 
-void DisplayManager::AddWidget(const AddWidgetCommand* command)
+void DisplayManager::AddWidget(AddWidgetCommand* command)
 {
     if (command == nullptr)
         return;
         
-
-    if(command->GetWidget() != nullptr )
+    std::unique_ptr<Widget> widgetPtr= command->GetWidget();    
+    if(widgetPtr != nullptr )
     {
-        _display->AddWidget(command->GetWidget());
+        Serial.printf("DisplayManager::AddWidget %x\n", widgetPtr.get());
+        _display->AddWidget(std::move(widgetPtr));
         return;
     }    
        
@@ -427,7 +433,7 @@ void DisplayManager::AddWidget(const AddWidgetCommand* command)
                     command->GetTextureFilename().c_str(),  
                     command->GetPickupType());
 
-            _display->AddWidget(widget);
+            _display->AddWidget(std::unique_ptr<Widget>(widget));
 
             break;
         }
@@ -447,14 +453,14 @@ void DisplayManager::AddZone(const AddZoneCommand* command)
             command->GetRadius(),
             command->GetColour());
 
-    _display->AddWidget(widget);
+    _display->AddWidget(std::unique_ptr<Widget>(widget));
 }
 
 void DisplayManager::RemoveWidget(const RemoveWidgetCommand* command)
 {
-       if (command == nullptr)
+     if (command == nullptr)
         return;
-        
+    Serial.printf("Processing remove widget 0x%x\n", command->GetWidgetId());
     _display->RemovedWidget(command->GetWidgetId()); 
 }
 

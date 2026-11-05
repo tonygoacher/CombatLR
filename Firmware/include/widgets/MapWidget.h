@@ -15,8 +15,7 @@ public:
         const GameCoordinate& position,
         const char* filename,
         PickupTypes pickupType);
-
-    ~MapWidget();        
+  
 
     WidgetCoordinateSpace
         GetCoordinateSpace() const override;

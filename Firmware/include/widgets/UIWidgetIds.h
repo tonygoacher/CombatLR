@@ -1,18 +1,19 @@
 #pragma once
 
 
+// GUI widget Ids have their own ID range to separate them from Zonewidgets and MapWidgets
 
 enum UIWidgetIds
 {
-    GPStatus = 0x4000,
-    CountdownTimer = 0x4001,
-    SelectWeapon = 0x4002,   // The weapon on the weapon select
-    AmmoDisplay = 0x4003,           // The ammo of the current weapon
-    PlayerHealth = 0x4004,
-    GPSInfo = 0x4005,
-    WiFiStatus = 0x4006,
-    TeamID = 0x4007,
-    IPAdrString= 0x4008,
-    SSIDString= 0x4009,
-    GunIDString = 0x400a
+    GPStatus = 0xF000,
+    CountdownTimer = 0xF001,
+    SelectWeapon = 0xF002,   // The weapon on the weapon select
+    AmmoDisplay = 0xF003,           // The ammo of the current weapon
+    PlayerHealth = 0xF004,
+    GPSHdop = 0xF005,
+    WiFiStatus = 0xF006,
+    TeamID = 0xF007,
+    IPAdrString= 0xF008,
+    SSIDString= 0xF009,
+    GunIDString = 0xF00a
 };
