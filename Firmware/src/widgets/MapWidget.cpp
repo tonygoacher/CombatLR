@@ -194,6 +194,4 @@ const int16_t top =
 }
 
 
-MapWidget::~MapWidget()
-{
-}
+

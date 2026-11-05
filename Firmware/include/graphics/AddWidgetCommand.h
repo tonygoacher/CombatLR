@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 #include "IDisplayCommand.h"
 #include "widgets/Widget.h"
 #include "GameCoordinate.h"
@@ -28,13 +29,15 @@ public:
         
     }
 
+    Widget* PeekWidget() { return _widget == nullptr ? nullptr : _widget.get();}
+
 
 
     AddWidgetCommand(
         Widget* widget)
     :
         IDisplayCommand(DisplayCommandType::AddWidget),
-        _widget(widget)
+        _widget(std::unique_ptr<Widget>( widget))
     {};
 
     uint32_t GetId() const
@@ -62,13 +65,13 @@ public:
         return _textureFilename;
     }
 
-    Widget* GetWidget() const  { return _widget;}
+    std::unique_ptr<Widget> GetWidget() { return std::move(_widget);}
 
 private:
     uint32_t _id;
     WidgetType _widgetType;
     GameCoordinate _position;
     const std::string _textureFilename;
-    Widget* _widget;
+    std::unique_ptr<Widget> _widget;
     PickupTypes _pickupType;
 };

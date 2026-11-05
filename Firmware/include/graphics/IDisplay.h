@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "GameCoordinate.h"
 #include <string>
+#include <memory>
 
 class Widget;
 
@@ -58,8 +59,7 @@ public:
      *
      * Display does not take ownership of the widget.
      */
-    virtual uint16_t AddWidget(
-        Widget* widget) = 0;
+    virtual uint16_t AddWidget(std::unique_ptr<Widget> widget) = 0;
 
     virtual bool RemoveWidget(
         uint16_t widgetId) = 0;

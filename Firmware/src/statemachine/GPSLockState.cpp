@@ -39,7 +39,7 @@ uint16_t GPSLockState::Run()
         SetUpdateTimer();
         char gpsInfo[128];
         snprintf(gpsInfo, 128, "HDOP:%.3f", _services.navigation.GetHDOP());
-        SetTextCommand* setText = new SetTextCommand(UIWidgetIds::GPSInfo, gpsInfo);
+        SetTextCommand* setText = new SetTextCommand(UIWidgetIds::GPSHdop, gpsInfo);
         _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(setText));
     }
     if(_services.navigation.HasPosition())
@@ -51,33 +51,36 @@ uint16_t GPSLockState::Run()
 
 void GPSLockState::Entry()
 {
-
+    Serial.println("GPSLockState::Entry()");
     _services.displayManager.Send(
     std::unique_ptr<IDisplayCommand>(
         new DisplayBackgroundCommand(
             "/logo.bmp")));
 
+            /*
     WidgetPosition p(0,0);
 
     GPSStatusWidget* statusWidget = new GPSStatusWidget(UIWidgetIds::GPStatus,  
          _services.displayManager.GetTextureManager(),p, _services.navigation);
-    AddWidgetCommand* command =
-    new AddWidgetCommand(statusWidget);     // NOTE GPS widget stays onscreen so not removed in ::Exit()
 
-   _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(command));
+    AddWidgetCommand* command =
+    new AddWidgetCommand( statusWidget);     // NOTE GPS widget stays onscreen so not removed in ::Exit() 
+    
+
+   _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(command)); */
 
     WidgetPosition gpsText(TextX,TextY);
-    TextWidget* textWidget = new TextWidget(UIWidgetIds::GPSInfo,"",gpsText,TextFont, MC_DATUM, TFT_WHITE, TFT_BLACK, TextZoom );
-    command = new AddWidgetCommand(textWidget);
+    TextWidget* textWidget = new TextWidget(UIWidgetIds::GPSHdop,"",gpsText,TextFont, MC_DATUM, TFT_WHITE, TFT_BLACK, TextZoom );
+    AddWidgetCommand* command = new AddWidgetCommand(textWidget);
     _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(command));
 
     SetUpdateTimer();
-
+        Serial.println("GPSLockState::Entry()---DONE");
 }
 void GPSLockState::Exit()
 {
      _services.stateMachine.CancelAllEvents();
-    RemoveWidgetCommand* remove = new RemoveWidgetCommand(UIWidgetIds::GPSInfo);
+    RemoveWidgetCommand* remove = new RemoveWidgetCommand(UIWidgetIds::GPSHdop);
      _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(remove));   
 
 }

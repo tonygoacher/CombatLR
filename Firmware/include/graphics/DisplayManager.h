@@ -53,14 +53,14 @@ private:
 
     void DisplayTask();
 
-    void ProcessCommand(const IDisplayCommand* command);
+    void ProcessCommand(IDisplayCommand* command);
 
     void SetZoom(const ZoomCommand*);
     void SetPlayerPosition(const PlayerPositionCommand*);
     void TurnMapToHeading(const TurnMapToHeadingCommand*);
     void DisplayBackground(const DisplayBackgroundCommand *);
     void ConfigureMap(const ConfigureMapCommand *);
-    void AddWidget(const AddWidgetCommand* command);
+    void AddWidget( AddWidgetCommand* command);
     void AddZone(const AddZoneCommand* command);
     void RemoveWidget(const RemoveWidgetCommand* command);
     void SetWidgetColour(const SetWidgetColourCommand* command);

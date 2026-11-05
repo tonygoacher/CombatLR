@@ -14,7 +14,6 @@ namespace
     constexpr uint32_t NO_LIFESPAN = 0;
     constexpr uint32_t ZONE_IMMINENT_SECONDS = 20;
     constexpr uint32_t ZONE_TRANSITION_UPDATE_MS = 100;
-    constexpr uint32_t ZONE_TRANSITION_FLASH_MS = 250;
 }
 
 ZoneEngine::ZoneEngine(
@@ -998,6 +997,7 @@ void ZoneEngine::ActivatePickup(
 void ZoneEngine::DeactivatePickup(
     uint32_t pickupId)
 {
+    Serial.println("Deactivate Pickup");
     ActiveGameObject* object =
         FindActiveObject(
             pickupId);
@@ -1038,15 +1038,15 @@ void ZoneEngine::RemoveActiveObject(
 void ZoneEngine::RemoveZoneObjects(
     uint32_t zoneId)
 {
-    const size_t zoneIndex =
-        zoneId &
-        ~GamePlan::ZoneWidgetIdBase;
+    Serial.println("RemoveZoneObjects");
+    const size_t zoneIndex = zoneId &~GamePlan::ZoneWidgetIdBase;   // Recover the base zone ID
 
     const std::vector<Zone>& zones =
         _gamePlan.GetZones();
 
     if (zoneIndex >= zones.size())
     {
+        Serial.printf("ZoneEngine::RemoveZoneObjects calculated zone index too big");
         return;
     }
 

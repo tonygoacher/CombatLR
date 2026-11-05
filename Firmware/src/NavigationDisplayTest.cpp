@@ -200,6 +200,8 @@ void NavigationDisplayTestBegin()
    
     sounds.Begin();
 
+    services.laserTag.Init();
+
     displayManager.Begin();
     weaponConfig.Init();
 

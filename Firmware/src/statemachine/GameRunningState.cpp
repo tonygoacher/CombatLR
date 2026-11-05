@@ -147,9 +147,11 @@ uint16_t GameRunningState::Run()
 
 void GameRunningState::Entry()
 {
+
     _weaponManager.Init();
+
     _player.InitHealth();
-    _stateData.laserTag.Init();
+
     PlayerHealthWidget*  healthDisplay = new PlayerHealthWidget(UIWidgetIds::PlayerHealth, _player, HealthX, HealthY, HealthW, HealthH);
 
     _stateData.displayManager.Send(
@@ -160,6 +162,7 @@ void GameRunningState::Entry()
     
     _stateData.zoneEngine.AddZoneEventListener(this);
     _stateData.zoneEngine.AddPickupEventListener(this);
+
 
     _weaponManager.AddWeapon(7);
 
