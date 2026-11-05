@@ -46,91 +46,39 @@ ESP32LaserTag::ESP32LaserTag(
  */
 void ESP32LaserTag::Init()
 {
-    /*
-     * ---------------------------------------------------------
-     * IR transmitter
-     * ---------------------------------------------------------
-     *
-     * Using the LEDC API provided by the installed framework:
-     *
-     *     ledcSetup()
-     *     ledcAttachPin()
-     *     ledcWrite(channel, duty)
-     */
-
-
+    // 1. Setup IR Transmitter Pin & LEDC PWM
+    pinMode(_transmitPin, OUTPUT);
+    digitalWrite(_transmitPin, LOW);
     ledcAttachChannel(_transmitPin, CARRIER_FREQUENCY, PWM_RESOLUTION, TX_LEDC_CHANNEL);
-
-
-
     CarrierOff();
 
+    // 2. Setup IR Receiver Pin
+    pinMode(_receivePin, INPUT_PULLUP);
 
-    /*
-     * ---------------------------------------------------------
-     * IR receiver
-     * ---------------------------------------------------------
-     *
-     * TSOP4856 is open collector and active LOW.
-     */
-    pinMode(
-        _receivePin,
-        INPUT_PULLUP);
-
-
-    /*
-     * ---------------------------------------------------------
-     * Receive timeout timer
-     * ---------------------------------------------------------
-     *
-     * Timer clock:
-     *
-     *     80 MHz / 80 = 1 MHz
-     *
-     * Therefore:
-     *
-     *     1 timer tick = 1 microsecond
-     */
-    _rxTimer = timerBegin(1000000);
-
-
+    // 3. Setup Hardware Timer (1 MHz = 1us per tick)
+     _rxTimer = timerBegin(1000000);
 
     if (_rxTimer == nullptr)
     {
+        Serial.println("LT: Timer init failed!");
         return;
     }
 
-
-    /*
-     * Associate this object with the timer ISR.
-     */
     _timerInstance = this;
 
+    timerAttachInterrupt(_rxTimer, RxTimeoutISR);
 
-    timerAttachInterrupt(
-        _rxTimer,
-        RxTimeoutISR);
+    // Stop timer until armed by the GPIO edge ISR
+    timerStop(_rxTimer);
 
-
-
-
-    /*
-     * ---------------------------------------------------------
-     * IR receiver interrupt
-     * ---------------------------------------------------------
-     *
-     * We need both edges:
-     *
-     * FALLING = start of carrier mark
-     * RISING  = end of carrier mark
-     */
+    // 4. Attach GPIO Edge Interrupt
     attachInterruptArg(
         _receivePin,
         RxEdgeISR,
         this,
         CHANGE);
+    
 }
-
 
 /*
  * =============================================================
@@ -175,7 +123,7 @@ bool ESP32LaserTag::GetLasertagData(
  * =============================================================
  */
 
-void IRAM_ATTR ESP32LaserTag::RxEdgeISR(
+void  ESP32LaserTag::RxEdgeISR(
     void* arg)
 {
     ESP32LaserTag* instance =
@@ -191,7 +139,7 @@ void IRAM_ATTR ESP32LaserTag::RxEdgeISR(
  * =============================================================
  */
 
-void IRAM_ATTR ESP32LaserTag::RxTimeoutISR()
+void  ESP32LaserTag::RxTimeoutISR()
 {
     if (_timerInstance != nullptr)
     {
@@ -206,7 +154,7 @@ void IRAM_ATTR ESP32LaserTag::RxTimeoutISR()
  * =============================================================
  */
 
-void ESP32LaserTag::HandleRxTimeout()
+void  ESP32LaserTag::HandleRxTimeout()
 {
     /*
      * We were waiting for another edge and it didn't arrive.
@@ -223,7 +171,7 @@ void ESP32LaserTag::HandleRxTimeout()
  * =============================================================
  */
 
-void ESP32LaserTag::ResetReceiver()
+void  ESP32LaserTag::ResetReceiver()
 {
     _rxState = RxState::Idle;
 
@@ -241,7 +189,7 @@ void ESP32LaserTag::ResetReceiver()
  * =============================================================
  */
 
-void ESP32LaserTag::ArmRxTimeout()
+void  ESP32LaserTag::ArmRxTimeout()
 {
     if (_rxTimer == nullptr)
     {
@@ -296,10 +244,11 @@ void ESP32LaserTag::ArmRxTimeout()
  */
 void  ESP32LaserTag::HandleRxEdge()
 {
-    const uint32_t now = micros();
+    // esp_timer_get_time() returns 64-bit microsecond timestamp safely inside IRAM
+    const uint32_t now = (uint32_t)esp_timer_get_time();
 
-    const bool level =
-        digitalRead(_receivePin);
+    // gpio_get_level is faster and safer inside ISRs than digitalRead
+    const bool level = gpio_get_level((gpio_num_t)_receivePin);
 
 
     /*
