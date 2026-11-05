@@ -33,7 +33,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
 
     private const int DiscoveryIntervalMilliseconds = 2000;
     private const int DiscoveryMissLimit = 5;
-    private const int CommandTimeoutMilliseconds = 2000;
+    private const int CommandTimeoutMilliseconds = 500;
     private const int CommandMaxAttempts = 3;
     private const int CommandRetryDelayMilliseconds = 100;
 
