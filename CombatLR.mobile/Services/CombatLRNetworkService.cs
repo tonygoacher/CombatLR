@@ -34,7 +34,7 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
     private const int DiscoveryIntervalMilliseconds = 2000;
     private const int DiscoveryMissLimit = 5;
     private const int CommandTimeoutMilliseconds = 2000;
-    private const int CommandConnectRetries = 2;
+    private const int CommandMaxAttempts = 3;
     private const int CommandRetryDelayMilliseconds = 100;
 
     private readonly ConcurrentDictionary<string, CombatLRDevice> _devices = new();
@@ -125,7 +125,8 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         CombatLRAck? ack =
             await SendTcpCommandAsync(
                 device,
-                command);
+                command,
+                sequence);
 
         if (ack is null ||
             !ack.Success)
@@ -162,7 +163,8 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         CombatLRAck? ack =
             await SendTcpCommandAsync(
                 device,
-                command);
+                command,
+                sequence);
 
         if (ack is null ||
             !ack.Success)
@@ -193,7 +195,8 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         CombatLRAck? ack =
             await SendTcpCommandAsync(
                 device,
-                command);
+                command,
+                sequence);
 
         if (ack is null ||
             !ack.Success)
@@ -282,7 +285,8 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
         CombatLRAck? ack =
             await SendTcpCommandAsync(
                 device,
-                command);
+                command,
+                sequence);
 
         if (ack is null ||
             !ack.Success)
@@ -299,21 +303,40 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
 
     private async Task<CombatLRAck?> SendTcpCommandAsync<TCommand>(
         CombatLRDevice device,
-        TCommand command)
+        TCommand command,
+        int expectedSequence)
     {
         if (string.IsNullOrWhiteSpace(device.IpAddress))
             return null;
 
+        // Retry the complete request/ACK exchange, not just connection setup.
+        // The same command and sequence are reused for every attempt.
         for (int attempt = 1;
-             attempt <= CommandConnectRetries;
+             attempt <= CommandMaxAttempts;
              attempt++)
         {
-            bool connected = false;
+            async Task<bool> RetryAsync(string reason)
+            {
+                if (attempt >= CommandMaxAttempts)
+                {
+                    Console.WriteLine(
+                        $"CombatLR TCP: {reason} for {device.DeviceId}; " +
+                        "no attempts remaining.");
+                    return false;
+                }
+
+                Console.WriteLine(
+                    $"CombatLR TCP: {reason} for {device.DeviceId}; " +
+                    $"retrying ({attempt + 1}/{CommandMaxAttempts})...");
+
+                await Task.Delay(CommandRetryDelayMilliseconds);
+                return true;
+            }
 
             try
             {
                 Console.WriteLine(
-                    $"CombatLR TCP: attempt {attempt}/{CommandConnectRetries} " +
+                    $"CombatLR TCP: attempt {attempt}/{CommandMaxAttempts} " +
                     $"connecting to {device.DeviceId} " +
                     $"at {device.IpAddress}:4211");
 
@@ -328,14 +351,9 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                     4211,
                     connectTimeout.Token);
 
-                connected = true;
-
                 Console.WriteLine(
                     $"CombatLR TCP: connected to {device.DeviceId}");
 
-                // From this point onward the command may have reached
-                // the ESP32. Do not retry automatically, since doing so
-                // could execute a non-idempotent command twice.
                 using var stream = client.GetStream();
 
                 string json =
@@ -374,8 +392,9 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
 
                 if (string.IsNullOrWhiteSpace(response))
                 {
-                    Console.WriteLine(
-                        $"CombatLR TCP: empty ACK from {device.DeviceId}");
+                    if (await RetryAsync("empty ACK / connection closed"))
+                        continue;
+
                     return null;
                 }
 
@@ -389,6 +408,15 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
                 if (ack is null)
                     return null;
 
+                if (ack.Sequence != expectedSequence)
+                {
+                    Console.WriteLine(
+                        $"CombatLR TCP: ACK sequence mismatch from " +
+                        $"{device.DeviceId}: expected {expectedSequence}, " +
+                        $"received {ack.Sequence}");
+                    return null;
+                }
+
                 return new CombatLRAck
                 {
                     Sequence = ack.Sequence,
@@ -398,40 +426,26 @@ public sealed class CombatLRNetworkService : IAsyncDisposable
             }
             catch (OperationCanceledException ex)
             {
-                if (!connected && attempt < CommandConnectRetries)
-                {
-                    Console.WriteLine(
-                        $"CombatLR TCP: connect timeout for " +
-                        $"{device.DeviceId}, retrying...");
-
-                    await Task.Delay(
-                        CommandRetryDelayMilliseconds);
-
+                if (await RetryAsync($"timeout/cancel ({ex.Message})"))
                     continue;
-                }
 
-                Console.WriteLine(
-                    $"CombatLR TCP: TIMEOUT/CANCEL for " +
-                    $"{device.DeviceId}: {ex.Message}");
                 return null;
             }
             catch (SocketException ex)
             {
-                if (!connected && attempt < CommandConnectRetries)
+                if (await RetryAsync(
+                        $"socket error {ex.SocketErrorCode} ({ex.Message})"))
                 {
-                    Console.WriteLine(
-                        $"CombatLR TCP: socket error while connecting to " +
-                        $"{device.DeviceId}: {ex.SocketErrorCode}; retrying...");
-
-                    await Task.Delay(
-                        CommandRetryDelayMilliseconds);
-
                     continue;
                 }
 
-                Console.WriteLine(
-                    $"CombatLR TCP: SOCKET ERROR for {device.DeviceId}: " +
-                    $"{ex.SocketErrorCode} ({ex.Message})");
+                return null;
+            }
+            catch (IOException ex)
+            {
+                if (await RetryAsync($"I/O error ({ex.Message})"))
+                    continue;
+
                 return null;
             }
             catch (FormatException ex)
