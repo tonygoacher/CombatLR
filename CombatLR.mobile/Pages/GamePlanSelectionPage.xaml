@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="CombatLR.mobile.Pages.GamePlanSelectionPage"
+    BackgroundColor="Black"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid Padding="24" RowDefinitions="Auto,*,Auto">
+        <VerticalStackLayout Grid.Row="0" Spacing="4"
+                             HorizontalOptions="Center" Margin="0,30,0,0">
+            <Label Text="CombatLR" TextColor="White" FontSize="36"
+                   FontAttributes="Bold" HorizontalTextAlignment="Center" />
+            <Label Text="Select game plan" TextColor="LightGray" FontSize="16"
+                   HorizontalTextAlignment="Center" />
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Grid.Row="1" Spacing="14"
+                             VerticalOptions="Center" HorizontalOptions="Center"
+                             WidthRequest="300">
+            <Label Text="GAME PLAN" TextColor="White" FontSize="14"
+                   FontAttributes="Bold" />
+            <Picker x:Name="ProjectPicker" Title="Choose a project"
+                    SelectedIndexChanged="ProjectPicker_SelectedIndexChanged"
+                    TextColor="White" BackgroundColor="#222222"
+                    ItemDisplayBinding="{Binding Name}" />
+            <Label x:Name="PlanInfoLabel" Text="Select a project to continue."
+                   TextColor="LightGray" FontSize="13" />
+            <Button x:Name="ContinueButton" Text="CONTINUE"
+                    FontSize="20" HeightRequest="64"
+                    IsEnabled="False" Clicked="ContinueButton_Clicked" />
+            <Button x:Name="RefreshButton" Text="REFRESH PROJECTS"
+                    FontSize="14" Clicked="RefreshButton_Clicked" />
+        </VerticalStackLayout>
+
+        <Label Grid.Row="2" Text="CombatLR" TextColor="Gray" FontSize="12"
+               HorizontalTextAlignment="Center" Margin="0,0,0,10" />
+    </Grid>
+</ContentPage>

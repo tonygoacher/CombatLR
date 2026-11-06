@@ -14,6 +14,12 @@
                 FontAttributes="Bold"
                 HorizontalOptions="Center" />
 
+            <Label
+                x:Name="SelectedGamePlanLabel"
+                Text="No game plan selected"
+                FontSize="14"
+                HorizontalOptions="Center" />
+
             <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
 
                 <Button
@@ -102,12 +108,13 @@
                     <DataTemplate>
                         <Border
                             Padding="10"
-                            StrokeThickness="1"
+                            Stroke="{Binding PlanHighlightStroke}"
+                            StrokeThickness="{Binding PlanHighlightStrokeThickness}"
                             StrokeShape="RoundRectangle 10"
                             BackgroundColor="{Binding TeamBackgroundColor}">
 
                             <Grid
-                                RowDefinitions="Auto,Auto,Auto,Auto"
+                                RowDefinitions="Auto,Auto,Auto,Auto,Auto"
                                 ColumnDefinitions="*,Auto"
                                 ColumnSpacing="8"
                                 RowSpacing="5">
@@ -173,9 +180,19 @@
                                         HorizontalTextAlignment="End" />
                                 </Grid>
 
+                                <Label
+                                    Grid.Row="3"
+                                    Grid.Column="0"
+                                    Grid.ColumnSpan="2"
+                                    Text="{Binding PlanStatusText}"
+                                    TextColor="{Binding PlanStatusTextColor}"
+                                    FontSize="11"
+                                    FontAttributes="Bold"
+                                    HorizontalTextAlignment="End" />
+
                                 <!-- Controls -->
                                 <HorizontalStackLayout
-                                    Grid.Row="3"
+                                    Grid.Row="4"
                                     Grid.Column="0"
                                     Grid.ColumnSpan="2"
                                     Spacing="6">

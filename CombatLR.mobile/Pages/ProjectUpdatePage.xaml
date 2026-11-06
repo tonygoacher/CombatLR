@@ -28,20 +28,16 @@
                 FontSize="14" />
         </VerticalStackLayout>
 
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <Grid Grid.Row="1">
             <VerticalStackLayout Spacing="2">
-                <Label Text="Game plan folder" TextColor="White" FontAttributes="Bold" />
+                <Label Text="Selected game plan folder" TextColor="White" FontAttributes="Bold" />
                 <Label
                     x:Name="FolderLabel"
-                    Text="No folder selected"
+                    Text="No game plan selected"
                     TextColor="LightGray"
                     FontSize="12"
                     LineBreakMode="TailTruncation" />
             </VerticalStackLayout>
-            <Button
-                Grid.Column="1"
-                Text="CHOOSE"
-                Clicked="ChooseFolderButton_Clicked" />
         </Grid>
 
         <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="10">
