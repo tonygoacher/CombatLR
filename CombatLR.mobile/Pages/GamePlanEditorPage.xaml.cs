@@ -324,14 +324,14 @@ namespace CombatLR.mobile.Pages
                 _savedStateSnapshot = CaptureCurrentStateSnapshot();
 
                 MapInfoLabel.Text =
-                    $"PROJECT: {_selectedGamePlan.ProjectName}\\n" +
-                    $"NEW GAME PLAN\\nVERSION: {_gamePlan.Version}";
+                    $"PROJECT: {_selectedGamePlan.ProjectName}\n" +
+                    $"NEW GAME PLAN\nVERSION: {_gamePlan.Version}";
             }
             catch (Exception ex)
             {
                 await DisplayAlert(
                     "New Game Plan",
-                    $"The game plan could not be cleared.\\n\\n{ex.Message}",
+                    $"The game plan could not be cleared.\n\n{ex.Message}",
                     "OK");
             }
         }
