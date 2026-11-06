@@ -131,6 +131,22 @@ public partial class GameControlPage : ContentPage
     {
         foreach (var device in _networkService.Devices)
         {
+            // Devices in FTP mode are being used for file transfer, not as
+            // active players, so keep them out of the Game Control list.
+            if (device.FtpMode)
+            {
+                var ftpDevice = _devices.FirstOrDefault(
+                    d => d.DeviceId == device.DeviceId);
+
+                if (ftpDevice is not null)
+                {
+                    ftpDevice.PropertyChanged -= Device_PropertyChanged;
+                    _devices.Remove(ftpDevice);
+                }
+
+                continue;
+            }
+
             if (!_devices.Contains(device))
             {
                 _devices.Add(device);
