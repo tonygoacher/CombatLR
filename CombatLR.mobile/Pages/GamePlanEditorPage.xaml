@@ -162,12 +162,6 @@
                     Style="{StaticResource PanelButton}"
                     Clicked="SaveGamePlan_Clicked" />
 
-                <Button
-                    x:Name="LoadButton"
-                    Text="Open"
-                    Style="{StaticResource PanelButton}"
-                    Clicked="LoadGamePlan_Clicked" />
-
                 <Label
                     Text="Start Delay (s)"
                     TextColor="White"
