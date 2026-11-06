@@ -19,6 +19,11 @@ public sealed class SelectedGamePlanService
                               MapDefinition is not null &&
                               MapBitmapPath is not null;
 
+    // True only when the selected project has a persisted gameplan.json.
+    public bool HasSavedGamePlan =>
+        ProjectDirectory is not null &&
+        File.Exists(Path.Combine(ProjectDirectory, "gameplan.json"));
+
     public event EventHandler? SelectionChanged;
 
     public static bool IsValidProjectDirectory(string directory)
