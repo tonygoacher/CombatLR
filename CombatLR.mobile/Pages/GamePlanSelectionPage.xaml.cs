@@ -31,7 +31,7 @@ public partial class GamePlanSelectionPage : ContentPage
             {
                 PlanInfoLabel.Text =
                     "Android storage access is required. Enable “Allow access to manage all files” for CombatLR, then refresh.";
-                RefreshButton.IsEnabled = false;
+                RefreshButton.IsEnabled = true;
                 ContinueButton.IsEnabled = false;
                 return;
             }
@@ -118,8 +118,35 @@ public partial class GamePlanSelectionPage : ContentPage
 #endif
     }
 
-    private void RefreshButton_Clicked(object? sender, EventArgs e)
+    private async void RefreshButton_Clicked(object? sender, EventArgs e)
     {
+#if ANDROID
+        if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.R &&
+            !Android.OS.Environment.IsExternalStorageManager)
+        {
+            var packageUri = Android.Net.Uri.Parse(
+                $"package:{Android.App.Application.Context.PackageName}");
+            var settingsIntent = new Android.Content.Intent(
+                Android.Provider.Settings.ActionManageAppAllFilesAccessPermission,
+                packageUri);
+            var activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity;
+
+            if (activity is null)
+            {
+                await DisplayAlert("Storage Access Required",
+                    "CombatLR could not access the current Android activity. Please try again.",
+                    "OK");
+                return;
+            }
+
+            activity.StartActivity(settingsIntent);
+            await DisplayAlert("Storage Access Required",
+                "Android requires CombatLR to access project files in Documents/CombatLR. " +
+                "Enable “Allow access to manage all files” for CombatLR, return to the app, " +
+                "then press Refresh Projects.",
+                "OK");
+        }
+#endif
         RefreshProjects();
     }
 
