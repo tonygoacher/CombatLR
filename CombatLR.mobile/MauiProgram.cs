@@ -38,6 +38,7 @@ namespace CombatLR.mobile
 
 
             builder.Services.AddSingleton<ModalErrorHandler>();
+            builder.Services.AddSingleton<SelectedGamePlanService>();
 
 
             return builder.Build();

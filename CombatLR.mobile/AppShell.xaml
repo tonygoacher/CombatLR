@@ -7,8 +7,8 @@
     x:Class="CombatLR.mobile.AppShell">
 
     <ShellContent
+        x:Name="RootContent"
         Title="CombatLR"
-        Route="MainPage"
-        ContentTemplate="{DataTemplate pages:MainPage}" />
+        Route="GamePlanSelection" />
 
 </Shell>

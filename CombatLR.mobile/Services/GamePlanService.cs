@@ -21,7 +21,22 @@ public class GamePlanService
         };
     }
 
-    public async Task SaveAsync(GamePlan gamePlan, string filePath)
+    public Task SaveAsync(GamePlan gamePlan, string filePath)
+    {
+        return SaveCoreAsync(gamePlan, filePath, incrementVersion: true);
+    }
+
+    // Used when preparing the currently selected plan for device upload.
+    // Uploading must not itself create a new game plan version.
+    public Task SaveCurrentVersionAsync(GamePlan gamePlan, string filePath)
+    {
+        return SaveCoreAsync(gamePlan, filePath, incrementVersion: false);
+    }
+
+    private static async Task SaveCoreAsync(
+        GamePlan gamePlan,
+        string filePath,
+        bool incrementVersion)
     {
         if (gamePlan is null)
             throw new ArgumentNullException(nameof(gamePlan));
@@ -32,23 +47,36 @@ public class GamePlanService
 
         Directory.CreateDirectory(directory);
 
-        // Increment only when a save is actually attempted. The new version
-        // is written atomically so a failed write does not leave a partial JSON file.
-        var newVersion = Math.Max(0, gamePlan.Version) + 1;
         var originalVersion = gamePlan.Version;
+        var newVersion = incrementVersion
+            ? Math.Max(0, originalVersion) + 1
+            : originalVersion;
+
         gamePlan.Version = newVersion;
         var json = JsonSerializer.Serialize(gamePlan, JsonOptions);
         gamePlan.Version = originalVersion;
 
         var tempPath = filePath + ".tmp";
 
-        await File.WriteAllTextAsync(tempPath, json);
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, json);
 
-        if (File.Exists(filePath))
-            File.Delete(filePath);
+            if (File.Exists(filePath))
+                File.Delete(filePath);
 
-        File.Move(tempPath, filePath);
-        gamePlan.Version = newVersion;
+            File.Move(tempPath, filePath);
+            gamePlan.Version = newVersion;
+        }
+        catch
+        {
+            gamePlan.Version = originalVersion;
+
+            if (File.Exists(tempPath))
+                File.Delete(tempPath);
+
+            throw;
+        }
     }
 
     public async Task<GamePlan> LoadAsync(string filePath)
