@@ -9,9 +9,6 @@ public partial class GameControlPage : ContentPage
     private readonly CombatLRNetworkService _networkService = new();
     private readonly SelectedGamePlanService _selectedGamePlan;
 
-    private const string GameStartPreferenceKey =
-        "CombatLR.GameStartUtc";
-
     private readonly ObservableCollection<CombatLRDevice>
         _devices = new();
 
@@ -192,19 +189,22 @@ public partial class GameControlPage : ContentPage
 
     private void LoadStoredGameStart()
     {
-        _storedGameStartUtc =
-            Preferences.Default.Get(
-                GameStartPreferenceKey,
-                "");
+        var session = new GameSessionService().GetSession(
+            _selectedGamePlan.ProjectName,
+            _selectedGamePlan.GamePlan?.Version ?? -1);
 
-        if (string.IsNullOrWhiteSpace(_storedGameStartUtc))
+        _storedGameStartUtc = session?.StartedAtUtc.UtcDateTime.ToString(
+            "HH:mm:ss",
+            CultureInfo.InvariantCulture);
+
+        if (session is null)
         {
-            GameStartLabel.Text = "GAME START: Not set";
+            GameStartLabel.Text = "GAME START: Not set for this plan";
         }
         else
         {
             GameStartLabel.Text =
-                $"GAME START: {FormatGameStart(_storedGameStartUtc)}";
+                $"GAME START: {FormatGameStart(_storedGameStartUtc!)}";
         }
 
         SetControlButtonsEnabled(_devices.Count > 0);
@@ -378,11 +378,14 @@ public partial class GameControlPage : ContentPage
                 return;
             }
 
-            _storedGameStartUtc = result.GameStart;
+            var session = new GameSessionService().RecordStart(
+                _selectedGamePlan.ProjectName ?? string.Empty,
+                _selectedGamePlan.GamePlan?.Version ?? -1,
+                result.GameStart);
 
-            Preferences.Default.Set(
-                GameStartPreferenceKey,
-                _storedGameStartUtc);
+            _storedGameStartUtc = session.StartedAtUtc.UtcDateTime.ToString(
+                "HH:mm:ss",
+                CultureInfo.InvariantCulture);
 
             GameStartLabel.Text =
                 $"GAME START: {FormatGameStart(_storedGameStartUtc)}";

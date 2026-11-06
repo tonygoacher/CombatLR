@@ -76,6 +76,9 @@ public sealed class SelectedGamePlanService
         var projectName = Path.GetFileName(projectDirectory) ?? string.Empty;
         gamePlan.ProjectName = projectName;
 
+        // A newly selected plan must be explicitly started before progress is available.
+        new GameSessionService().ClearSession();
+
         ProjectDirectory = projectDirectory;
         ProjectName = projectName;
         MapDefinition = mapDefinition;
