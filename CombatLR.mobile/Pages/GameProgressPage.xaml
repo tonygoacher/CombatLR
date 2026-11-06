@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="CombatLR.mobile.Pages.GameProgressPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Game Progress">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="12">
+
+            <Label
+                Text="GAME PROGRESS"
+                FontSize="28"
+                FontAttributes="Bold"
+                HorizontalOptions="Center" />
+
+            <Label
+                x:Name="PlanLabel"
+                FontSize="16"
+                FontAttributes="Bold"
+                HorizontalTextAlignment="Center" />
+
+            <Label
+                x:Name="GameStartLabel"
+                FontSize="13"
+                HorizontalTextAlignment="Center"
+                TextColor="Gray" />
+
+            <Border
+                Padding="10"
+                Stroke="#555555"
+                StrokeThickness="1"
+                StrokeShape="RoundRectangle 10">
+
+                <VerticalStackLayout Spacing="4">
+                    <Label
+                        x:Name="GamePhaseLabel"
+                        Text="WAITING"
+                        FontSize="16"
+                        FontAttributes="Bold"
+                        HorizontalTextAlignment="Center" />
+
+                    <Label
+                        x:Name="ProgressTimerLabel"
+                        Text="00:00"
+                        FontSize="42"
+                        FontAttributes="Bold"
+                        HorizontalTextAlignment="Center" />
+
+                    <Label
+                        x:Name="GameElapsedLabel"
+                        FontSize="14"
+                        HorizontalTextAlignment="Center"
+                        TextColor="Gray" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Label
+                Text="CURRENT MAP"
+                FontSize="18"
+                FontAttributes="Bold" />
+
+            <Label
+                x:Name="MapNameLabel"
+                FontSize="13"
+                TextColor="Gray" />
+
+            <Grid
+                x:Name="MapContainer"
+                HeightRequest="270"
+                BackgroundColor="#202020"
+                >
+
+                <Image
+                    x:Name="MapImage"
+                    Aspect="Fill" />
+
+                <AbsoluteLayout
+                    x:Name="MapOverlay"
+                    InputTransparent="True">
+
+                    <Ellipse
+                        x:Name="ZoneCircle"
+                        Fill="#22FFB300"
+                        Stroke="#FFFFB300"
+                        StrokeThickness="3"
+                        IsVisible="False" />
+
+                    <Border
+                        x:Name="PositionMarker"
+                        WidthRequest="18"
+                        HeightRequest="18"
+                        Stroke="White"
+                        StrokeThickness="2"
+                        BackgroundColor="#E53935"
+                        StrokeShape="RoundRectangle 9"
+                        IsVisible="False" />
+
+                </AbsoluteLayout>
+            </Grid>
+
+            <Label
+                x:Name="LocationLabel"
+                Text="Waiting for GPS position..."
+                FontSize="12"
+                TextColor="Gray"
+                HorizontalTextAlignment="Center" />
+
+            <Label
+                Text="ZONE STATUS"
+                FontSize="18"
+                FontAttributes="Bold" />
+
+            <Grid
+                ColumnDefinitions="*,Auto"
+                RowDefinitions="Auto,Auto,Auto"
+                ColumnSpacing="12"
+                RowSpacing="8">
+
+                <Label Grid.Row="0" Grid.Column="0" Text="Current zone" />
+                <Label
+                    x:Name="CurrentZoneLabel"
+                    Grid.Row="0"
+                    Grid.Column="1"
+                    FontAttributes="Bold"
+                    HorizontalTextAlignment="End" />
+
+                <Label Grid.Row="1" Grid.Column="0" Text="Time left in zone" />
+                <Label
+                    x:Name="TimeLeftLabel"
+                    Grid.Row="1"
+                    Grid.Column="1"
+                    FontAttributes="Bold"
+                    HorizontalTextAlignment="End" />
+
+                <Label Grid.Row="2" Grid.Column="0" Text="Time to next zone" />
+                <Label
+                    x:Name="NextZoneLabel"
+                    Grid.Row="2"
+                    Grid.Column="1"
+                    FontAttributes="Bold"
+                    HorizontalTextAlignment="End" />
+            </Grid>
+
+            <Label
+                x:Name="TransitionLabel"
+                FontSize="14"
+                FontAttributes="Bold"
+                TextColor="#FBC02D"
+                HorizontalTextAlignment="Center" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
