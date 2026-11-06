@@ -69,7 +69,7 @@
                 x:Name="MapContainer"
                 HeightRequest="270"
                 BackgroundColor="#202020"
-                ClipToBounds="True">
+                >
 
                 <Image
                     x:Name="MapImage"
