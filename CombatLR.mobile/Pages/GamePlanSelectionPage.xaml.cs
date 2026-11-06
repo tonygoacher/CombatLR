@@ -75,11 +75,6 @@ public partial class GamePlanSelectionPage : ContentPage
             PlanInfoLabel.Text = $"Could not discover projects:\n{ex.Message}";
             ContinueButton.IsEnabled = false;
         }
-#else
-        PlanInfoLabel.Text =
-            "Project discovery is currently implemented for Android.";
-        RefreshButton.IsEnabled = true;
-        ContinueButton.IsEnabled = false;
 #endif
     }
 
@@ -93,7 +88,6 @@ public partial class GamePlanSelectionPage : ContentPage
         if (ProjectPicker.SelectedItem is not ProjectOption selected)
             return;
 
-#if ANDROID
         ContinueButton.IsEnabled = false;
         RefreshButton.IsEnabled = false;
         try
@@ -112,10 +106,6 @@ public partial class GamePlanSelectionPage : ContentPage
             ContinueButton.IsEnabled = ProjectPicker.SelectedItem is not null;
             RefreshButton.IsEnabled = true;
         }
-#else
-        await DisplayAlert("Game Plan",
-            "Project discovery is currently implemented for Android.", "OK");
-#endif
     }
 
     private async void RefreshButton_Clicked(object? sender, EventArgs e)
