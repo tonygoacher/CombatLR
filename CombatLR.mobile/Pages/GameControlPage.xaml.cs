@@ -7,6 +7,7 @@ namespace CombatLR.mobile.Pages;
 public partial class GameControlPage : ContentPage
 {
     private readonly CombatLRNetworkService _networkService = new();
+    private readonly SelectedGamePlanService _selectedGamePlan;
 
     private const string GameStartPreferenceKey =
         "CombatLR.GameStartUtc";
@@ -16,9 +17,10 @@ public partial class GameControlPage : ContentPage
 
     private string? _storedGameStartUtc;
 
-    public GameControlPage()
+    public GameControlPage(SelectedGamePlanService selectedGamePlan)
     {
         InitializeComponent();
+        _selectedGamePlan = selectedGamePlan;
 
         DevicesView.ItemsSource = _devices;
 
@@ -37,6 +39,7 @@ public partial class GameControlPage : ContentPage
             NetworkService_StartGameAcknowledged;
 
         LoadStoredGameStart();
+        UpdateSelectedGamePlanLabel();
 
         await StartDiscoveryAsync();
     }
@@ -150,6 +153,13 @@ public partial class GameControlPage : ContentPage
     {
         if (e.PropertyName == nameof(CombatLRDevice.IsOnline))
             MainThread.BeginInvokeOnMainThread(UpdateDeviceCount);
+    }
+
+    private void UpdateSelectedGamePlanLabel()
+    {
+        SelectedGamePlanLabel.Text = _selectedGamePlan.GamePlan is null
+            ? "No game plan selected"
+            : $"PLAN: {_selectedGamePlan.ProjectName}  v{_selectedGamePlan.GamePlan.Version}";
     }
 
     private void UpdateDeviceCount()
