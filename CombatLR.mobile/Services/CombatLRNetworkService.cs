@@ -1233,7 +1233,19 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     public bool FtpMode
     {
         get => _ftpMode;
-        set => SetField(ref _ftpMode, value);
+        set
+        {
+            if (SetField(ref _ftpMode, value))
+            {
+                OnPropertyChanged(nameof(DisplayState));
+                OnPropertyChanged(nameof(DisplayStateTextColor));
+                OnPropertyChanged(nameof(PlayerControlsEnabled));
+                OnPropertyChanged(nameof(FriendlyFireButtonEnabled));
+                OnPropertyChanged(nameof(FriendlyFireButtonOpacity));
+                OnPropertyChanged(nameof(TeamBackgroundColor));
+                OnPropertyChanged(nameof(TeamTextColor));
+            }
+        }
     }
 
     [JsonIgnore]
@@ -1291,7 +1303,9 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
                 OnPropertyChanged(nameof(TeamTextColor));
                 OnPropertyChanged(nameof(FriendlyFireButtonEnabled));
                 OnPropertyChanged(nameof(FriendlyFireButtonOpacity));
+                OnPropertyChanged(nameof(PlayerControlsEnabled));
                 OnPropertyChanged(nameof(DisplayState));
+                OnPropertyChanged(nameof(DisplayStateTextColor));
                 OnPropertyChanged(nameof(IsUsingCurrentPlan));
                 OnPropertyChanged(nameof(PlanHighlightStroke));
                 OnPropertyChanged(nameof(PlanHighlightStrokeThickness));
@@ -1303,19 +1317,29 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
 
     [JsonIgnore]
     public bool FriendlyFireButtonEnabled =>
-        IsOnline;
+        PlayerControlsEnabled;
+
+    [JsonIgnore]
+    public bool PlayerControlsEnabled =>
+        IsOnline && !FtpMode;
 
     [JsonIgnore]
     public double FriendlyFireButtonOpacity =>
-        IsOnline ? 1.0 : 0.35;
+        PlayerControlsEnabled ? 1.0 : 0.35;
 
     [JsonIgnore]
     public string DisplayState =>
-        IsOnline ? State : "OFFLINE";
+        !IsOnline ? "OFFLINE" : FtpMode ? "FTP MODE!" : State;
+
+    [JsonIgnore]
+    public Color DisplayStateTextColor =>
+        IsOnline && FtpMode
+            ? Color.FromArgb("#D32F2F")
+            : TeamTextColor;
 
     [JsonIgnore]
     public Color TeamBackgroundColor =>
-        !IsOnline
+        !IsOnline || FtpMode
             ? Color.FromArgb("#E0E0E0")
             : TeamId switch
         {
@@ -1328,7 +1352,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
 
     [JsonIgnore]
     public Color TeamTextColor =>
-        !IsOnline
+        !IsOnline || FtpMode
             ? Color.FromArgb("#777777")
             : TeamId switch
         {

@@ -144,7 +144,7 @@
                                     Grid.Column="1"
                                     Text="{Binding DisplayState}"
                                     FontSize="13"
-                                    TextColor="{Binding TeamTextColor}"
+                                    TextColor="{Binding DisplayStateTextColor}"
                                     HorizontalTextAlignment="End"
                                     LineBreakMode="NoWrap" />
 
@@ -203,7 +203,7 @@
                                         HeightRequest="48"
                                         Aspect="AspectFit"
                                         VerticalOptions="Center"
-                                        IsEnabled="{Binding FriendlyFireButtonEnabled}"
+                                        IsEnabled="{Binding PlayerControlsEnabled}"
                                         Opacity="{Binding FriendlyFireButtonOpacity}"
                                         SemanticProperties.Description="Friendly fire status">
                                         <Image.GestureRecognizers>
@@ -225,6 +225,7 @@
                                         Text="{Binding PlayerId, Mode=OneWay}"
                                         BackgroundColor="{Binding PlayerIdBackgroundColor}"
                                         TextColor="{Binding PlayerIdTextColor}"
+                                        IsEnabled="{Binding PlayerControlsEnabled}"
                                         Completed="PlayerIdEntry_Completed" />
 
                                     <Picker
@@ -233,6 +234,7 @@
                                         Title="Team"
                                         TextColor="{Binding TeamTextColor}"
                                         SelectedItem="{Binding TeamName, Mode=OneWay}"
+                                        IsEnabled="{Binding PlayerControlsEnabled}"
                                         SelectedIndexChanged="TeamPicker_SelectedIndexChanged">
 
                                         <Picker.ItemsSource>
