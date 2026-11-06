@@ -23,9 +23,9 @@ public partial class GamePlanSelectionPage : ContentPage
 
     private void RefreshProjects()
     {
-#if ANDROID
         try
         {
+#if ANDROID
             if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.R &&
                 !Android.OS.Environment.IsExternalStorageManager)
             {
@@ -35,6 +35,7 @@ public partial class GamePlanSelectionPage : ContentPage
                 ContinueButton.IsEnabled = false;
                 return;
             }
+#endif
 
             var root = SelectedGamePlanService.GetProjectsDirectory();
             if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
@@ -50,8 +51,8 @@ public partial class GamePlanSelectionPage : ContentPage
             _projects.Clear();
             _projects.AddRange(Directory.GetDirectories(root)
                 .Where(SelectedGamePlanService.IsValidProjectDirectory)
-                .Select(path => new ProjectOption(
-                    Path.GetFileName(path) ?? path, path))
+                .Select(projectPath => new ProjectOption(
+                    Path.GetFileName(projectPath) ?? projectPath, projectPath))
                 .OrderBy(project => project.Name, StringComparer.OrdinalIgnoreCase));
 
             ProjectPicker.ItemsSource = null;
@@ -60,7 +61,7 @@ public partial class GamePlanSelectionPage : ContentPage
             if (_selectedPlan.ProjectDirectory is not null)
             {
                 ProjectPicker.SelectedItem = _projects.FirstOrDefault(
-                    p => string.Equals(p.Directory, _selectedPlan.ProjectDirectory,
+                    project => string.Equals(project.Directory, _selectedPlan.ProjectDirectory,
                         StringComparison.OrdinalIgnoreCase));
             }
 
@@ -74,8 +75,8 @@ public partial class GamePlanSelectionPage : ContentPage
         {
             PlanInfoLabel.Text = $"Could not discover projects:\n{ex.Message}";
             ContinueButton.IsEnabled = false;
+            RefreshButton.IsEnabled = true;
         }
-#endif
     }
 
     private void ProjectPicker_SelectedIndexChanged(object? sender, EventArgs e)
