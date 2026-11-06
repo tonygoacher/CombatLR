@@ -93,6 +93,7 @@ public partial class GameProgressPage : ContentPage
             // the remaining delay in the first-zone countdown.
             NextZoneLabel.Text = GetFirstZoneCountdown(plan.Zones, -remaining);
             TransitionLabel.Text = "";
+            ZoneCircle.IsVisible = false;
             return;
         }
 
@@ -103,6 +104,7 @@ public partial class GameProgressPage : ContentPage
         GameElapsedLabel.Text = "ELAPSED GAME TIME";
 
         UpdateZoneStatus(plan.Zones, gameTime);
+        UpdateZoneMap(plan.Zones, gameTime);
     }
 
     private void UpdateZoneStatus(
@@ -221,6 +223,147 @@ public partial class GameProgressPage : ContentPage
             : $"{minutes:00}:{seconds:00}";
     }
 
+    private void UpdateZoneMap(
+        IReadOnlyCollection<GameZone> sourceZones,
+        int gameTime)
+    {
+        ZoneCircle.IsVisible = false;
+
+        var plan = _selectedPlan.GamePlan;
+        var home = plan?.Home;
+        if (home is null || MapContainer.Width <= 0 || MapContainer.Height <= 0)
+            return;
+
+        // Keep the same ordering and hand-over rules as UpdateZoneStatus
+        // and the firmware ZoneEngine.
+        var zones = sourceZones.OrderBy(zone => zone.StartTime).ToList();
+        int currentIndex = zones.FindLastIndex(zone => zone.StartTime <= gameTime);
+        if (currentIndex < 0)
+            return;
+
+        var from = zones[currentIndex];
+        GameZone? to = currentIndex + 1 < zones.Count ? zones[currentIndex + 1] : null;
+
+        double east = from.EastMetres;
+        double north = from.NorthMetres;
+        double radius = from.RadiusMetres;
+
+        int fromEnd = from.LifespanSeconds == 0
+            ? int.MaxValue
+            : from.StartTime + from.LifespanSeconds;
+
+        int activeEnd = to is null ? fromEnd : Math.Min(fromEnd, to.StartTime);
+        if (gameTime >= activeEnd)
+            return;
+
+        // During the overlap, interpolate the circle exactly as the firmware
+        // does: it starts at next.StartTime - overlap and finishes at next.StartTime.
+        if (to is not null && fromEnd != int.MaxValue && to.StartTime < fromEnd)
+        {
+            int overlap = fromEnd - to.StartTime;
+            int transitionStart = to.StartTime - overlap;
+
+            if (gameTime >= transitionStart && gameTime < to.StartTime)
+            {
+                double progress = (double)(gameTime - transitionStart) / overlap;
+                east += (to.EastMetres - east) * progress;
+                north += (to.NorthMetres - north) * progress;
+                radius += (to.RadiusMetres - radius) * progress;
+            }
+        }
+
+        if (!TryProjectGamePosition(east, north, home, out double u, out double v))
+            return;
+
+        // Project four cardinal points around the world-space circle. This
+        // gives its screen-space extents even when the map is slightly skewed.
+        if (!TryProjectGamePosition(east + radius, north, home, out double eastU, out double eastV) ||
+            !TryProjectGamePosition(east - radius, north, home, out double westU, out double westV) ||
+            !TryProjectGamePosition(east, north + radius, home, out double northU, out double northV) ||
+            !TryProjectGamePosition(east, north - radius, home, out double southU, out double southV))
+            return;
+
+        double radiusX = Math.Max(
+            Math.Max(Math.Abs(eastU - u), Math.Abs(westU - u)),
+            Math.Max(Math.Abs(northU - u), Math.Abs(southU - u))) * MapContainer.Width;
+
+        double radiusY = Math.Max(
+            Math.Max(Math.Abs(eastV - v), Math.Abs(westV - v)),
+            Math.Max(Math.Abs(northV - v), Math.Abs(southV - v))) * MapContainer.Height;
+
+        if (!double.IsFinite(radiusX) || !double.IsFinite(radiusY) ||
+            radiusX <= 0 || radiusY <= 0)
+            return;
+
+        AbsoluteLayout.SetLayoutFlags(ZoneCircle, AbsoluteLayoutFlags.None);
+        AbsoluteLayout.SetLayoutBounds(
+            ZoneCircle,
+            new Rect(
+                u * MapContainer.Width - radiusX,
+                v * MapContainer.Height - radiusY,
+                radiusX * 2,
+                radiusY * 2));
+
+        ZoneCircle.IsVisible = true;
+    }
+
+    private bool TryProjectGamePosition(
+        double eastMetres,
+        double northMetres,
+        HomePosition home,
+        out double u,
+        out double v)
+    {
+        double latitude = home.Latitude + northMetres / 111132.0;
+        double longitudeScale = 111320.0 * Math.Cos(home.Latitude * Math.PI / 180.0);
+
+        if (Math.Abs(longitudeScale) < 0.001)
+        {
+            u = v = 0;
+            return false;
+        }
+
+        double longitude = home.Longitude + eastMetres / longitudeScale;
+        return TryProjectGpsToMap(latitude, longitude, out u, out v);
+    }
+
+    private bool TryProjectGpsToMap(double latitude, double longitude, out double u, out double v)
+    {
+        var playfield = _selectedPlan.MapDefinition?.Playfield;
+        if (playfield is null)
+        {
+            u = v = 0;
+            return false;
+        }
+
+        var topLeft = playfield.TopLeft;
+        var topRight = playfield.TopRight;
+        var bottomLeft = playfield.BottomLeft;
+
+        static (double East, double North) ToLocal(MapGpsPoint origin, double lat, double lon)
+        {
+            double averageLatitude = (origin.Latitude + lat) * 0.5 * Math.PI / 180.0;
+            double east = (lon - origin.Longitude) * 111320.0 * Math.Cos(averageLatitude);
+            double north = (lat - origin.Latitude) * 111132.0;
+            return (east, north);
+        }
+
+        var top = ToLocal(topLeft, topRight.Latitude, topRight.Longitude);
+        var left = ToLocal(topLeft, bottomLeft.Latitude, bottomLeft.Longitude);
+        var point = ToLocal(topLeft, latitude, longitude);
+
+        double determinant = top.East * left.North - top.North * left.East;
+        if (Math.Abs(determinant) < 0.000001)
+        {
+            u = v = 0;
+            return false;
+        }
+
+        u = (point.East * left.North - point.North * left.East) / determinant;
+        v = (top.East * point.North - top.North * point.East) / determinant;
+        return double.IsFinite(u) && double.IsFinite(v);
+    }
+
     private void MapContainer_SizeChanged(object? sender, EventArgs e)
     {
         var image = _selectedPlan.MapDefinition?.Image;
@@ -283,68 +426,19 @@ public partial class GameProgressPage : ContentPage
 
     private void UpdateMapPosition(double latitude, double longitude)
     {
-        var playfield = _selectedPlan.MapDefinition?.Playfield;
-        if (playfield is null)
+        if (!TryProjectGpsToMap(latitude, longitude, out double u, out double v))
         {
             PositionMarker.IsVisible = false;
             return;
         }
 
-        var topLeft = playfield.TopLeft;
-        var topRight = playfield.TopRight;
-        var bottomLeft = playfield.BottomLeft;
-
-        static (double East, double North) ToLocal(
-            MapGpsPoint origin,
-            double lat,
-            double lon)
-        {
-            double averageLatitude =
-                (origin.Latitude + lat) * 0.5 * Math.PI / 180.0;
-
-            double east =
-                (lon - origin.Longitude) *
-                111320.0 * Math.Cos(averageLatitude);
-
-            double north =
-                (lat - origin.Latitude) * 111132.0;
-
-            return (east, north);
-        }
-
-        var top = ToLocal(topLeft, topRight.Latitude, topRight.Longitude);
-        var left = ToLocal(topLeft, bottomLeft.Latitude, bottomLeft.Longitude);
-        var point = ToLocal(topLeft, latitude, longitude);
-
-        // Solve point = u * (top-right - top-left) +
-        //               v * (bottom-left - top-left).
-        double determinant =
-            top.East * left.North - top.North * left.East;
-
-        if (Math.Abs(determinant) < 0.000001)
-        {
-            PositionMarker.IsVisible = false;
-            return;
-        }
-
-        double u =
-            (point.East * left.North - point.North * left.East) /
-            determinant;
-
-        double v =
-            (top.East * point.North - top.North * point.East) /
-            determinant;
-
-        PositionMarker.IsVisible =
-            u >= 0 && u <= 1 && v >= 0 && v <= 1;
-
+        PositionMarker.IsVisible = u >= 0 && u <= 1 && v >= 0 && v <= 1;
         if (!PositionMarker.IsVisible)
             return;
 
         AbsoluteLayout.SetLayoutFlags(
             PositionMarker,
             AbsoluteLayoutFlags.PositionProportional);
-
         AbsoluteLayout.SetLayoutBounds(
             PositionMarker,
             new Rect(u, v, 18, 18));
