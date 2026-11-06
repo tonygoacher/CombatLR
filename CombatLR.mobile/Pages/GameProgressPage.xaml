@@ -79,6 +79,13 @@
                     x:Name="MapOverlay"
                     InputTransparent="True">
 
+                    <Ellipse
+                        x:Name="ZoneCircle"
+                        Fill="#22FFB300"
+                        Stroke="#FFFFB300"
+                        StrokeThickness="3"
+                        IsVisible="False" />
+
                     <Border
                         x:Name="PositionMarker"
                         WidthRequest="18"
