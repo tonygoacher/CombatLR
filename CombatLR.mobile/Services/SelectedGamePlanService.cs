@@ -32,12 +32,13 @@ public sealed class SelectedGamePlanService
 #if ANDROID
         var documents = Android.OS.Environment.GetExternalStoragePublicDirectory(
             Android.OS.Environment.DirectoryDocuments)?.AbsolutePath;
+#else
+        var documents = Environment.GetFolderPath(
+            Environment.SpecialFolder.MyDocuments);
+#endif
         return string.IsNullOrWhiteSpace(documents)
             ? null
             : Path.Combine(documents, "CombatLR");
-#else
-        return null;
-#endif
     }
 
     public async Task SelectProjectAsync(string projectDirectory)
