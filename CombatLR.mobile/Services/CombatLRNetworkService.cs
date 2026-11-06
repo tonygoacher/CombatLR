@@ -1087,6 +1087,8 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     private int _protocolVersion;
     private int _planVersion;
     private string _planName = "";
+    private string _currentPlanName = "";
+    private int _currentPlanVersion = -1;
     private DateTimeOffset _lastSeen;
     private bool _isOnline = true;
 
@@ -1106,13 +1108,65 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     public int PlanVersion
     {
         get => _planVersion;
-        set => SetField(ref _planVersion, value);
+        set
+        {
+            if (SetField(ref _planVersion, value))
+                OnPropertyChanged(nameof(IsUsingCurrentPlan));
+        }
     }
 
     public string PlanName
     {
         get => _planName;
-        set => SetField(ref _planName, value);
+        set
+        {
+            if (SetField(ref _planName, value))
+                OnPropertyChanged(nameof(IsUsingCurrentPlan));
+        }
+    }
+
+    [JsonIgnore]
+    public bool IsUsingCurrentPlan =>
+        IsOnline &&
+        !string.IsNullOrWhiteSpace(_currentPlanName) &&
+        string.Equals(PlanName, _currentPlanName, StringComparison.OrdinalIgnoreCase) &&
+        PlanVersion == _currentPlanVersion;
+
+    [JsonIgnore]
+    public Color PlanHighlightStroke =>
+        IsOnline && !IsUsingCurrentPlan
+            ? Color.FromArgb("#D32F2F")
+            : Color.FromArgb("#808080");
+
+    [JsonIgnore]
+    public double PlanHighlightStrokeThickness =>
+        IsOnline && !IsUsingCurrentPlan ? 3 : 1;
+
+    [JsonIgnore]
+    public string PlanStatusText =>
+        !IsOnline
+            ? "NOT VERIFIED (OFFLINE)"
+            : IsUsingCurrentPlan
+                ? "CURRENT PLAN"
+                : "PLAN MISMATCH";
+
+    [JsonIgnore]
+    public Color PlanStatusTextColor =>
+        !IsOnline
+            ? Color.FromArgb("#777777")
+            : IsUsingCurrentPlan
+                ? Color.FromArgb("#1B5E20")
+                : Color.FromArgb("#D32F2F");
+
+    public void SetCurrentGamePlan(string? planName, int planVersion)
+    {
+        _currentPlanName = planName ?? string.Empty;
+        _currentPlanVersion = planVersion;
+        OnPropertyChanged(nameof(IsUsingCurrentPlan));
+        OnPropertyChanged(nameof(PlanHighlightStroke));
+        OnPropertyChanged(nameof(PlanHighlightStrokeThickness));
+        OnPropertyChanged(nameof(PlanStatusText));
+        OnPropertyChanged(nameof(PlanStatusTextColor));
     }
 
     public string DeviceId { get; init; } = "";
@@ -1233,6 +1287,11 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
                 OnPropertyChanged(nameof(FriendlyFireButtonEnabled));
                 OnPropertyChanged(nameof(FriendlyFireButtonOpacity));
                 OnPropertyChanged(nameof(DisplayState));
+                OnPropertyChanged(nameof(IsUsingCurrentPlan));
+                OnPropertyChanged(nameof(PlanHighlightStroke));
+                OnPropertyChanged(nameof(PlanHighlightStrokeThickness));
+                OnPropertyChanged(nameof(PlanStatusText));
+                OnPropertyChanged(nameof(PlanStatusTextColor));
             }
         }
     }
