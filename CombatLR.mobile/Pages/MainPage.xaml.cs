@@ -1,12 +1,17 @@
 using Microsoft.Maui.Controls;
 
+using CombatLR.mobile.Services;
+
 namespace CombatLR.mobile.Pages
 {
     public partial class MainPage : ContentPage
     {
-        public MainPage()
+        private readonly SelectedGamePlanService _selectedGamePlan;
+
+        public MainPage(SelectedGamePlanService selectedGamePlan)
         {
             InitializeComponent();
+            _selectedGamePlan = selectedGamePlan;
         }
 
         private async void GamePlanEditor_Clicked(
@@ -14,7 +19,7 @@ namespace CombatLR.mobile.Pages
             EventArgs e)
         {
             await Navigation.PushAsync(
-                new GamePlanEditorPage());
+                new GamePlanEditorPage(_selectedGamePlan));
         }
 
         private async void GameControl_Clicked(
