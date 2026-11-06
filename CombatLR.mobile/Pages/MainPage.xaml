@@ -59,6 +59,14 @@
                 Clicked="GameControl_Clicked" />
 
             <Button
+                x:Name="GameProgressButton"
+                Text="GAME PROGRESS"
+                FontSize="20"
+                HeightRequest="70"
+                IsEnabled="False"
+                Clicked="GameProgress_Clicked" />
+
+            <Button
                 Text="PROJECT UPDATE"
                 FontSize="20"
                 HeightRequest="70"
