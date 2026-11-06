@@ -1140,7 +1140,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
 
     [JsonIgnore]
     public double PlanHighlightStrokeThickness =>
-        IsOnline && !IsUsingCurrentPlan ? 3 : 1;
+        IsOnline && !IsUsingCurrentPlan ? 6 : 1;
 
     [JsonIgnore]
     public string PlanStatusText =>
