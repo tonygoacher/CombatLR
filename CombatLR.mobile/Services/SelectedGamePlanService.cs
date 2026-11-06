@@ -48,9 +48,6 @@ public sealed class SelectedGamePlanService
 
     public async Task SelectProjectAsync(string projectDirectory)
     {
-        // A newly selected plan must be explicitly started before progress is available.
-        new GameSessionService().ClearSession();
-
         if (string.IsNullOrWhiteSpace(projectDirectory))
             throw new ArgumentException("A project directory is required.", nameof(projectDirectory));
 
@@ -78,6 +75,9 @@ public sealed class SelectedGamePlanService
 
         var projectName = Path.GetFileName(projectDirectory) ?? string.Empty;
         gamePlan.ProjectName = projectName;
+
+        // A newly selected plan must be explicitly started before progress is available.
+        new GameSessionService().ClearSession();
 
         ProjectDirectory = projectDirectory;
         ProjectName = projectName;
