@@ -88,7 +88,9 @@ public partial class GameProgressPage : ContentPage
                 $"GAME BEGINS IN {FormatDuration(remaining)}";
             CurrentZoneLabel.Text = "Not started";
             TimeLeftLabel.Text = "—";
-            NextZoneLabel.Text = GetFirstZoneCountdown(plan.Zones, 0);
+            // Zone times begin only after the dispersal delay, so include
+            // the remaining delay in the first-zone countdown.
+            NextZoneLabel.Text = GetFirstZoneCountdown(plan.Zones, -remaining);
             TransitionLabel.Text = "";
             return;
         }
