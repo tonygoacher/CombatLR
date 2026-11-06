@@ -30,6 +30,13 @@
                 FontSize="16"
                 HorizontalTextAlignment="Center" />
 
+            <Label
+                x:Name="SelectedGamePlanLabel"
+                Text="No game plan selected"
+                TextColor="LightGray"
+                FontSize="13"
+                HorizontalTextAlignment="Center" />
+
         </VerticalStackLayout>
 
         <VerticalStackLayout
