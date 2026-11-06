@@ -1,5 +1,4 @@
 using CombatLR.mobile.Models;
-using System.Text.Json;
 
 namespace CombatLR.mobile.Services;
 
@@ -10,11 +9,6 @@ namespace CombatLR.mobile.Services;
 /// </summary>
 public sealed class SelectedGamePlanService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
-
     public string? ProjectDirectory { get; private set; }
     public string? ProjectName { get; private set; }
     public GamePlan? GamePlan { get; private set; }
@@ -61,8 +55,8 @@ public sealed class SelectedGamePlanService
             throw new FileNotFoundException("The project does not contain map.json.", mapJsonPath);
 
         await using var jsonStream = File.OpenRead(mapJsonPath);
-        var mapDefinition = await JsonSerializer.DeserializeAsync<MapDefinition>(
-            jsonStream, JsonOptions);
+        var mapDefinition = await System.Text.Json.JsonSerializer.DeserializeAsync<MapDefinition>(
+            jsonStream);
 
         if (mapDefinition is null)
             throw new InvalidDataException("map.json produced no MapDefinition.");
