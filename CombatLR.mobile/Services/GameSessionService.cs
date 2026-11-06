@@ -12,6 +12,11 @@ public sealed class GameSessionService
 {
     private const string PreferenceKey = "CombatLR.LastGameSession";
 
+    public void ClearSession()
+    {
+        Preferences.Default.Remove(PreferenceKey);
+    }
+
     public GameSession? GetSession(string? projectName, int planVersion)
     {
         if (string.IsNullOrWhiteSpace(projectName))
