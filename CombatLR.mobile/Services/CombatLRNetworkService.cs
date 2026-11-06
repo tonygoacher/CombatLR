@@ -1333,7 +1333,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
 
     [JsonIgnore]
     public Color DisplayStateTextColor =>
-        FtpMode
+        IsOnline && FtpMode
             ? Color.FromArgb("#D32F2F")
             : TeamTextColor;
 
