@@ -100,7 +100,7 @@ public partial class GamePlanSelectionPage : ContentPage
         {
             PlanInfoLabel.Text = $"Loading {selected.Name}...";
             await _selectedPlan.SelectProjectAsync(selected.Directory);
-            await Navigation.PushAsync(new MainPage());
+            await Navigation.PushAsync(new MainPage(_selectedPlan));
         }
         catch (Exception ex)
         {
