@@ -10,6 +10,7 @@ public partial class GameProgressPage : ContentPage
     private readonly GameSession _session;
     private readonly IDispatcherTimer _timer;
     private int _locationTick;
+    private bool _locationPermissionRequested;
 
     public GameProgressPage(SelectedGamePlanService selectedPlan)
     {
@@ -240,8 +241,10 @@ public partial class GameProgressPage : ContentPage
             var status =
                 await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
 
-            if (status != PermissionStatus.Granted)
+            if (status != PermissionStatus.Granted &&
+                !_locationPermissionRequested)
             {
+                _locationPermissionRequested = true;
                 status =
                     await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
             }
