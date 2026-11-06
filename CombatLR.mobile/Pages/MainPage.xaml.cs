@@ -48,11 +48,11 @@ namespace CombatLR.mobile.Pages
             object? sender,
             EventArgs e)
         {
-            if (!_selectedGamePlan.IsSelected)
+            if (!_selectedGamePlan.HasSavedGamePlan)
             {
                 await DisplayAlert(
                     "No Game Plan",
-                    "Please select a project with a game plan before updating devices.",
+                    "This project does not have a saved game plan. Open the Game Plan Editor and save a plan before updating devices.",
                     "OK");
                 return;
             }
