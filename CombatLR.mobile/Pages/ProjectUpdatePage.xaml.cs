@@ -1,7 +1,6 @@
 using CombatLR.mobile.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Text.Json;
 
 namespace CombatLR.mobile.Pages;
 
@@ -16,6 +15,7 @@ public partial class ProjectUpdatePage : ContentPage
         new(StringComparer.OrdinalIgnoreCase);
 
     private string? _projectDirectory;
+    private readonly SelectedGamePlanService _selectedGamePlan;
 
     private bool _updating;
     private bool _cancelUpdate;
@@ -23,9 +23,10 @@ public partial class ProjectUpdatePage : ContentPage
 
     private Task? _updateTask;
 
-    public ProjectUpdatePage()
+    public ProjectUpdatePage(SelectedGamePlanService selectedGamePlan)
     {
         InitializeComponent();
+        _selectedGamePlan = selectedGamePlan;
 
         DevicesView.ItemsSource = _devices;
 
@@ -39,6 +40,8 @@ public partial class ProjectUpdatePage : ContentPage
         base.OnAppearing();
 
         _leaving = false;
+
+        UpdateSelectedProjectDisplay();
 
         await _networkService.StartDiscoveryAsync();
 
@@ -199,180 +202,43 @@ public partial class ProjectUpdatePage : ContentPage
     }
 
     // -------------------------------------------------------------------------
-    // Project selection
+    // Selected project
     // -------------------------------------------------------------------------
 
-    private async void ChooseFolderButton_Clicked(
-        object? sender,
-        EventArgs e)
+    private void UpdateSelectedProjectDisplay()
     {
-        if (_updating)
+        _projectDirectory = null;
+
+        if (!_selectedGamePlan.IsSelected ||
+            _selectedGamePlan.ProjectDirectory is null ||
+            _selectedGamePlan.GamePlan is null)
+        {
+            ProjectLabel.Text = "No game plan selected";
+            ProjectVersionLabel.Text = "Version: —";
+            FolderLabel.Text = "Return to Game Plan Selection and choose a project.";
+            UpdateButton.IsEnabled = false;
             return;
-
-        try
-        {
-            string? documentsDirectory = GetDocumentsDirectory();
-
-            if (string.IsNullOrWhiteSpace(documentsDirectory))
-            {
-                await DisplayAlert(
-                    "Choose Project",
-                    "Unable to locate the public Documents folder.",
-                    "OK");
-
-                return;
-            }
-
-            string combatLRDirectory =
-                Path.Combine(documentsDirectory, "CombatLR");
-
-            if (!Directory.Exists(combatLRDirectory))
-            {
-                await DisplayAlert(
-                    "Choose Project",
-                    $"The CombatLR project folder does not exist yet:\n\n" +
-                    $"{combatLRDirectory}",
-                    "OK");
-
-                return;
-            }
-
-            var projects = Directory.GetDirectories(combatLRDirectory)
-                .Where(directory =>
-                    File.Exists(Path.Combine(directory, "map.bmp")) &&
-                    File.Exists(Path.Combine(directory, "map.json")))
-                .OrderBy(
-                    directory => directory,
-                    StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-
-            if (projects.Length == 0)
-            {
-                await DisplayAlert(
-                    "Choose Project",
-                    "No valid CombatLR projects were found.\n\n" +
-                    "A project must contain map.bmp and map.json.",
-                    "OK");
-
-                return;
-            }
-
-            string[] names = projects
-                .Select(Path.GetFileName)
-                .Where(name => !string.IsNullOrWhiteSpace(name))
-                .Cast<string>()
-                .ToArray();
-
-            string? selected = await DisplayActionSheet(
-                "Select Game Plan Folder",
-                "Cancel",
-                null,
-                names);
-
-            if (string.IsNullOrWhiteSpace(selected) ||
-                selected == "Cancel")
-            {
-                return;
-            }
-
-            string folder =
-                Path.Combine(combatLRDirectory, selected);
-
-            if (!ValidateProjectFolder(folder, out string error))
-            {
-                _projectDirectory = null;
-
-                ProjectLabel.Text = "No project selected";
-                ProjectVersionLabel.Text = "Version: —";
-
-                FolderLabel.Text =
-                    "Selected project has no complete game plan";
-
-                UpdateButton.IsEnabled = false;
-
-                await DisplayAlert(
-                    "Invalid Project",
-                    error,
-                    "OK");
-
-                return;
-            }
-
-            _projectDirectory = folder;
-
-            ProjectLabel.Text = selected;
-            ProjectVersionLabel.Text =
-                $"Version: {await GetGamePlanVersionAsync(folder)}";
-            FolderLabel.Text = folder;
-
-            UpdateButton.IsEnabled =
-                _devices.Any(
-                    row => row.IsSelected && row.Device.IsOnline);
         }
-        catch (Exception ex)
+
+        ProjectLabel.Text = _selectedGamePlan.ProjectName ?? "Selected project";
+        ProjectVersionLabel.Text =
+            $"Version: {_selectedGamePlan.GamePlan.Version}";
+        FolderLabel.Text = _selectedGamePlan.ProjectDirectory;
+
+        if (!ValidateProjectFolder(
+                _selectedGamePlan.ProjectDirectory,
+                out string error))
         {
-            await DisplayAlert(
-                "Choose Project",
-                ex.Message,
-                "OK");
+            FolderLabel.Text =
+                $"{_selectedGamePlan.ProjectDirectory}\n{error}";
+            UpdateButton.IsEnabled = false;
+            return;
         }
-    }
 
-    private static string? GetDocumentsDirectory()
-    {
-#if ANDROID
-        return Android.OS.Environment.GetExternalStoragePublicDirectory(
-            Android.OS.Environment.DirectoryDocuments)?.AbsolutePath;
-#elif WINDOWS
-        return Environment.GetFolderPath(
-            Environment.SpecialFolder.MyDocuments);
-#else
-        return Environment.GetFolderPath(
-            Environment.SpecialFolder.MyDocuments);
-#endif
-    }
-
-    private static async Task<string> GetGamePlanVersionAsync(
-        string folder)
-    {
-        string path = Path.Combine(
-            folder,
-            "gameplan.json");
-
-        try
-        {
-            string json = await File.ReadAllTextAsync(path);
-
-            using JsonDocument document =
-                JsonDocument.Parse(json);
-
-            JsonElement root = document.RootElement;
-
-            if (!root.TryGetProperty(
-                    "version",
-                    out JsonElement versionProperty))
-            {
-                return "—";
-            }
-
-            return versionProperty.ValueKind switch
-            {
-                JsonValueKind.Number =>
-                    versionProperty.GetRawText(),
-
-                JsonValueKind.String =>
-                    versionProperty.GetString() ?? "—",
-
-                _ => "—"
-            };
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(
-                $"Project Update: unable to read game plan version: {ex.Message}");
-
-            return "—";
-        }
+        _projectDirectory = _selectedGamePlan.ProjectDirectory;
+        UpdateButton.IsEnabled =
+            !_updating &&
+            _devices.Any(row => row.IsSelected && row.Device.IsOnline);
     }
 
     private static bool ValidateProjectFolder(
@@ -387,8 +253,7 @@ public partial class ProjectUpdatePage : ContentPage
         };
 
         var missing = requiredFiles
-            .Where(file =>
-                !File.Exists(Path.Combine(folder, file)))
+            .Where(file => !File.Exists(Path.Combine(folder, file)))
             .ToArray();
 
         if (missing.Length != 0)
@@ -396,14 +261,12 @@ public partial class ProjectUpdatePage : ContentPage
             error =
                 "This project cannot be updated because it is missing:\n\n" +
                 string.Join("\n", missing) +
-                "\n\nA project update requires " +
-                "map.bmp, map.json and gameplan.json.";
+                "\n\nSave the game plan in the editor before updating devices.";
 
             return false;
         }
 
         error = "";
-
         return true;
     }
 
