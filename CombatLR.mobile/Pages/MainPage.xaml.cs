@@ -12,7 +12,17 @@ namespace CombatLR.mobile.Pages
         {
             InitializeComponent();
             _selectedGamePlan = selectedGamePlan;
+            UpdateSelectedGamePlanLabel();
+        }
 
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+            UpdateSelectedGamePlanLabel();
+        }
+
+        private void UpdateSelectedGamePlanLabel()
+        {
             SelectedGamePlanLabel.Text = _selectedGamePlan.GamePlan is null
                 ? "No game plan selected"
                 : $"PLAN: {_selectedGamePlan.ProjectName}  v{_selectedGamePlan.GamePlan.Version}";
