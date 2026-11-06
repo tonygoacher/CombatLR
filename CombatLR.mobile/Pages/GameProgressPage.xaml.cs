@@ -94,7 +94,15 @@ public partial class GameProgressPage : ContentPage
             // the remaining delay in the first-zone countdown.
             NextZoneLabel.Text = GetFirstZoneCountdown(plan.Zones, -remaining);
             TransitionLabel.Text = "";
-            ZoneCircle.IsVisible = false;
+
+            // The first zone is already defined in the plan and should be
+            // visible on the map while players are dispersing, even though
+            // the zone clock itself has not started yet.
+            CurrentZoneLabel.Text = plan.Zones.Count > 0
+                ? "Zone 1 (upcoming)"
+                : "No zones";
+            TimeLeftLabel.Text = "—";
+            UpdateZoneMap(plan.Zones, 0, showFirstZone: true);
             return;
         }
 
@@ -226,7 +234,8 @@ public partial class GameProgressPage : ContentPage
 
     private void UpdateZoneMap(
         IReadOnlyCollection<GameZone> sourceZones,
-        int gameTime)
+        int gameTime,
+        bool showFirstZone = false)
     {
         ZoneCircle.IsVisible = false;
 
@@ -238,7 +247,9 @@ public partial class GameProgressPage : ContentPage
         // Keep the same ordering and hand-over rules as UpdateZoneStatus
         // and the firmware ZoneEngine.
         var zones = sourceZones.OrderBy(zone => zone.StartTime).ToList();
-        int currentIndex = zones.FindLastIndex(zone => zone.StartTime <= gameTime);
+        int currentIndex = showFirstZone
+            ? (zones.Count > 0 ? 0 : -1)
+            : zones.FindLastIndex(zone => zone.StartTime <= gameTime);
         if (currentIndex < 0)
             return;
 
@@ -254,12 +265,15 @@ public partial class GameProgressPage : ContentPage
             : from.StartTime + from.LifespanSeconds;
 
         int activeEnd = to is null ? fromEnd : Math.Min(fromEnd, to.StartTime);
-        if (gameTime >= activeEnd)
+        if (!showFirstZone && gameTime >= activeEnd)
             return;
 
-        // During the overlap, interpolate the circle exactly as the firmware
-        // does: it starts at next.StartTime - overlap and finishes at next.StartTime.
-        if (to is not null && fromEnd != int.MaxValue && to.StartTime < fromEnd)
+        // During dispersal, show the first zone at its planned geometry.
+        // Once the game clock starts, interpolate the circle exactly as the
+        // firmware does: it starts at next.StartTime - overlap and finishes
+        // at next.StartTime.
+        if (!showFirstZone &&
+            to is not null && fromEnd != int.MaxValue && to.StartTime < fromEnd)
         {
             int overlap = fromEnd - to.StartTime;
             int transitionStart = to.StartTime - overlap;
