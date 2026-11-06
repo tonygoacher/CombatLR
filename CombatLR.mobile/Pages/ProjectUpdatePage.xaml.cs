@@ -470,6 +470,23 @@ public partial class ProjectUpdatePage : ContentPage
             return;
         }
 
+        // gameplan.json is generated from the shared in-memory selection,
+        // not assumed to be an up-to-date copy left on disk by the editor.
+        try
+        {
+            await _selectedGamePlan.SaveSelectedGamePlanForUploadAsync();
+            ProjectVersionLabel.Text =
+                $"Version: {_selectedGamePlan.GamePlan?.Version}";
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert(
+                "Game Plan",
+                $"The selected game plan could not be prepared for upload. No devices have been updated.\n\n{ex.Message}",
+                "OK");
+            return;
+        }
+
         _cancelUpdate = false;
 
         /*
