@@ -1111,7 +1111,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
         set
         {
             if (SetField(ref _planVersion, value))
-                OnPropertyChanged(nameof(IsUsingCurrentPlan));
+                NotifyPlanStatusChanged();
         }
     }
 
@@ -1121,7 +1121,7 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
         set
         {
             if (SetField(ref _planName, value))
-                OnPropertyChanged(nameof(IsUsingCurrentPlan));
+                NotifyPlanStatusChanged();
         }
     }
 
@@ -1162,6 +1162,11 @@ public sealed class CombatLRDevice : INotifyPropertyChanged
     {
         _currentPlanName = planName ?? string.Empty;
         _currentPlanVersion = planVersion;
+        NotifyPlanStatusChanged();
+    }
+
+    private void NotifyPlanStatusChanged()
+    {
         OnPropertyChanged(nameof(IsUsingCurrentPlan));
         OnPropertyChanged(nameof(PlanHighlightStroke));
         OnPropertyChanged(nameof(PlanHighlightStrokeThickness));
