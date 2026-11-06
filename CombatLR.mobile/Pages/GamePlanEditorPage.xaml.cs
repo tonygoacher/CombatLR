@@ -119,7 +119,20 @@ namespace CombatLR.mobile.Pages
             // The selected plan is shared application state. Reload it when
             // discarding editor changes so other screens never see unsaved data.
             if (_projectDirectory is not null)
-                await _selectedGamePlan.SelectProjectAsync(_projectDirectory);
+            {
+                try
+                {
+                    await _selectedGamePlan.SelectProjectAsync(_projectDirectory);
+                }
+                catch (Exception ex)
+                {
+                    await DisplayAlert(
+                        "Unable to Discard Changes",
+                        $"The saved game plan could not be reloaded. The editor will remain open.\n\n{ex.Message}",
+                        "OK");
+                    return;
+                }
+            }
 
             await Navigation.PopAsync();
         }
@@ -158,6 +171,16 @@ namespace CombatLR.mobile.Pages
             Loaded += MainPage_Loaded;
 #endif
             HomeMarker.SizeChanged += HomeMarker_SizeChanged;
+            MapContainer.SizeChanged += MapContainer_SizeChanged;
+        }
+
+        private void MapContainer_SizeChanged(object? sender, EventArgs e)
+        {
+            if (!_hasLoadedSelectedProject)
+                return;
+
+            UpdateHomeMarker();
+            RenderGameObjects();
         }
 
         private async void MapInfoLabel_Tapped(
