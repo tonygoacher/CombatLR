@@ -92,6 +92,27 @@ public sealed class SelectedGamePlanService
     }
 
     /// <summary>
+    /// Replaces the selected plan with a blank plan and persists it immediately.
+    /// The version is retained so the next normal save advances it.
+    /// </summary>
+    public async Task CreateNewGamePlanAsync()
+    {
+        if (!IsSelected || GamePlan is null || ProjectDirectory is null)
+            throw new InvalidOperationException("Select a game plan before creating a new one.");
+
+        var newPlan = new GamePlan
+        {
+            ProjectName = ProjectName ?? string.Empty,
+            Version = GamePlan.Version
+        };
+
+        var filePath = Path.Combine(ProjectDirectory, "gameplan.json");
+        await new GamePlanService().SaveCurrentVersionAsync(newPlan, filePath);
+        GamePlan = newPlan;
+        SelectionChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
     /// Writes the authoritative in-memory plan to its project folder for FTP
     /// upload, preserving its current version number.
     /// </summary>
