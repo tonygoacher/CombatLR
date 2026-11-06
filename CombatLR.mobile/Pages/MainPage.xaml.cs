@@ -12,6 +12,10 @@ namespace CombatLR.mobile.Pages
         {
             InitializeComponent();
             _selectedGamePlan = selectedGamePlan;
+
+            SelectedGamePlanLabel.Text = _selectedGamePlan.GamePlan is null
+                ? "No game plan selected"
+                : $"PLAN: {_selectedGamePlan.ProjectName}  v{_selectedGamePlan.GamePlan.Version}";
         }
 
         private async void GamePlanEditor_Clicked(
