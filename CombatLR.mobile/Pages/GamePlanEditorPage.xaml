@@ -156,11 +156,20 @@
                     HeightRequest="1"
                     BackgroundColor="White" />
 
-                <Button
-                    x:Name="SaveButton"
-                    Text="Save"
-                    Style="{StaticResource PanelButton}"
-                    Clicked="SaveGamePlan_Clicked" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
+                    <Button
+                        x:Name="NewButton"
+                        Grid.Column="0"
+                        Text="New"
+                        Style="{StaticResource PanelButton}"
+                        Clicked="NewGamePlan_Clicked" />
+                    <Button
+                        x:Name="SaveButton"
+                        Grid.Column="1"
+                        Text="Save"
+                        Style="{StaticResource PanelButton}"
+                        Clicked="SaveGamePlan_Clicked" />
+                </Grid>
 
                 <Label
                     Text="Start Delay (s)"
