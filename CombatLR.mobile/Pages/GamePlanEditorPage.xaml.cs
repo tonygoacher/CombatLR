@@ -116,6 +116,11 @@ namespace CombatLR.mobile.Pages
                     return;
             }
 
+            // The selected plan is shared application state. Reload it when
+            // discarding editor changes so other screens never see unsaved data.
+            if (_projectDirectory is not null)
+                await _selectedGamePlan.SelectProjectAsync(_projectDirectory);
+
             await Navigation.PopAsync();
         }
 
