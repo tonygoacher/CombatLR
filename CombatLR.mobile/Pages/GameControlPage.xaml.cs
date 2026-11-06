@@ -131,22 +131,6 @@ public partial class GameControlPage : ContentPage
     {
         foreach (var device in _networkService.Devices)
         {
-            // Devices in FTP mode are being used for file transfer, not as
-            // active players, so keep them out of the Game Control list.
-            if (device.FtpMode)
-            {
-                var ftpDevice = _devices.FirstOrDefault(
-                    d => d.DeviceId == device.DeviceId);
-
-                if (ftpDevice is not null)
-                {
-                    ftpDevice.PropertyChanged -= Device_PropertyChanged;
-                    _devices.Remove(ftpDevice);
-                }
-
-                continue;
-            }
-
             if (!_devices.Contains(device))
             {
                 _devices.Add(device);
@@ -166,8 +150,14 @@ public partial class GameControlPage : ContentPage
         object? sender,
         System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(CombatLRDevice.IsOnline))
-            MainThread.BeginInvokeOnMainThread(UpdateDeviceCount);
+        if (e.PropertyName is nameof(CombatLRDevice.IsOnline) or nameof(CombatLRDevice.FtpMode))
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                UpdateDeviceCount();
+                SetControlButtonsEnabled(HasAvailablePlayers);
+            });
+        }
     }
 
     private void UpdateSelectedGamePlanLabel()
@@ -193,8 +183,13 @@ public partial class GameControlPage : ContentPage
         DevicesHeaderLabel.Text = $"COMBATLR DEVICES: {onlineCount}";
     }
 
+    private bool HasAvailablePlayers =>
+        _devices.Any(device => device.IsOnline && !device.FtpMode);
+
     private void SetControlButtonsEnabled(bool enabled)
     {
+        enabled &= HasAvailablePlayers;
+
         FriendlyFireOnButton.IsEnabled = enabled;
         FriendlyFireOffButton.IsEnabled = enabled;
         StartGameButton.IsEnabled = enabled;
@@ -324,7 +319,11 @@ public partial class GameControlPage : ContentPage
 
     private async Task SetFriendlyFireAsync(bool enabled)
     {
-        if (_devices.Count == 0)
+        var availableDevices = _devices
+            .Where(device => device.IsOnline && !device.FtpMode)
+            .ToArray();
+
+        if (availableDevices.Length == 0)
             return;
 
         SetControlButtonsEnabled(false);
@@ -332,7 +331,7 @@ public partial class GameControlPage : ContentPage
         try
         {
             var results = await Task.WhenAll(
-                _devices.Select(async device =>
+                availableDevices.Select(async device =>
                     new
                     {
                         Device = device,
@@ -371,10 +370,12 @@ public partial class GameControlPage : ContentPage
         object? sender,
         EventArgs e)
     {
-        if (_devices.Count == 0)
-        {
+        var availableDevices = _devices
+            .Where(device => device.IsOnline && !device.FtpMode)
+            .ToArray();
+
+        if (availableDevices.Length == 0)
             return;
-        }
 
         SetControlButtonsEnabled(false);
         DiscoverButton.IsEnabled = false;
@@ -382,7 +383,9 @@ public partial class GameControlPage : ContentPage
         try
         {
             var result =
-                await _networkService.StartGameAsync();
+                await _networkService.StartGameAsync(
+                    DateTime.UtcNow.ToString("HH:mm:ss", CultureInfo.InvariantCulture),
+                    availableDevices);
 
             if (result.SuccessfulDevices.Count == 0)
             {
@@ -434,8 +437,12 @@ public partial class GameControlPage : ContentPage
         object? sender,
         EventArgs e)
     {
+        var availableDevices = _devices
+            .Where(device => device.IsOnline && !device.FtpMode)
+            .ToArray();
+
         if (string.IsNullOrWhiteSpace(_storedGameStartUtc) ||
-            _devices.Count == 0)
+            availableDevices.Length == 0)
         {
             return;
         }
@@ -445,13 +452,10 @@ public partial class GameControlPage : ContentPage
 
         try
         {
-            var devices =
-                _devices.ToArray();
-
             var result =
                 await _networkService.StartGameAsync(
                     _storedGameStartUtc,
-                    devices);
+                    availableDevices);
 
             if (result.SuccessfulDevices.Count == 0)
             {
