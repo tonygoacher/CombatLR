@@ -39,7 +39,7 @@ namespace CombatLR.mobile.Pages
             EventArgs e)
         {
             await Navigation.PushAsync(
-                new ProjectUpdatePage());
+                new ProjectUpdatePage(_selectedGamePlan));
         }
     }
 }
