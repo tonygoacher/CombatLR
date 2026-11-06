@@ -302,7 +302,7 @@ public partial class GameProgressPage : ContentPage
         }
 
         var top = ToLocal(topLeft, topRight.Latitude, topRight.Longitude);
-        var left = ToLocal(bottomLeft, topLeft.Latitude, topLeft.Longitude);
+        var left = ToLocal(topLeft, bottomLeft.Latitude, bottomLeft.Longitude);
         var point = ToLocal(topLeft, latitude, longitude);
 
         // Solve point = u * (top-right - top-left) +
