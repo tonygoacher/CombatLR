@@ -1,12 +1,16 @@
 using CommunityToolkit.Maui.Alerts;
 
+using CombatLR.mobile.Pages;
+using CombatLR.mobile.Services;
+
 namespace CombatLR.mobile;
 
 public partial class AppShell : Shell
 {
-    public AppShell()
+    public AppShell(SelectedGamePlanService selectedGamePlan)
     {
         InitializeComponent();
+        RootContent.Content = new GamePlanSelectionPage(selectedGamePlan);
     }
 
     public static async Task DisplayToastAsync(string message)
