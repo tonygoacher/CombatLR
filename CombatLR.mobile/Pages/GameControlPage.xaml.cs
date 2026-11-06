@@ -139,6 +139,8 @@ public partial class GameControlPage : ContentPage
                 _devices.Add(device);
                 device.PropertyChanged += Device_PropertyChanged;
             }
+
+            UpdateDevicePlanStatus(device);
         }
 
         UpdateDuplicatePlayerIds();
@@ -160,6 +162,16 @@ public partial class GameControlPage : ContentPage
         SelectedGamePlanLabel.Text = _selectedGamePlan.GamePlan is null
             ? "No game plan selected"
             : $"PLAN: {_selectedGamePlan.ProjectName}  v{_selectedGamePlan.GamePlan.Version}";
+
+        foreach (var device in _devices)
+            UpdateDevicePlanStatus(device);
+    }
+
+    private void UpdateDevicePlanStatus(CombatLRDevice device)
+    {
+        device.SetCurrentGamePlan(
+            _selectedGamePlan.ProjectName,
+            _selectedGamePlan.GamePlan?.Version ?? -1);
     }
 
     private void UpdateDeviceCount()
