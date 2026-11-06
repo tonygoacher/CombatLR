@@ -41,7 +41,7 @@ namespace CombatLR.mobile.Pages
             EventArgs e)
         {
             await Navigation.PushAsync(
-                new GameControlPage());
+                new GameControlPage(_selectedGamePlan));
         }
 
         private async void ProjectUpdate_Clicked(
