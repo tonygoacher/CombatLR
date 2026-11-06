@@ -344,6 +344,17 @@ public partial class GameProgressPage : ContentPage
 
     private bool TryProjectGpsToMap(double latitude, double longitude, out double u, out double v)
     {
+        // A valid GPS fix can be anywhere in the world. Reject malformed
+        // coordinates safely; distant but valid coordinates are handled by
+        // the map-boundary check in UpdateMapPosition.
+        if (!double.IsFinite(latitude) || !double.IsFinite(longitude) ||
+            latitude < -90 || latitude > 90 ||
+            longitude < -180 || longitude > 180)
+        {
+            u = v = 0;
+            return false;
+        }
+
         var playfield = _selectedPlan.MapDefinition?.Playfield;
         if (playfield is null)
         {
@@ -368,7 +379,7 @@ public partial class GameProgressPage : ContentPage
         var point = ToLocal(topLeft, latitude, longitude);
 
         double determinant = top.East * left.North - top.North * left.East;
-        if (Math.Abs(determinant) < 0.000001)
+        if (!double.IsFinite(determinant) || Math.Abs(determinant) < 0.000001)
         {
             u = v = 0;
             return false;
@@ -441,13 +452,15 @@ public partial class GameProgressPage : ContentPage
 
     private void UpdateMapPosition(double latitude, double longitude)
     {
-        if (!TryProjectGpsToMap(latitude, longitude, out double u, out double v))
+        if (!TryProjectGpsToMap(latitude, longitude, out double u, out double v) ||
+            !double.IsFinite(u) || !double.IsFinite(v) ||
+            u < 0 || u > 1 || v < 0 || v > 1)
         {
             PositionMarker.IsVisible = false;
             return;
         }
 
-        PositionMarker.IsVisible = u >= 0 && u <= 1 && v >= 0 && v <= 1;
+        PositionMarker.IsVisible = true;
         if (!PositionMarker.IsVisible)
             return;
 
