@@ -90,4 +90,19 @@ public sealed class SelectedGamePlanService
         await new GamePlanService().SaveAsync(GamePlan, filePath);
         SelectionChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// Writes the authoritative in-memory plan to its project folder for FTP
+    /// upload, preserving its current version number.
+    /// </summary>
+    public async Task SaveSelectedGamePlanForUploadAsync()
+    {
+        if (!IsSelected || GamePlan is null || ProjectDirectory is null)
+            throw new InvalidOperationException("Select a game plan before uploading.");
+
+        GamePlan.ProjectName = ProjectName ?? string.Empty;
+        var filePath = Path.Combine(ProjectDirectory, "gameplan.json");
+        await new GamePlanService().SaveCurrentVersionAsync(GamePlan, filePath);
+        SelectionChanged?.Invoke(this, EventArgs.Empty);
+    }
 }
