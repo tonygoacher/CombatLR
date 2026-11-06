@@ -16,7 +16,8 @@ public sealed class SelectedGamePlanService
     public string? MapBitmapPath { get; private set; }
     public bool IsSelected => ProjectDirectory is not null &&
                               GamePlan is not null &&
-                              MapDefinition is not null;
+                              MapDefinition is not null &&
+                              MapBitmapPath is not null;
 
     public event EventHandler? SelectionChanged;
 
