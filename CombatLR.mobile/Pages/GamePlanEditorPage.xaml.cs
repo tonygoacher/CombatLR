@@ -293,6 +293,49 @@ namespace CombatLR.mobile.Pages
             }
         }
 
+        private async void NewGamePlan_Clicked(
+            object? sender,
+            EventArgs e)
+        {
+            if (!_selectedGamePlan.IsSelected)
+                return;
+
+            var confirmed = await DisplayAlert(
+                "New Game Plan",
+                "This will clear all zones, pickups, home position and allocation settings in the selected gameplan.json. This cannot be undone. Continue?",
+                "New",
+                "Cancel");
+
+            if (!confirmed)
+                return;
+
+            try
+            {
+                await _selectedGamePlan.CreateNewGamePlanAsync();
+
+                _gamePlan = _selectedGamePlan.GamePlan!;
+                _currentZoneIndex = -1;
+                _currentPickupIndex = -1;
+                GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
+
+                UpdateHomeMarker();
+                UpdateGameObjectControls();
+                RenderGameObjects();
+                _savedStateSnapshot = CaptureCurrentStateSnapshot();
+
+                MapInfoLabel.Text =
+                    $"PROJECT: {_selectedGamePlan.ProjectName}\\n" +
+                    $"NEW GAME PLAN\\nVERSION: {_gamePlan.Version}";
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert(
+                    "New Game Plan",
+                    $"The game plan could not be cleared.\\n\\n{ex.Message}",
+                    "OK");
+            }
+        }
+
         private async void SaveGamePlan_Clicked(
             object? sender,
             EventArgs e)
