@@ -283,7 +283,7 @@ public partial class GameControlPage : ContentPage
             return;
         }
 
-        if (!device.IsOnline)
+        if (!device.PlayerControlsEnabled)
             return;
 
         bool newState = !device.FriendlyFire;
@@ -499,6 +499,12 @@ public partial class GameControlPage : ContentPage
             return;
         }
 
+        if (!device.PlayerControlsEnabled)
+        {
+            entry.Text = device.PlayerId.ToString();
+            return;
+        }
+
         if (!int.TryParse(entry.Text, out int playerId) ||
             playerId < 0 ||
             playerId > CombatLRNetworkService.MaxPlayerId)
@@ -544,6 +550,12 @@ public partial class GameControlPage : ContentPage
         if (sender is not Picker picker ||
             picker.BindingContext is not CombatLRDevice device)
         {
+            return;
+        }
+
+        if (!device.PlayerControlsEnabled)
+        {
+            picker.SelectedItem = device.TeamName;
             return;
         }
 
