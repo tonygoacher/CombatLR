@@ -143,9 +143,15 @@ public partial class GameProgressPage : ContentPage
             ? int.MaxValue
             : current.StartTime + current.LifespanSeconds;
 
+        // When zones overlap, the old zone remains current only until
+        // the next zone's start time (the transition completes there).
+        int activeEnd = next is null
+            ? currentEnd
+            : Math.Min(currentEnd, next.StartTime);
+
         // A zone whose lifespan has expired is no longer active while the
         // next zone is still waiting to start.
-        if (gameTime >= currentEnd)
+        if (gameTime >= activeEnd)
         {
             CurrentZoneLabel.Text = "No active zone";
             TimeLeftLabel.Text = "Expired";
@@ -157,9 +163,9 @@ public partial class GameProgressPage : ContentPage
         }
 
         CurrentZoneLabel.Text = $"Zone {currentIndex + 1}";
-        TimeLeftLabel.Text = currentEnd == int.MaxValue
+        TimeLeftLabel.Text = activeEnd == int.MaxValue
             ? "No expiry"
-            : FormatDuration(Math.Max(0, currentEnd - gameTime));
+            : FormatDuration(Math.Max(0, activeEnd - gameTime));
 
         if (next is null)
         {
