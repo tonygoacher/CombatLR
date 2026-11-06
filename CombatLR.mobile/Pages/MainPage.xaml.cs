@@ -48,6 +48,15 @@ namespace CombatLR.mobile.Pages
             object? sender,
             EventArgs e)
         {
+            if (!_selectedGamePlan.IsSelected)
+            {
+                await DisplayAlert(
+                    "No Game Plan",
+                    "Please select a project with a game plan before updating devices.",
+                    "OK");
+                return;
+            }
+
             await Navigation.PushAsync(
                 new ProjectUpdatePage(_selectedGamePlan));
         }
