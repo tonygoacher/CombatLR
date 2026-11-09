@@ -39,9 +39,19 @@ uint16_t PowerUpState::Run()
             return SystemStates::OTA;
         }
 
-        if(_services.leftSwitch.RawRead() && _services.rightSwitch.RawRead())
+        if(_services.triggerSwitch.RawRead() && _services.rightSwitch.RawRead())
         {
             return SystemStates::Provisioning;
+        }
+
+        if(_services.triggerSwitch.RawRead() && _services.leftSwitch.RawRead())
+        {
+            return SystemStates::IRTestState;
+        }
+
+        if(_services.leftSwitch.RawRead() && _services.rightSwitch.RawRead())
+        {
+            return SystemStates::AwaitingStart;
         }
             
         return SystemStates::GPSLock;
