@@ -69,7 +69,8 @@ public sealed class SelectedGamePlanService
             throw new InvalidDataException("map.json produced no MapDefinition.");
 
         var planService = new GamePlanService();
-        GamePlan gamePlan = File.Exists(gamePlanPath)
+        bool gamePlanExists = File.Exists(gamePlanPath);
+        GamePlan gamePlan = gamePlanExists
             ? await planService.LoadAsync(gamePlanPath)
             : planService.CreateNew();
 
@@ -80,6 +81,12 @@ public sealed class SelectedGamePlanService
         // calibrated playfield centre, while preserving any home the user
         // has already chosen.
         EnsureHomePosition(gamePlan, mapDefinition);
+
+        // A project without a gameplan.json gets a real, persisted blank plan
+        // immediately, including its default home when the map is calibrated.
+        // Keep version zero: creating the initial file is not a plan edit.
+        if (!gamePlanExists)
+            await planService.SaveCurrentVersionAsync(gamePlan, gamePlanPath);
 
         // A newly selected plan must be explicitly started before progress is available.
         new GameSessionService().ClearSession();
