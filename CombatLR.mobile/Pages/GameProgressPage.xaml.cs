@@ -401,6 +401,34 @@ public partial class GameProgressPage : ContentPage
 
         MapContainer.HeightRequest =
             MapContainer.Width * image.Height / image.Width;
+
+        UpdateHomeMapPosition();
+    }
+
+    private void UpdateHomeMapPosition()
+    {
+        var home = _selectedPlan.GamePlan?.Home;
+        if (home is null ||
+            MapContainer.Width <= 0 ||
+            MapContainer.Height <= 0 ||
+            !TryProjectGpsToMap(home.Latitude, home.Longitude, out double u, out double v) ||
+            !double.IsFinite(u) || !double.IsFinite(v) ||
+            u < 0 || u > 1 || v < 0 || v > 1)
+        {
+            HomeMarker.IsVisible = false;
+            return;
+        }
+
+        AbsoluteLayout.SetLayoutFlags(
+            HomeMarker,
+            AbsoluteLayoutFlags.PositionProportional);
+        AbsoluteLayout.SetLayoutBounds(
+            HomeMarker,
+            new Rect(u, v, 22, 22));
+
+        HomeMarker.TranslationX = -11;
+        HomeMarker.TranslationY = -11;
+        HomeMarker.IsVisible = true;
     }
 
     private async Task UpdateLocationAsync()
