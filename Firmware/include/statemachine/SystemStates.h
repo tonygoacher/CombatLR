@@ -13,4 +13,5 @@ enum SystemStates
     Ftp,
     OTA,
     Provisioning,
+    IRTestState,
 };

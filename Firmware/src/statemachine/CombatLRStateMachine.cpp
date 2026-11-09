@@ -11,6 +11,7 @@
 #include "statemachine/OTAState.h"
 #include "statemachine/ProvisioningState.h"
 #include "statemachine/DeadState.h"
+#include "statemachine/LTTestState.h"
 #include "weapons/WeaponManager.h"
 #include <Arduino.h>
 
@@ -53,5 +54,6 @@ void CombatLRStateMachine::Init(CombatLRServices& services, WeaponManager& weapo
     _states.insert(StateMapEntry(SystemStates::Dead,*new DeadState(services)));
     _states.insert(StateMapEntry(SystemStates::OTA,*new OTAState(services)));
     _states.insert(StateMapEntry(SystemStates::Provisioning,*new ProvisioningState(services)));    
+    _states.insert(StateMapEntry(SystemStates::IRTestState,*new LTTestState(services)));    
 }
 
