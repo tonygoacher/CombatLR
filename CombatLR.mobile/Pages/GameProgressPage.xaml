@@ -87,6 +87,24 @@
                         IsVisible="False" />
 
                     <Border
+                        x:Name="HomeMarker"
+                        WidthRequest="22"
+                        HeightRequest="22"
+                        Stroke="White"
+                        StrokeThickness="2"
+                        BackgroundColor="#1565C0"
+                        StrokeShape="RoundRectangle 11"
+                        IsVisible="False">
+                        <Label
+                            Text="H"
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            FontSize="12"
+                            HorizontalTextAlignment="Center"
+                            VerticalTextAlignment="Center" />
+                    </Border>
+
+                    <Border
                         x:Name="PositionMarker"
                         WidthRequest="18"
                         HeightRequest="18"
