@@ -74,6 +74,11 @@ public partial class GameProgressPage : ContentPage
         if (plan is null)
             return;
 
+        // Home is a fixed game-plan coordinate, not a live GPS position.
+        // Retry while the page lays out so the marker also appears when the
+        // map's first SizeChanged event occurs before it has usable bounds.
+        UpdateHomeMapPosition();
+
         int elapsedSinceStart = Math.Max(
             0,
             (int)Math.Floor(
