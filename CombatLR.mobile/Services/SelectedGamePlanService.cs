@@ -69,12 +69,24 @@ public sealed class SelectedGamePlanService
             throw new InvalidDataException("map.json produced no MapDefinition.");
 
         var planService = new GamePlanService();
-        GamePlan gamePlan = File.Exists(gamePlanPath)
+        bool gamePlanExists = File.Exists(gamePlanPath);
+        GamePlan gamePlan = gamePlanExists
             ? await planService.LoadAsync(gamePlanPath)
             : planService.CreateNew();
 
         var projectName = Path.GetFileName(projectDirectory) ?? string.Empty;
         gamePlan.ProjectName = projectName;
+
+        // Older plans may not contain a home position. Default it to the
+        // calibrated playfield centre, while preserving any home the user
+        // has already chosen.
+        EnsureHomePosition(gamePlan, mapDefinition);
+
+        // A project without a gameplan.json gets a real, persisted blank plan
+        // immediately, including its default home when the map is calibrated.
+        // Keep version zero: creating the initial file is not a plan edit.
+        if (!gamePlanExists)
+            await planService.SaveCurrentVersionAsync(gamePlan, gamePlanPath);
 
         // A newly selected plan must be explicitly started before progress is available.
         new GameSessionService().ClearSession();
@@ -86,6 +98,30 @@ public sealed class SelectedGamePlanService
         GamePlan = gamePlan;
 
         SelectionChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static void EnsureHomePosition(GamePlan gamePlan, MapDefinition mapDefinition)
+    {
+        if (gamePlan.Home is not null)
+            return;
+
+        var centre = mapDefinition.Playfield?.Centre;
+        if (centre is null ||
+            !double.IsFinite(centre.Latitude) ||
+            !double.IsFinite(centre.Longitude) ||
+            centre.Latitude < -90 || centre.Latitude > 90 ||
+            centre.Longitude < -180 || centre.Longitude > 180 ||
+            (centre.Latitude == 0 && centre.Longitude == 0))
+        {
+            // A missing or uncalibrated map centre is not a useful GPS home.
+            return;
+        }
+
+        gamePlan.Home = new HomePosition
+        {
+            Latitude = centre.Latitude,
+            Longitude = centre.Longitude
+        };
     }
 
     public async Task SaveGamePlanAsync()
@@ -113,6 +149,9 @@ public sealed class SelectedGamePlanService
             ProjectName = ProjectName ?? string.Empty,
             Version = GamePlan.Version
         };
+
+        if (MapDefinition is not null)
+            EnsureHomePosition(newPlan, MapDefinition);
 
         var filePath = Path.Combine(ProjectDirectory, "gameplan.json");
         await new GamePlanService().SaveCurrentVersionAsync(newPlan, filePath);
