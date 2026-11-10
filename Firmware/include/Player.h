@@ -19,9 +19,10 @@ public:
     void SetPosition(GameCoordinate& newPos);
     bool AtMaxHealth();
     bool CheckInZone(bool inZone);
+    int GetMaxHealth() { return MaxHealth;}
 
 private:
-    static const int MaxHealth = 50;
+    static const int MaxHealth = 100;
     GameCoordinate  _playerPos;
     int         _health;
     ISounds&        _sounds;

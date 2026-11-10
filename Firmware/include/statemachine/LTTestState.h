@@ -5,8 +5,7 @@
 #include "stdint.h"
 
 #include "Services.h"   
-
-
+#include "Player.h"
 
 
 
@@ -26,8 +25,19 @@ private:
     static const int TextZoom = 2;
     static const int TextFont = 2;  
 
-    CombatLRServices& _services;
+    static const int HealthX = 0;
+    static const int HealthY = 225;
+    static const int HealthW = 40 ;
+    static const int HealthH = 15;
 
+    CombatLRServices& _services;
+    
+    Player _player;
+
+
+    static const int ShotHitLedTime = 500;
+    static const int TestModeStartHealth = 100;
+    static const int ShotPower = 20;    // 5 hits before dead
 
     static const int TimeToClearLTData = 1000;
     static const uint8_t DefaultWeaponIndex = 0;

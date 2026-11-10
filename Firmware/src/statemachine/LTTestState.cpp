@@ -1,46 +1,100 @@
 
-#include "statemachine/CombatLRStateMachine.h"
+#include <vector>
+
 #include "statemachine/LTTestState.h"
+#include "ISystemTime.h"
+#include "graphics/DisplayManager.h"
+
+
+#include "statemachine/SystemStates.h"
+#include "SystemConfig.h"
+
+#include "PBSwitch.h"
+#include "ISounds.h"
+
+
+#include "Player.h"
+#include "widgets/PlayerHealthWidget.h"
+#include "graphics/AddWidgetCommand.h"
+#include "graphics/RemoveWidgetCommand.h"
+#include "widgets/UIWidgetIds.h"
 #include "ESP32LaserTag.h"
 #include "PacedLED.h"
-#include "graphics/DisplayBackgroundCommand.h"
-#include "graphics/DisplayManager.h"
-#include "widgets/TextWidget.h"
-#include "widgets/UIWidgetIds.h"
-#include "graphics/AddWidgetCommand.h"
-#include "graphics/SetTextCommand.h"
-#include "graphics/RemoveWidgetCommand.h"
-#include "statemachine/GenericEvent.h"
-#include "PBSwitch.h"
-#include "SystemConfig.h"
-#include "IRPowerLevel.h"
-#include "statemachine/SystemStates.h"
-#include "ISounds.h"
+
 
 
 
 
 LTTestState::LTTestState(CombatLRServices& services)
-: _services(services)
+: _services(services),
+ _player(services.sounds, TestModeStartHealth)
 {
+}
+
+
+uint16_t LTTestState::Run()
+{
+    LaserTagData ltData;
+
+    if(_services.laserTag.GetLasertagData(ltData))
+    {
+
+        if( ltData.playerId != _services.systemConfig.GetPlayerId())   // Reject player ID that is the same. e.g. reflected own shot
+        {
+            if(ltData.team != _services.systemConfig.GetTeamId() || _services.systemConfig.GetFriendlyFire())// Team must differ unless friendly fire enabled
+            {
+
+                int newHealth = _player.TakeHealth(ShotPower);
+                if(newHealth)
+                {
+                    _services.hitLED.Fire(ShotHitLedTime);
+                    _services.sounds.Play("/sounds/hit.wav");  
+                }
+                else
+                {
+                    return SystemStates::Dead;
+                }
+
+            }                
+        }            
+    }
+
+    if(_services.triggerSwitch.Pressed())
+    {
+        LaserTagData tagData;
+        tagData.team = _services.systemConfig.GetTeamId();
+        tagData.playerId = _services.systemConfig.GetPlayerId();
+        tagData.shotPowerIndex = 0; // Unused, it's hard coded in this class
+        _services.laserTag.SetIRPower(IRPowerLevel::IRPowerHigh);
+        _services.muzzleLED.Fire(300);
+        _services.sounds.PlayCached();
+        _services.laserTag.SendLasertagData(tagData);
+    }
+
+
+    return SystemStates::IRTestState;  
 
 }
 
+
+
 void LTTestState::Entry()
 {
-    _services.displayManager.Send(
-    std::unique_ptr<IDisplayCommand>(
-        new DisplayBackgroundCommand(
-            "/logo.bmp")));
 
-    WidgetPosition textPos={TextX,TextY};
 
-    TextWidget*  textWidget  = new TextWidget(UIWidgetIds::TestModeIndicator, "Test Mode", textPos,TextFont,MC_DATUM, TFT_WHITE, TFT_BLACK, TextZoom);
-    
+    _player.InitHealth();
+    _services.sounds.CacheSample("/sounds/blaster.wav");
+
+    PlayerHealthWidget*  healthDisplay = new PlayerHealthWidget(UIWidgetIds::PlayerHealth, _player, HealthX, HealthY, HealthW, HealthH);
+
     _services.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
-                new AddWidgetCommand(textWidget)));            
- 
+                new AddWidgetCommand(healthDisplay)));
+
+    while(_services.triggerSwitch.RawRead())
+    {
+        delay(100);
+    }                
 }
 
 
@@ -48,44 +102,10 @@ void LTTestState::Entry()
 
 void LTTestState::Exit()
 {
-   
-    RemoveWidgetCommand* removeIcon = new RemoveWidgetCommand(UIWidgetIds::TestModeIndicator);
 
-    _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));   
+    _services.displayManager.Send(
+        std::unique_ptr<IDisplayCommand>(
+            new RemoveWidgetCommand(UIWidgetIds::PlayerHealth)));
+
 }
-
-
-
-
-uint16_t LTTestState::Run()
-{
-     LaserTagData ltData;
-
-    if(_services.laserTag.GetLasertagData(ltData))
-    {
-        if(ltData.playerId != _services.systemConfig.GetPlayerId())
-        {
-            _services.sounds.Play("/sounds/hit.wav");
-        }
-    }   
-    
-    if(_services.triggerSwitch.Pressed())   // This is single shot, switch must be released before this returns true again
-    {
-        LaserTagData tagData;
-
-        tagData.team = _services.systemConfig.GetTeamId();
-        tagData.playerId = _services.systemConfig.GetPlayerId();
-        tagData.shotPowerIndex = DefaultWeaponIndex;
-        _services.laserTag.SetIRPower(IRPowerLevel::IRPowerHigh);
-
-        _services.laserTag.SendLasertagData(tagData);
-        _services.muzzleLED.Fire(InterShotTime);
-    }
-
-   
-    return SystemStates::IRTestState;
-}
-
-
-
 
