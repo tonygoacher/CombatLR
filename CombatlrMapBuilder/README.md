@@ -15,7 +15,7 @@ The project targets `net8.0-windows` and uses WPF plus `System.Drawing.Common`.
 1. Open or create a project using the **File** menu.
 2. Open the source map image.
 3. Mark four calibration points, A, B, C and D, on the source image and enter the latitude and longitude for each point.
-4. Position and resize the playfield rectangle over the area to export. The playfield keeps the CombatLR 4:3 aspect ratio.
+4. Position and resize the playfield rectangle over the area to export. The playfield keeps the CombatLR 4:3 aspect ratio required to match the 320x200 lasertag display.
 5. Save the editable project if you want to continue working on it later.
 6. Choose **Export Site Package** when the image and all four GPS calibration points are complete.
 
