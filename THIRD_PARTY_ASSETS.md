@@ -1,6 +1,6 @@
 # Third-party assets
 
-This document records third-party audio files currently present in `Resources/` in the CombatLR repository. It is intended as a provenance and acknowledgement record; it does not replace the licence terms for an individual asset.
+This document records third-party audio files currently present in `Firmware/data/sounds` in the CombatLR repository. It is intended as a provenance and acknowledgement record; it does not replace the licence terms for an individual asset.
 
 ## Audio
 
