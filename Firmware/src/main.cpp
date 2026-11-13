@@ -75,7 +75,7 @@ void setup()
     {}*/
 
     PrintPSRAM("Before NavigationDisplayTestBegin");
-    NavigationDisplayTestBegin();
+    SystemBegin();
     PrintPSRAM("After NavigationDisplayTestBegin");
 
 }

@@ -7,24 +7,9 @@
 #include "Zone.h"
 #include "Pickup.h"
 
-class IGameTime;
 
 
 
-
-
-/*
- * Minimal GamePlan representation.
- *
- * The first implementation deliberately loads only the gameplan
- * information required to establish the fixed GPS reference:
- *
- *     home.latitude
- *     home.longitude
- *
- * Zones and pickups will be added when the game-plan/gameplay layer
- * is implemented.
- */
 class GamePlan
 {
 public:
@@ -56,7 +41,6 @@ private:
     String _error;
 
     const GamePlan* _gamePlan;
-    IGameTime* _gameTime;
 
     std::vector<Zone> _zones;
 };
