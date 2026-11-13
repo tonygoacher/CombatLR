@@ -46,6 +46,57 @@ public sealed class SelectedGamePlanService
             : Path.Combine(documents, "CombatLR");
     }
 
+    /// <summary>
+    /// Updates the current selection after its project directory has been
+    /// renamed. The project contents and loaded map/plan remain unchanged.
+    /// </summary>
+    public void OnProjectDirectoryRenamed(string oldDirectory, string newDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(oldDirectory) ||
+            string.IsNullOrWhiteSpace(newDirectory) ||
+            ProjectDirectory is null)
+        {
+            return;
+        }
+
+        if (!PathsEqual(ProjectDirectory, oldDirectory))
+            return;
+
+        var newPath = Path.GetFullPath(newDirectory);
+        var newName = Path.GetFileName(
+            Path.TrimEndingDirectorySeparator(newPath));
+
+        ProjectDirectory = newPath;
+        ProjectName = newName;
+
+        if (MapBitmapPath is not null)
+        {
+            MapBitmapPath = Path.Combine(
+                newPath,
+                Path.GetFileName(MapBitmapPath));
+        }
+
+        if (GamePlan is not null)
+            GamePlan.ProjectName = newName;
+
+        SelectionChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static bool PathsEqual(string first, string second)
+    {
+        try
+        {
+            return string.Equals(
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(first)),
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(second)),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task SelectProjectAsync(string projectDirectory)
     {
         if (string.IsNullOrWhiteSpace(projectDirectory))
