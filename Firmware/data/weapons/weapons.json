@@ -12,7 +12,7 @@
       "insertClipTime": 1000,
 	  "cockingTime":0,
 	  "magCapacity": 12,
-	  "maxAmmoReserve": 200,
+	  "maxAmmoReserve": 999,
 	  "defaultAmmoCount": 40,
 	  "maxReload": 200,
 	  "shotPower": 1,

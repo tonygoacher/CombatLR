@@ -32,9 +32,11 @@ public:
     void Run(); // Used to pump the current weapon
     void AddWeapon(WeaponType type);
     void AddAmmo(WeaponType type, uint16_t ammo);
+    void SetAmmo(WeaponType type, uint16_t ammo);
     WeaponType GetCurrentWeaponType();
     int GetNumWeapons();
     const WeaponMap& GetWeaponMap();
+    bool WeaponCarried(WeaponType weapon);
 
 private:
 

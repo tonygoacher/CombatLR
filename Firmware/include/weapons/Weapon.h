@@ -33,6 +33,7 @@ public:
     uint16_t GetSpaceInMag() { return GetMagCapacity() - GetMagAmmo();} // Return how many rounds could be inserted into this mag
 
     virtual void AddAmmo(uint16_t addAmmo) = 0; // Called when a pick up is made
+    virtual void SetAmmo(uint16_t ammo) = 0;
 
 
 

@@ -10,18 +10,20 @@ class ISounds;
 class Player
 {
 public:
-    Player(ISounds& sounds, int initialHealth);
+    Player(ISounds& sounds);
     GameCoordinate& Position();
-    void InitHealth();
+    void InitHealth(int startHealth = 100, int maxHealth = 100);
     int GetHealth();        // Player health = 0 - 100
     unsigned int AddHealth(unsigned int health);  // Capped to 100
     unsigned int TakeHealth(unsigned int health); // Capped to 0
     void SetPosition(GameCoordinate& newPos);
     bool AtMaxHealth();
     bool CheckInZone(bool inZone);
+    int GetMaxHealth() { return _maxHealth;}
 
 private:
-    static const int MaxHealth = 50;
+    static const int DefaultMaxHealth = 100;
+    int _maxHealth;
     GameCoordinate  _playerPos;
     int         _health;
     ISounds&        _sounds;

@@ -1,0 +1,56 @@
+
+stateDiagram-v2
+    [*] --> Idle
+
+    Idle --> Empty : Magazine ammo == 0
+    Idle --> Shoot : Trigger pressed and build-up time == 0
+    Idle --> BuildUp : Trigger pressed and build-up time > 0
+    Idle --> Reload : Reload pressed, magazine not full, reserve ammo available
+
+    Shoot --> WaitForTriggerRelease : Rate-of-fire event; burst exhausted or magazine empty
+    Shoot --> WaitForTriggerRelease : Rate-of-fire event; trigger released
+
+    WaitForTriggerRelease --> ManualCockingRequired : Debounce event; trigger stably released, ammo available, manual cocking enabled
+    WaitForTriggerRelease --> Idle : Debounce event; trigger stably released, ammo available, manual cocking disabled
+    WaitForTriggerRelease --> Empty : Debounce event; trigger stably released, magazine empty
+
+    Empty --> Reload : Reload pressed and reserve ammo available
+
+    Reload --> CountedReload : Counted reload enabled
+    Reload --> Cocking : Magazine-insert timer event; complete reload
+
+    Cocking --> Empty : Magazine ammo == 0
+    Cocking --> Idle : Cocking-time event
+
+    BuildUp --> Shoot : Build-up-time event
+    BuildUp --> Idle : Trigger released before build-up completes
+
+    ManualCockingRequired --> Cocking : Reload switch pressed
+
+    CountedReload --> Empty : Magazine + reserve ammo == 0
+    CountedReload --> Cocking : Round-insert timer event; magazine full or reserve ammo exhausted
+
+    note right of Shoot
+        Entry fires the first shot.
+        Subsequent shots are paced by
+        RateOfFireEvent.
+        Burst count below zero means full auto.
+    end note
+
+    note right of WaitForTriggerRelease
+        TriggerDebounce is acted on only
+        after the debounce timer has elapsed.
+    end note
+
+    note right of Reload
+        Non-counted reload waits for
+        MagInsertTime. Counted reload
+        moves immediately to CountedReload.
+    end note
+
+    note right of CountedReload
+        Each timer event inserts one round.
+        If more rounds can be inserted,
+        the state remains CountedReload.
+        Otherwise it transitions to Cocking.
+    end note

@@ -18,6 +18,7 @@ public:
     void Equip() override;
     void Unslung() override{};
     void AddAmmo(uint16_t addAmmo) override;
+    void SetAmmo(uint16_t ammo) override;
     const char * const GetFilename() override;
     bool Updated();
     void SetUpdated() { _updated = true;}

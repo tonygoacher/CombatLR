@@ -1,0 +1,96 @@
+stateDiagram-v2
+    [*] --> PowerUp
+
+    state "Power Up" as PowerUp
+    state "GPS Lock" as GPSLock
+    state "Awaiting Start" as AwaitingStart
+    state "Game Initialisation" as GameInit
+    state "Game Running" as GameRunning
+    state "Dead" as Dead
+    state "FTP Mode" as FTP
+    state "OTA Mode" as OTA
+    state "Network Provisioning" as Provisioning
+    state "IR Test" as IRTest
+
+    PowerUp --> FTP : After 2s, trigger + reload held
+    PowerUp --> OTA : After 2s, trigger + zoom held
+    PowerUp --> Provisioning : After 2s, trigger + right held
+    PowerUp --> IRTest : After 2s, trigger + left held
+    PowerUp --> AwaitingStart : After 2s, left + right held
+    PowerUp --> GPSLock : After 2s, no mode shortcut selected
+
+    GPSLock --> AwaitingStart : GPS position acquired
+
+    AwaitingStart --> GameInit : Valid StartGame command, system time accepted, Wi-Fi shutdown delay elapsed
+
+    GameInit --> GameRunning : Game delay elapsed
+
+    GameRunning --> Dead : Player health reaches zero
+
+    Provisioning --> GPSLock : Configuration saved
+
+    note right of PowerUp
+        The startup state waits 2 seconds
+        before selecting the operating mode.
+        Shortcut combinations are checked
+        in the order shown in the source.
+    end note
+
+    note right of GPSLock
+        Navigation is updated continuously.
+        A valid position advances to
+        Awaiting Start.
+    end note
+
+    note right of AwaitingStart
+        Wi-Fi/network service is started.
+        The game starts only after a valid
+        StartGame command has supplied a
+        time accepted by SystemTime::Reset.
+        A short exit pacer allows the
+        network acknowledgement to be sent.
+    end note
+
+    note right of GameInit
+        Displays the map and countdown.
+        The state waits until gameDelayTime
+        has elapsed before starting gameplay.
+    end note
+
+    note right of GameRunning
+        Gameplay continues while the player
+        is alive. Incoming valid hits and
+        zone damage can reduce health to zero.
+    end note
+
+    note right of FTP
+        FTP mode runs its FTP server and
+        network broadcasts. Run() returns
+        the FTP state continuously.
+    end note
+
+    note right of OTA
+        OTA mode services ArduinoOTA.
+        Run() returns the OTA state
+        continuously.
+    end note
+
+    note right of Provisioning
+        Starts a Wi-Fi access point and
+        configuration web server.
+        Saving configuration returns to
+        GPS Lock.
+    end note
+
+    note right of IRTest
+        IR test mode receives and transmits
+        laser-tag packets. Run() returns
+        the IR test state continuously.
+    end note
+
+    note right of Dead
+        Plays the dead sound and displays
+        the dead screen. The current
+        implementation has no exit
+        transition from this state.
+    end note
