@@ -53,7 +53,7 @@ void PlayerHealthWidget::Render(IDisplayContext& context)
     const int x = static_cast<int>(position.x);
     const int y = static_cast<int>(position.y);
 
-    const int health = std::max(0, std::min(100, _player.GetHealth()));
+    const int health = std::max(0, std::min(_player.GetMaxHealth(), _player.GetHealth()));
 
     canvas.drawRect(
         x,
@@ -97,7 +97,7 @@ void PlayerHealthWidget::Render(IDisplayContext& context)
             : TFT_GREEN;
 
     const int barWidth =
-        (innerWidth * health) / 100;
+        (innerWidth * health) / _player.GetMaxHealth();
 
      
     // Clear the meter area first.

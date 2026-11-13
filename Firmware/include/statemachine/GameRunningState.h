@@ -35,7 +35,6 @@ public:
     void PickupDeactivated(uint32_t pickupId) override;
 
 private:    
-    static const int PlayerStartHealth = 50;
     uint16_t    _gameTime;
     CombatLRServices& _stateData;
     WeaponManager& _weaponManager;

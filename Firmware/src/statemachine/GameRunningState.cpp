@@ -29,7 +29,7 @@
 
 
 GameRunningState::GameRunningState(uint16_t gameTime /*secs*/, CombatLRServices& stateData, WeaponManager& weaponManager)
-: _stateData(stateData), _gameTime(gameTime), _player(stateData.sounds, PlayerStartHealth),
+: _stateData(stateData), _gameTime(gameTime), _player(stateData.sounds),
  _weaponManager(weaponManager), 
  _ammoPickup(weaponManager),
  _startTime(0),
