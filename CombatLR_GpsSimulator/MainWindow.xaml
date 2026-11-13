@@ -1,7 +1,9 @@
 <Window x:Class="CombatLRGpsSimulator.MainWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="CombatLR GPS Simulator" Width="1200" Height="900"
+ Title="CombatLR GPS Simulator"
+ Icon="/CombatLR_GpsSimulator;component/GpsSimulator.ico"
+ Width="1200" Height="900"
  Background="#202124">
  <Grid Margin="10">
   <Grid.RowDefinitions>

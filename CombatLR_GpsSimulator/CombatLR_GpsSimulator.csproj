@@ -5,7 +5,11 @@
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>GpsSimulator.ico</ApplicationIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="GpsSimulator.ico" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.IO.Ports" Version="10.0.11" />
   </ItemGroup>
