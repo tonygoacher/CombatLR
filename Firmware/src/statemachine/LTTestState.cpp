@@ -1,12 +1,15 @@
 
-#include <vector>
 
 #include "statemachine/LTTestState.h"
+#include "statemachine/SystemStates.h"
 #include "ISystemTime.h"
 #include "graphics/DisplayManager.h"
+#include "TeamIDs.h"
+#include "graphics/TextureManager.h"
+#include "widgets/TextureWidget.h"
 
 
-#include "statemachine/SystemStates.h"
+#include "weapons/WeaponManager.h"
 #include "SystemConfig.h"
 
 #include "PBSwitch.h"
@@ -17,17 +20,19 @@
 #include "widgets/PlayerHealthWidget.h"
 #include "graphics/AddWidgetCommand.h"
 #include "graphics/RemoveWidgetCommand.h"
-#include "widgets/UIWidgetIds.h"
+#include "graphics/DisplayBackgroundCommand.h"
 #include "ESP32LaserTag.h"
 #include "PacedLED.h"
+#include "widgets/UIWidgetIds.h"
 
 
 
 
 
-LTTestState::LTTestState(CombatLRServices& services)
+LTTestState::LTTestState(CombatLRServices& services, WeaponManager& weaponManager)
 : _services(services),
- _player(services.sounds, TestModeStartHealth)
+ _player(services.sounds),
+ _weaponManager(weaponManager)
 {
 }
 
@@ -59,17 +64,7 @@ uint16_t LTTestState::Run()
         }            
     }
 
-    if(_services.triggerSwitch.Pressed())
-    {
-        LaserTagData tagData;
-        tagData.team = _services.systemConfig.GetTeamId();
-        tagData.playerId = _services.systemConfig.GetPlayerId();
-        tagData.shotPowerIndex = 0; // Unused, it's hard coded in this class
-        _services.laserTag.SetIRPower(IRPowerLevel::IRPowerHigh);
-        _services.muzzleLED.Fire(300);
-        _services.sounds.PlayCached();
-        _services.laserTag.SendLasertagData(tagData);
-    }
+    _weaponManager.Run();
 
 
     return SystemStates::IRTestState;  
@@ -80,16 +75,31 @@ uint16_t LTTestState::Run()
 
 void LTTestState::Entry()
 {
+    _services.displayManager.Send(
+    std::unique_ptr<IDisplayCommand>(
+        new DisplayBackgroundCommand(
+            "/ltmode.bmp")));
 
+    _weaponManager.Init();
 
-    _player.InitHealth();
-    _services.sounds.CacheSample("/sounds/blaster.wav");
+    _weaponManager.AddWeapon(DefaultWeaponIndex);
+    _weaponManager.SetAmmo(DefaultWeaponIndex,999);
+  
+    _player.InitHealth(DefaultStartHealth,DefaultStartHealth);
 
     PlayerHealthWidget*  healthDisplay = new PlayerHealthWidget(UIWidgetIds::PlayerHealth, _player, HealthX, HealthY, HealthW, HealthH);
 
     _services.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new AddWidgetCommand(healthDisplay)));
+
+    WidgetPosition posTeam(160,0);
+
+    TeamIds team = static_cast<TeamIds>(_services.systemConfig.GetTeamId());
+    TextureWidget* teamIcon  = new TextureWidget(UIWidgetIds::TeamID,
+        _services.displayManager.GetTextureManager(),posTeam,_services.systemConfig.GetTeamFile(team));
+
+    _services.displayManager.Send(std::make_unique<AddWidgetCommand>(teamIcon));                     
 
     while(_services.triggerSwitch.RawRead())
     {

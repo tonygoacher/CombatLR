@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 
+
 namespace SystemConsts
 {
     constexpr uint8_t MaxTeamId = 3;
@@ -19,6 +20,14 @@ namespace SystemConsts
     const char * const GPSType = "gpsType";
 
     
+}
+
+namespace TeamIconFiles
+{
+    const char * const redTeam = "/teamred.bmp";
+    const char * const blueTeam = "/teamblue.bmp";
+    const char * const yellowTeam = "/teamyellow.bmp";
+    const char * const greenTeam = "/teamgreen.bmp";
 }
 
 bool SystemConfig::Begin()
@@ -338,4 +347,43 @@ bool SystemConfig::SetFriendlyFire(bool enabled)
     }
     _friendlyFire = oldFF;
     return false;
+}
+
+
+
+const char * const SystemConfig::GetTeamFile(TeamIds teamId)
+{
+
+    switch(teamId)
+    {
+        case    TeamIds::Red:
+        {
+            return TeamIconFiles::redTeam;
+        }
+        break;
+
+        case    TeamIds::Blue:
+        {
+            return TeamIconFiles::blueTeam;
+        }
+        break;
+
+        case    TeamIds::Yellow:
+        {
+            return TeamIconFiles::yellowTeam;
+        }
+        break;
+
+        case    TeamIds::Green:
+        {
+            return TeamIconFiles::greenTeam;
+        }
+        break;
+
+        default:
+        {
+            Serial.printf("SystemConfig::GetTeamFile Invalid team id %d\n", static_cast<int>(teamId));
+        }
+    }
+    return nullptr;
 }

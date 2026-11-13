@@ -26,52 +26,10 @@
 
 
 
-namespace TeamIconFiles
-{
-    const char * const redTeam = "/teamred.bmp";
-    const char * const blueTeam = "/teamblue.bmp";
-    const char * const yellowTeam = "/teamyellow.bmp";
-    const char * const greenTeam = "/teamgreen.bmp";
-}
 
 
 
-const char * const AwaitingStartState::GetTeamFile(TeamIds teamId)
-{
-    switch(teamId)
-    {
-        case    TeamIds::Red:
-        {
-            return TeamIconFiles::redTeam;
-        }
-        break;
 
-        case    TeamIds::Blue:
-        {
-            return TeamIconFiles::blueTeam;
-        }
-        break;
-
-        case    TeamIds::Yellow:
-        {
-            return TeamIconFiles::yellowTeam;
-        }
-        break;
-
-        case    TeamIds::Green:
-        {
-            return TeamIconFiles::greenTeam;
-        }
-        break;
-
-        default:
-        {
-            Serial.printf("AwaitingStartState::GetTeamFile Invalid team id %d\n", static_cast<int>(teamId));
-        }
-
-    }
-    return nullptr;
-}
 
 
 // -----------------------------------------------------------------------------
@@ -194,7 +152,7 @@ void AwaitingStartState::Entry()
 
     TeamIds team = static_cast<TeamIds>(_services.systemConfig.GetTeamId());
     textureWidget  = new TextureWidget(UIWidgetIds::TeamID,
-        _services.displayManager.GetTextureManager(),posTeam,GetTeamFile(team));
+    _services.displayManager.GetTextureManager(),posTeam,_services.systemConfig.GetTeamFile(team));
     _services.displayManager.Send(std::make_unique<AddWidgetCommand>(textureWidget));               
 
 }
@@ -319,7 +277,7 @@ uint16_t AwaitingStartState::Run()
             _services.displayManager.Send(
                 std::make_unique<SetWidgetTextureCommand>(
                 UIWidgetIds::TeamID,
-                GetTeamFile(team))); 
+                _services.systemConfig.GetTeamFile(team))); 
         }
 
         if(event->GetType() == CombatLRNetworkEventType::StartGame)

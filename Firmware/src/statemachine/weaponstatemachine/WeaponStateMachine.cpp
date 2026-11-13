@@ -63,10 +63,23 @@ void WeaponStateMachine::Equip()
 
 void WeaponStateMachine::AddAmmo(uint16_t addAmmo)
 {
+    if(_reserveAmmo < GetMaxAmmoReserve())
+    {
+        _services.sounds.Play("/sounds/ampick.wav");   
+        _reserveAmmo += addAmmo;
+        if(_reserveAmmo > GetMaxAmmoReserve())
+        {
+            _reserveAmmo = GetMaxAmmoReserve();
+        }
+        SetUpdated();
+    }
 
+}
 
-    _services.sounds.Play("/sounds/ampick.wav");   
-    _reserveAmmo += addAmmo;
+void WeaponStateMachine::SetAmmo(uint16_t ammo)
+{
+    _reserveAmmo = ammo > GetMaxAmmoReserve() ? GetMaxAmmoReserve() : ammo;
+    SetUpdated();
 
 }
 

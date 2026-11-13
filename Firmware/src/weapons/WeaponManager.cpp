@@ -281,3 +281,22 @@ WeaponType WeaponManager::GetCurrentWeaponType()
 }
 
 
+
+
+
+bool WeaponManager::WeaponCarried(WeaponType weapon)
+{
+    return _weapons.find(weapon) != _weapons.end();
+}
+
+
+
+void WeaponManager::SetAmmo(WeaponType type, uint16_t ammo)
+{
+
+    WeaponMap::iterator weapon = _weapons.find(type);
+    if(weapon != _weapons.end())
+    {
+        weapon->second->SetAmmo(ammo);
+    }
+}

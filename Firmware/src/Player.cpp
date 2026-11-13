@@ -11,16 +11,19 @@ namespace PlayerStrings
     static const char * const addingHealth="/sounds/addhlth.wav";
 }
 
-Player::Player(ISounds& sounds, int initialHealth)
-: _sounds(sounds), _health(initialHealth), _outOfZonePacer(true), _outOfZoneHealthDecrement(1), _outOfZoneCount(0)
+Player::Player(ISounds& sounds)
+: _sounds(sounds),  _outOfZonePacer(true), _outOfZoneHealthDecrement(1), _outOfZoneCount(0)
 {
-    
+    _maxHealth = DefaultMaxHealth ;
+    _health = _maxHealth;
 }
 
 
-void Player::InitHealth()
+void Player::InitHealth(int startHealth , int maxHealth )
 {
-    _health = MaxHealth;
+    _maxHealth = maxHealth;
+    _health = startHealth;
+
 }
 
 GameCoordinate& Player::Position()
@@ -37,7 +40,7 @@ unsigned int Player::AddHealth(unsigned int addHealth)
 {
     _sounds.Play(PlayerStrings::addingHealth); 
     _health += addHealth;
-    _health = min(_health, MaxHealth);
+    _health = min(_health, DefaultMaxHealth);
     return _health;
 }
 
@@ -58,7 +61,7 @@ void Player::SetPosition(GameCoordinate& newPos)
 
 bool Player::AtMaxHealth()
 {
-    return _health >= MaxHealth;
+    return _health >= DefaultMaxHealth;
 }
 
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include "TeamIDs.h"
 
 class SystemConfig
 {
@@ -28,6 +29,7 @@ public:
                                const String& ftpUser, const String& ftpPass);
     const String& GetFtpUser() { return _ftpUser;}
     const String& GetFtpPass() { return _ftpPass;}
+    const char * const GetTeamFile(TeamIds teamId);
 
 private:
     static constexpr const char* ConfigFile = "/system.json";

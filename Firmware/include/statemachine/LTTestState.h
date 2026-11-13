@@ -7,18 +7,20 @@
 #include "Services.h"   
 #include "Player.h"
 
-
+class WeaponManager;
 
 class LTTestState : public State
 {
 public:
        
-    LTTestState(CombatLRServices& services);
+    LTTestState(CombatLRServices& services, WeaponManager& weaponManager);
     uint16_t Run() override;
     void Entry() override;
     void Exit() override;
 
-private:    
+private:   
+
+    WeaponManager& _weaponManager;
 
     static const int TextX = 160;
     static const int TextY=180;
@@ -36,8 +38,9 @@ private:
 
 
     static const int ShotHitLedTime = 500;
-    static const int TestModeStartHealth = 100;
-    static const int ShotPower = 20;    // 5 hits before dead
+    static const int DefaultStartHealth = 5;
+    static const int ShotPower = 1;    // 5 hits before dead
+    static const uint16_t DefaultAmmo = 999;
 
     static const int TimeToClearLTData = 1000;
     static const uint8_t DefaultWeaponIndex = 0;
