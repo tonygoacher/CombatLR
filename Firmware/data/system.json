@@ -1,0 +1,24 @@
+{
+    "mostRecent": 0,
+    "teamId": 0,
+    "playerId": 1,
+    "friendlyFire": true,
+    "gpsBaudrate": 38400,
+    "gpsType": 0,
+    "wifi": [
+        {
+            "ssid": "<SSID>",
+            "password": "<PASSWORD>"
+        },
+                { 
+            "ssid": "<SSID>",
+            "password": "<PASWORD>"
+        },
+        {
+            "ssid": "<SSID>",
+            "password": "<PASSWORD>"
+        }
+    ],
+    "ftpUser": "combatlr",
+    "ftpPass": "password"
+}

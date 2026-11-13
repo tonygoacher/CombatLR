@@ -3,4 +3,4 @@ bin/
 .vs/
 Electronics/*.txt
 Electronics/*.mop
-Firmware/data/system.json
+
