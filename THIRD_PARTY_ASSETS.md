@@ -6,29 +6,19 @@ This document records third-party audio files currently present in `Resources/` 
 
 The following 20 MP3 and WAV files were found directly in `Resources/` on the `main` branch. No MP3 or WAV files were found in `Resources/Alexandra/`.
 
-| File | Creator / uploader indicated by filename | Source / provenance |
-|---|---|---|
-| `49053354-rocket-launcher-307512.mp3` | Not identifiable from filename | Original download page not recorded |
-| `523654__lilmati__powerup-10.wav` | lilmati | Filename follows the Freesound naming convention; individual source page and licence need confirming |
-| `blasterreload.mp3` | Not identifiable from filename | Origin not recorded; confirm whether this is an original project sound or a downloaded asset |
-| `daviddumaisaudio-steampunk-weapon-single-shot-188051.mp3` | daviddumaisaudio | Pixabay-style filename; original asset page not recorded |
-| `dragon-studio-gun-reload-2-504027.mp3` | dragon-studio | Pixabay-style filename; original asset page not recorded |
-| `freesound_community-1911-reload-6248.mp3` | freesound_community | Pixabay-style filename; original asset page not recorded |
-| `freesound_community-arcade-countdown-7007.mp3` | freesound_community | Pixabay-style filename; original asset page not recorded |
-| `freesound_community-item-equip-6904.mp3` | freesound_community | Pixabay-style filename; original asset page not recorded |
-| `freesound_community-laser-zap-90575.mp3` | freesound_community | Pixabay-style filename; original asset page not recorded |
-| `freesound_community-male_hurt7-48124.mp3` | freesound_community | Pixabay-style filename; original asset page not recorded |
-| `freesound_community-siren-alert-96052.mp3` | freesound_community | Pixabay-style filename; original asset page not recorded |
-| `liecio-gun-shot-cartoon-game-190028.mp3` | liecio | Pixabay-style filename; original asset page not recorded |
-| `mixkit-kitchen-toaster-pops-1821.wav` | Mixkit | Mixkit sound effect; check the applicable Mixkit licence |
-| `mixkit-sci-fi-plasma-gun-power-1680.wav` | Mixkit | Mixkit sound effect; check the applicable Mixkit licence |
-| `rescopicsound-sci-fi-weapon-recharge-reload-plasma-02-233843.mp3` | rescopicsound | Pixabay-style filename; original asset page not recorded |
-| `rescopicsound-sci-fi-weapon-shoot-firing-plasma-ku-02-233815.mp3` | rescopicsound | Pixabay-style filename; original asset page not recorded |
-| `soundreality-flare-fx-344127.mp3` | soundreality | Pixabay-style filename; original asset page not recorded |
-| `universfield-male-death-scream-123078.mp3` | universfield | Pixabay-style filename; original asset page not recorded |
-| `vinodadora-male-death-sound-128357.mp3` | vinodadora | Pixabay-style filename; original asset page not recorded |
-| `vishiv-futuristic-laser-gun-effects-pack-1-435013.mp3` | vishiv | Pixabay-style filename; original asset page not recorded |
-
+| File |Original | Creator / uploader indicated by filename | Source / provenance |
+|---|---|---|---|
+| `rlaunch.wav`|`49053354-rocket-launcher-307512.mp3` | Pixabay |<https://pixabay.com/sound-effects/film-special-effects-rocket-launcher-307512/> |
+| `blasterreload.mp3` |Unknown | Unknown|
+| `countd.wav`	|`freesound_community-arcade-countdown-7007.mp3` | Philip_Berger | <https://freesound.org/people/Philip_Berger/sounds/546602/>|
+| `ampick.wav`| `freesound_community-item-equip-6904.mp3` | mrickey13  | <https://pixabay.com/sound-effects/film-special-effects-item-equip-6904/> |
+| `lasersnp.wav`| `freesound_community-laser-zap-90575.mp3` | Hoscalegeek  | <https://pixabay.com/sound-effects/film-special-effects-laser-zap-90575/> |
+| `zmove.wav`| `freesound_community-siren-alert-96052.mp3` | Audeption  | <https://pixabay.com/sound-effects/film-special-effects-siren-alert-96052/> |
+| `laserbuild.wav`|`mixkit-sci-fi-plasma-gun-power-1680.wav` | Mixkit | <https://mixkit.co/free-sound-effects/discover/plasma/> |
+| `lasersht.wav`|`mixkit-sci-fi-plasma-gun-power-1680.wav` | Mixkit | <https://mixkit.co/free-sound-effects/discover/plasma/> |
+| `blasterr.wav`|`rescopicsound-sci-fi-weapon-recharge-reload-plasma-02-233843.mp3` | rescopicsound | <https://pixabay.com/sound-effects/film-special-effects-sci-fi-weapon-recharge-reload-plasma-02-233843/> |
+| `dead.wav` | `universfield-male-death-scream-123078.mp3` | universfield | <https://pixabay.com/sound-effects/search/universfield-male-death-scream/> |
+| `laserblaster.wav` | `vishiv-futuristic-laser-gun-effects-pack-1-435013.mp3` | vishiv | <https://pixabay.com/bg/sound-effects/film-special-effects/futuristic-laser-gun-effects-pack-1-435013/> |
 ### Pixabay audio
 
 Pixabay's Content License permits use of content for commercial and non-commercial purposes without attribution. Crediting the contributor is appreciated. Content must not be redistributed or sold on a standalone basis.
@@ -40,15 +30,23 @@ Where the files above were downloaded from Pixabay, they are used as sound effec
 
 Suggested acknowledgement format: **Sound effect by [contributor] via Pixabay.**
 
+
+### Freesound audio
+
+Freesound sounds are distributed under the licence selected by their individual contributors. Depending on the sound, this may be CC0, CC BY or CC BY-NC. Check the original sound page for its specific licence before use.
+
+CC0 permits use without attribution. CC BY requires credit to the creator, while CC BY-NC restricts use to non-commercial purposes.
+
+Where attribution is required, the contributor is credited below. Sounds are used within CombatLR as game sound effects rather than being offered as a separate sound-effects collection.
+
+- [Freesound licence FAQ](https://freesound.org/help/faq/)
+- [Creative Commons licences](https://creativecommons.org/share-your-work/cclicenses/)
+
+Suggested acknowledgement format: **Sound effect by [contributor] via Freesound, licensed under [licence].**
+
 ### Other or unconfirmed sources
 
-Not every filename establishes its source or licence. In particular:
-
-- The `lilmati` WAV filename resembles the standard Freesound download naming convention. Freesound sounds have individual licences, so check the original sound page and comply with its specific terms before redistribution.
-- The two `mixkit-` WAV files appear to be from Mixkit, not Pixabay. Check the applicable Mixkit sound-effects licence.
-- The origin of `49053354-rocket-launcher-307512.mp3` and `blasterreload.mp3` cannot be established from their filenames alone.
-
-The original download-page URLs and licence records were not present in the repository when this document was prepared. They should be added to this file when available. A filename or creator label is not, by itself, proof of a particular licence.
+Some of the sound effects come directly from the original Milestag system developed by 'Jim' at the now defunct: <LaserTagParts.com>
 
 ## Keeping this record up to date
 
@@ -60,4 +58,4 @@ When adding or replacing an audio asset, record:
 4. The source and the specific licence that applies to that download.
 5. Any attribution wording required by that licence.
 
-Do not assume that all audio in the repository is covered by the Pixabay Content License. Check each asset's original download page and licence independently.
+Do not assume that all audio in the repository is covered by the Freesound/Pixabay Content License. Check each asset's original download page and licence independently.
