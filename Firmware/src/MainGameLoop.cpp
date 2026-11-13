@@ -8,7 +8,6 @@
 #include "NavigationNMEA.h"
 #include "GamePlan.h"
 #include "MapReference.h"
-#include "MillisGameTime.h"
 #include "widgets/ZoneWidget.h"
 #include "graphics/IDisplay.h"
 #include "graphics/TextureManager.h"
@@ -183,7 +182,7 @@ namespace
 
 }
 
-void NavigationDisplayTestBegin()
+void SystemBegin()
 {
     Serial.println();
     Serial.println(F("===================================="));
