@@ -4,7 +4,7 @@ This document records third-party audio files currently present in `Resources/` 
 
 ## Audio
 
-The following 20 MP3 and WAV files were found directly in `Resources/` on the `main` branch. No MP3 or WAV files were found in `Resources/Alexandra/`.
+The File shows the converted .wav file in Firmware/data/sounds folder
 
 | File |Original | Creator / uploader indicated by filename | Source / provenance |
 |---|---|---|---|
