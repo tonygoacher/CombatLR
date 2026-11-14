@@ -70,8 +70,13 @@ jobs:
         id: previous
         shell: pwsh
         run: |
-          $previous = git describe --tags --abbrev=0 --match "mapbuilder-v*" "${{ github.sha }}^" 2>$null
-          if ($LASTEXITCODE -ne 0) { $previous = "" }
+          # Look only at MapBuilder tags reachable from the commit before this release.
+          # No previous tag is expected for the first release.
+          $parent = "${{ github.sha }}^"
+          $previous = git tag --merged $parent --list "mapbuilder-v*" --sort=-version:refname | Select-Object -First 1
+          if ($LASTEXITCODE -ne 0) {
+            throw "Unable to list previous MapBuilder tags."
+          }
           "tag=$previous" >> $env:GITHUB_OUTPUT
 
       - name: Publish GitHub Release
