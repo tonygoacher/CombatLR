@@ -89,6 +89,7 @@ jobs:
             -p:ApplicationDisplayVersion=${{ steps.version.outputs.version }} `
             -p:ApplicationVersion=${{ steps.version.outputs.version_code }} `
             -p:Version=${{ steps.version.outputs.version }} `
+            --verbosity diagnostic `
             --output publish/android
 
           if ($LASTEXITCODE -ne 0) { throw "Android publish failed with exit code $LASTEXITCODE" }
