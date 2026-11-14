@@ -42,6 +42,19 @@ jobs:
             Write-Host "Passwords identical: $($env:STORE_PASSWORD -ceq $env:KEY_PASSWORD)"
           }
 
+      - name: Verify decoded keystore
+        shell: pwsh
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          keytool -list `
+            -keystore "$env:ANDROID_KEYSTORE_PATH" `
+            -storepass "$env:STORE_PASSWORD"
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Keystore validation failed"
+          }
+
       - name: Prepare Android signing key
         shell: pwsh
         env:
