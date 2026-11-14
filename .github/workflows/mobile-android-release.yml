@@ -1,5 +1,6 @@
 name: Mobile Android Release
 
+
 on:
   push:
     tags:
@@ -38,6 +39,7 @@ jobs:
       
             Write-Host "$name length: $($value.Length)"
             Write-Host "$name contains non-ASCII: $([bool]$ascii)"
+            Write-Host "Passwords identical: $($env:STORE_PASSWORD -ceq $env:KEY_PASSWORD)"
           }
 
       - name: Set up .NET 10
@@ -111,7 +113,7 @@ jobs:
             -p:ApplicationDisplayVersion=${{ steps.version.outputs.version }} `
             -p:ApplicationVersion=${{ steps.version.outputs.version_code }} `
             -p:Version=${{ steps.version.outputs.version }} `
-            --verbosity diagnostic `
+            --verbosity minimal `
             --output publish/android
 
           if ($LASTEXITCODE -ne 0) { throw "Android publish failed with exit code $LASTEXITCODE" }
