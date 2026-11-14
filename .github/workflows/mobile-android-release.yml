@@ -29,6 +29,7 @@ jobs:
       - name: Validate signing secrets
         shell: pwsh
         env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}\combatlr-release.keystore
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
@@ -42,18 +43,26 @@ jobs:
             Write-Host "Passwords identical: $($env:STORE_PASSWORD -ceq $env:KEY_PASSWORD)"
           }
 
-      - name: Verify decoded keystore
-        shell: pwsh
-        env:
-          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-        run: |
-          keytool -list `
-            -keystore "$env:ANDROID_KEYSTORE_PATH" `
-            -storepass "$env:STORE_PASSWORD"
-
-          if ($LASTEXITCODE -ne 0) {
-            throw "Keystore validation failed"
-          }
+       - name: Verify decoded keystore
+          shell: pwsh
+          env:
+            ANDROID_KEYSTORE_PATH: ${{ runner.temp }}\combatlr-release.keystore
+            STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          run: |
+            Write-Host "Keystore path: $env:ANDROID_KEYSTORE_PATH"
+            Write-Host "Keystore exists: $(Test-Path $env:ANDROID_KEYSTORE_PATH)"
+  
+            if (-not (Test-Path $env:ANDROID_KEYSTORE_PATH)) {
+              throw "Keystore file not found"
+            }
+  
+            keytool -list `
+              -keystore "$env:ANDROID_KEYSTORE_PATH" `
+              -storepass "$env:STORE_PASSWORD"
+  
+            if ($LASTEXITCODE -ne 0) {
+              throw "Keystore validation failed"
+            }
 
       - name: Prepare Android signing key
         shell: pwsh
@@ -142,7 +151,7 @@ jobs:
             --framework net10.0-android `
             -p:AndroidPackageFormat=apk `
             -p:AndroidKeyStore=true `
-            -p:AndroidSigningKeyStore="${{ steps.signing.outputs.keystore }}" `
+            -p:AndroidSigningKeyStore="$env:ANDROID_KEYSTORE_PATH" `
             -p:AndroidSigningKeyAlias="$env:ANDROID_KEY_ALIAS" `
             -p:AndroidSigningKeyPass="$env:ANDROID_KEY_PASSWORD" `
             -p:AndroidSigningStorePass="$env:ANDROID_STORE_PASSWORD" `
