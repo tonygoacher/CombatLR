@@ -1,4 +1,5 @@
 using CombatLR.mobile.Services;
+using Microsoft.Maui.ApplicationModel;
 
 namespace CombatLR.mobile.Pages;
 
@@ -19,6 +20,15 @@ public partial class GamePlanSelectionPage : ContentPage
     {
         base.OnAppearing();
         RefreshProjects();
+    }
+
+    private async void AboutButton_Clicked(object? sender, EventArgs e)
+    {
+        var version = AppInfo.Current.VersionString;
+        await DisplayAlert(
+            "About CombatLR",
+            $"CombatLR Mobile\\nVersion {version}",
+            "OK");
     }
 
     private void RefreshProjects()
