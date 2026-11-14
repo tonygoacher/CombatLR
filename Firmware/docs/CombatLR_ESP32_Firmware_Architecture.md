@@ -85,7 +85,7 @@ The firmware is organised into `include/` and `src/`, with corresponding logical
 | Weapons | `weapons/` | Weapon definitions, allocation, ammo and pickups |
 | Graphics | `graphics/` | Display driver, command queue, textures and map images |
 | Widgets | `widgets/` | Reusable status and game UI elements |
-| Audio | `MAX98357ASounds.cpp` | Sound playback |
+| Audio | `MAX98357ASounds.cpp` | Sound playback. PSRAM cached primary sample. Second sample playback from file system with audio mixing.|
 | Configuration | `SystemConfig.cpp` | Persistent device settings |
 
 ### 3.1 Composition and service access
