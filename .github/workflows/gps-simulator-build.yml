@@ -1,0 +1,34 @@
+name: GPS Simulator Build
+
+on:
+  pull_request:
+    paths:
+      - "CombatLR_GpsSimulator/**"
+      - ".github/workflows/gps-simulator-build.yml"
+      - ".github/workflows/gps-simulator-release.yml"
+      - "installer/GpsSimulator.iss"
+  push:
+    branches:
+      - main
+      - gps-simulator-release-build
+    paths:
+      - "CombatLR_GpsSimulator/**"
+      - ".github/workflows/gps-simulator-build.yml"
+      - ".github/workflows/gps-simulator-release.yml"
+      - "installer/GpsSimulator.iss"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build GPS Simulator
+        run: dotnet build CombatLR_GpsSimulator/CombatLR_GpsSimulator.csproj --configuration Release
