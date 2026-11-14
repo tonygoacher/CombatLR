@@ -27,7 +27,7 @@ public partial class GamePlanSelectionPage : ContentPage
         var version = AppInfo.Current.VersionString;
         await DisplayAlert(
             "About CombatLR",
-            $"CombatLR Mobile\\nVersion {version}",
+            $"CombatLR Mobile\nVersion {version}",
             "OK");
     }
 
