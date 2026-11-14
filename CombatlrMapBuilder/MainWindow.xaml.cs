@@ -1572,7 +1572,7 @@ public partial class MainWindow : Window
 
         MessageBox.Show(
             this,
-            $"Combatlr Map Builder\\nVersion {version}",
+            $"Combatlr Map Builder\nVersion {version}",
             "About Combatlr Map Builder",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
