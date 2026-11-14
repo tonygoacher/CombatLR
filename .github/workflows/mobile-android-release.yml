@@ -39,7 +39,7 @@ jobs:
         run: |
           $tag = "${{ inputs.release_tag || github.ref_name }}"
           $version = $tag -replace '^mobile-v', ''
-          if ($tag -notmatch '^mobile-v(\d+)\\.(\d+)\\.(\d+)$') {
+          if ($tag -notmatch '^mobile-v(\d+)\.(\d+)\.(\d+)$') {
             throw "Invalid mobile tag '$tag'. Expected mobile-vX.Y.Z."
           }
 
