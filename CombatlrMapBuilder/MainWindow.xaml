@@ -32,6 +32,10 @@
                     <MenuItem Header="_Export Site Package..."
                               Click="ExportMap_Click"/>
                 </MenuItem>
+                <MenuItem Header="_Help">
+                    <MenuItem Header="_About MapBuilder..."
+                              Click="About_Click"/>
+                </MenuItem>
             </Menu>
 
             <ToolBar>
