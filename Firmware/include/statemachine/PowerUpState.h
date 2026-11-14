@@ -9,7 +9,6 @@
 
 
 class DisplayManager;
-class INavigation ;
 
 
 class PowerUpState : public State
@@ -27,5 +26,10 @@ private:
         MoveToNextState,
     };
     CombatLRServices& _services;
+
+    static const int TextX = 160;
+    static const int TextY=180;
+    static const int TextZoom = 2;
+    static const int TextFont = 2;  
 
 };
