@@ -35,7 +35,7 @@ The current PlatformIO environment is `esp32s3_n16r8`:
 - Framework: Arduino.
 - Memory configuration: QIO flash / OPI PSRAM.
 - Filesystem: LittleFS.
-- Display driver: TFT_eSPI configured for ST7789.
+- Display driver: TFT_eSPI configured for ST7789 320x240 display.
 - GPS parser: TinyGPSPlus.
 - JSON: ArduinoJson 7.
 - FTP: SimpleFTPServer.
