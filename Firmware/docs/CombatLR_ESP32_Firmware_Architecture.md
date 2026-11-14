@@ -31,7 +31,7 @@ The design separates game decisions from presentation and hardware operations. F
 
 The current PlatformIO environment is `esp32s3_n16r8`:
 
-- MCU: ESP32-S3 development board (`esp32-s3-devkitc-1`).
+- MCU: ESP32-S3 N16R8 development board (`esp32-s3-devkitc-1`). Due to graphics and sounds, a lot of storage and RAM needed!
 - Framework: Arduino.
 - Memory configuration: QIO flash / OPI PSRAM.
 - Filesystem: LittleFS.
