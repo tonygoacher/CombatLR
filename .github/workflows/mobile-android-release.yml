@@ -52,6 +52,7 @@ jobs:
           "version_code=$versionCode" >> $env:GITHUB_OUTPUT
 
       - name: Prepare Android signing key
+        id: signing
         shell: pwsh
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -81,7 +82,7 @@ jobs:
             --framework net10.0-android `
             -p:AndroidPackageFormat=apk `
             -p:AndroidKeyStore=true `
-            -p:AndroidSigningKeyStore="${{ steps.version.outputs.keystore }}" `
+            -p:AndroidSigningKeyStore="${{ steps.signing.outputs.keystore }}" `
             -p:AndroidSigningKeyAlias="$env:ANDROID_KEY_ALIAS" `
             -p:AndroidSigningKeyPass="$env:ANDROID_KEY_PASSWORD" `
             -p:AndroidSigningStorePass="$env:ANDROID_STORE_PASSWORD" `
