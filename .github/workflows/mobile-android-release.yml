@@ -39,7 +39,114 @@ jobs:
         run: |
           $tag = "${{ inputs.release_tag || github.ref_name }}"
           $version = $tag -replace '^mobile-v', ''
-          if ($tag -notmatch '^mobile-v(\d+)\\.(\d+)\\.(\d+)$') {
+          if ($tag -notmatch '^mobile-v(\d+)\.(\d+)\.(\d+)
+            throw "Invalid mobile tag '$tag'. Expected mobile-vX.Y.Z."
+          }
+
+          $major = [int64]$Matches[1]
+          $minor = [int64]$Matches[2]
+          $patch = [int64]$Matches[3]
+          if ($minor -gt 999 -or $patch -gt 999) {
+            throw "Mobile version minor and patch components must be 999 or less."
+          }
+
+          $versionCode = ($major * 1000000) + ($minor * 1000) + $patch
+          if ($versionCode -gt 2100000000) {
+            throw "Calculated Android version code exceeds the supported maximum."
+          }
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "version_code=$versionCode" >> $env:GITHUB_OUTPUT
+
+      - name: Prepare Android signing key
+        id: signing
+        shell: pwsh
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:ANDROID_KEYSTORE_BASE64)) {
+            throw "Configure the ANDROID_KEYSTORE_BASE64 repository secret before creating a mobile release."
+          }
+          $keystore = Join-Path $env:RUNNER_TEMP "combatlr-release.keystore"
+          [IO.File]::WriteAllBytes($keystore, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
+          "keystore=$keystore" >> $env:GITHUB_OUTPUT
+
+      - name: Publish signed Android APK
+        shell: pwsh
+        env:
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:ANDROID_KEY_ALIAS) -or
+              [string]::IsNullOrWhiteSpace($env:ANDROID_KEY_PASSWORD) -or
+              [string]::IsNullOrWhiteSpace($env:ANDROID_STORE_PASSWORD)) {
+            throw "Configure ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD and ANDROID_STORE_PASSWORD repository secrets."
+          }
+
+          dotnet publish CombatLR.mobile/CombatLR.mobile.csproj `
+            --configuration Release `
+            --framework net10.0-android `
+            -p:AndroidPackageFormat=apk `
+            -p:AndroidKeyStore=true `
+            -p:AndroidSigningKeyStore="${{ steps.signing.outputs.keystore }}" `
+            -p:AndroidSigningKeyAlias="$env:ANDROID_KEY_ALIAS" `
+            -p:AndroidSigningKeyPass="$env:ANDROID_KEY_PASSWORD" `
+            -p:AndroidSigningStorePass="$env:ANDROID_STORE_PASSWORD" `
+            -p:ApplicationDisplayVersion=${{ steps.version.outputs.version }} `
+            -p:ApplicationVersion=${{ steps.version.outputs.version_code }} `
+            -p:Version=${{ steps.version.outputs.version }} `
+            --verbosity diagnostic `
+            --output publish/android
+
+          if ($LASTEXITCODE -ne 0) { throw "Android publish failed with exit code $LASTEXITCODE" }
+
+      - name: Upload diagnostic APK
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CombatLR-Mobile-${{ steps.version.outputs.version }}-diagnostic
+          path: publish/android/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Generate SHA-256 checksum
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          $apk = Get-ChildItem publish/android -Filter "*.apk" | Select-Object -First 1
+          if (-not $apk) { throw "Signed APK was not produced." }
+          $hash = Get-FileHash $apk.FullName -Algorithm SHA256
+          "$($hash.Hash.ToLower())  $($apk.Name)" | Set-Content "$($apk.FullName).sha256"
+
+      - name: Find previous mobile release tag
+        if: github.event_name == 'push'
+        id: previous
+        shell: pwsh
+        run: |
+          $parent = "${{ github.sha }}^"
+          $previous = git tag --merged $parent --list "mobile-v*" --sort=-version:refname | Select-Object -First 1
+          if ($LASTEXITCODE -ne 0) {
+            throw "Unable to list previous mobile release tags."
+          }
+          "tag=$previous" >> $env:GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = "${{ steps.version.outputs.version }}"
+          $assets = Get-ChildItem publish/android -File | ForEach-Object { $_.FullName }
+          if ("${{ steps.previous.outputs.tag }}") {
+            gh release create $tag $assets --title "CombatLR Mobile v$version" --generate-notes --notes-start-tag "${{ steps.previous.outputs.tag }}"
+          } else {
+            gh release create $tag $assets --title "CombatLR Mobile v$version" --generate-notes
+          }
+          if ($LASTEXITCODE -ne 0) { throw "GitHub release creation failed." }
+) {
             throw "Invalid mobile tag '$tag'. Expected mobile-vX.Y.Z."
           }
 
