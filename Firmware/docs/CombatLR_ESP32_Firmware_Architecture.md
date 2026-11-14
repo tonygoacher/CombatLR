@@ -9,7 +9,7 @@
 
 ## 1. Purpose and system overview
 
-CombatLR is a GPS-based combat royale / laser-tag system. Each player carries an ESP32-S3 game unit. The unit manages the player's local game state, infrared weapon operation and hit detection, audio feedback, physical controls, GPS position, map display, zones and pickups.
+CombatLR is a GPS-based combat royale / laser-tag system. Each player carries an ESP32-S3 N16R8 game unit. The unit manages the player's local game state, infrared weapon operation and hit detection, audio feedback, physical controls, GPS position, map display, zones and pickups.
 
 A companion .NET MAUI application prepares and controls games. It is used to create game plans, configure players and teams, discover game units, transfer game data and start a game. The ESP32 executes the game locally; it does not require the mobile application to remain connected throughout play.
 
