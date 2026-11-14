@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "mobile-v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing mobile release tag to build (for example mobile-v1.0.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -16,6 +22,7 @@ jobs:
       - name: Check out source and tags
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.release_tag || github.ref }}
           fetch-depth: 0
 
       - name: Set up .NET 10
@@ -30,9 +37,9 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          $tag = "${{ github.ref_name }}"
+          $tag = "${{ inputs.release_tag || github.ref_name }}"
           $version = $tag -replace '^mobile-v', ''
-          if ($version -notmatch '^(\d+)\.(\d+)\.(\d+)$') {
+          if ($tag -notmatch '^mobile-v(\d+)\\.(\d+)\\.(\d+)$') {
             throw "Invalid mobile tag '$tag'. Expected mobile-vX.Y.Z."
           }
 
@@ -94,7 +101,17 @@ jobs:
 
           if ($LASTEXITCODE -ne 0) { throw "Android publish failed with exit code $LASTEXITCODE" }
 
+      - name: Upload diagnostic APK
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CombatLR-Mobile-${{ steps.version.outputs.version }}-diagnostic
+          path: publish/android/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Generate SHA-256 checksum
+        if: github.event_name == 'push'
         shell: pwsh
         run: |
           $apk = Get-ChildItem publish/android -Filter "*.apk" | Select-Object -First 1
@@ -103,6 +120,7 @@ jobs:
           "$($hash.Hash.ToLower())  $($apk.Name)" | Set-Content "$($apk.FullName).sha256"
 
       - name: Find previous mobile release tag
+        if: github.event_name == 'push'
         id: previous
         shell: pwsh
         run: |
@@ -114,6 +132,7 @@ jobs:
           "tag=$previous" >> $env:GITHUB_OUTPUT
 
       - name: Publish GitHub Release
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
