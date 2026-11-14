@@ -63,14 +63,15 @@ jobs:
 
           "ANDROID_KEYSTORE_PATH=$keystore" >> $env:GITHUB_ENV
           Write-Host "Keystore created successfully"
+          $hash = (Get-FileHash $keystore -Algorithm SHA256).Hash
+          Write-Host "Decoded keystore SHA256: $hash"
 
       - name: Verify decoded keystore
         shell: pwsh
         env:
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
         run: |
-          $hash = (Get-FileHash $keystore -Algorithm SHA256).Hash
-          Write-Host "Decoded keystore SHA256: $hash"
+
           Write-Host "Keystore path: $env:ANDROID_KEYSTORE_PATH"
           if (-not (Test-Path $env:ANDROID_KEYSTORE_PATH)) {
             throw "Keystore file not found"
@@ -80,6 +81,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "Keystore validation failed"
           }
+
 
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
