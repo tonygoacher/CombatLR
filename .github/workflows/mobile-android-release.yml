@@ -42,6 +42,21 @@ jobs:
             Write-Host "Passwords identical: $($env:STORE_PASSWORD -ceq $env:KEY_PASSWORD)"
           }
 
+      - name: Verify decoded keystore
+        shell: pwsh
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          $keystore = "${{ steps.signing.outputs.keystore }}"
+
+          keytool -list `
+            -keystore $keystore `
+            -storepass "$env:STORE_PASSWORD"
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Keystore validation failed"
+          }          
+
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
         with:
