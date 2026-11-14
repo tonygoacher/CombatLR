@@ -1562,4 +1562,19 @@ public partial class MainWindow : Window
         public double Longitude { get; set; }
     }
 
+    private void About_Click(object sender, RoutedEventArgs e)
+    {
+        var version = System.Reflection.Assembly
+            .GetExecutingAssembly()
+            .GetName()
+            .Version?
+            .ToString(3) ?? "DEV";
+
+        MessageBox.Show(
+            this,
+            $"Combatlr Map Builder\nVersion {version}",
+            "About Combatlr Map Builder",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
 }

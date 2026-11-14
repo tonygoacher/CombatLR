@@ -1,0 +1,34 @@
+name: MapBuilder Build
+
+on:
+  pull_request:
+    paths:
+      - "CombatlrMapBuilder/**"
+      - ".github/workflows/mapbuilder-build.yml"
+      - ".github/workflows/mapbuilder-release.yml"
+      - "installer/MapBuilder.iss"
+  push:
+    branches:
+      - main
+      - mapbuilder-release-build
+    paths:
+      - "CombatlrMapBuilder/**"
+      - ".github/workflows/mapbuilder-build.yml"
+      - ".github/workflows/mapbuilder-release.yml"
+      - "installer/MapBuilder.iss"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build MapBuilder
+        run: dotnet build CombatlrMapBuilder/CombatlrMapBuilder.csproj --configuration Release
