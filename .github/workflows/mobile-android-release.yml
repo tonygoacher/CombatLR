@@ -183,7 +183,7 @@ jobs:
           $tag = "${{ github.ref_name }}"
           $version = "${{ steps.version.outputs.version }}"
           $assets = Get-ChildItem publish/android -File | ForEach-Object { $_.FullName }
-          if (" ${{ steps.previous.outputs.tag }}") {
+          if ("${{ steps.previous.outputs.tag }}") {
             gh release create $tag $assets --title "CombatLR Mobile v$version" --generate-notes --notes-start-tag "${{ steps.previous.outputs.tag }}"
           } else {
             gh release create $tag $assets --title "CombatLR Mobile v$version" --generate-notes
