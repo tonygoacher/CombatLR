@@ -4,13 +4,19 @@
 #include "graphics/DisplayManager.h"
 #include "Navigation.h"
 #include "graphics/DisplayBackgroundCommand.h"
-#include  "statemachine/SystemStates.h"
 #include "graphics/AddWidgetCommand.h"
+#include "graphics/RemoveWidgetCommand.h"
+
 #include "widgets/GPSStatusWidget.h"
 #include "widgets/UIWidgetIds.h"
+#include "widgets/TextWidget.h"
+
 #include "PBSwitch.h"
+
+#include "statemachine/SystemStates.h"
 #include "statemachine/CombatLRStateMachine.h"
 #include "statemachine/GenericEvent.h"
+#include "Version.h"
 
 
 
@@ -81,8 +87,17 @@ void PowerUpState::Entry()
 
     _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(command));
 
+    WidgetPosition gpsText(TextX,TextY);
+    TextWidget* textWidget = new TextWidget(UIWidgetIds::Version,GetFirmwareVersion(),gpsText,TextFont, MC_DATUM, TFT_WHITE, TFT_BLACK, TextZoom );
+    command = new AddWidgetCommand(textWidget);
+    _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(command));
+
+
+
 }
 void PowerUpState::Exit()
 {
+    RemoveWidgetCommand* remove = new RemoveWidgetCommand(UIWidgetIds::Version);
+     _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(remove)); 
  
 }

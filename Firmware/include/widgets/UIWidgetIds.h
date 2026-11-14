@@ -17,5 +17,5 @@ enum UIWidgetIds
     SSIDString= 0xF009,
     GunIDString = 0xF00a,
     TestModeIndicator = 0xf00b,
-    IRDataText = 0xf00c
+    Version = 0xf00c
 };
