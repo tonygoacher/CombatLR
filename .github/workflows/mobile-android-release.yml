@@ -45,17 +45,23 @@ jobs:
       - name: Verify decoded keystore
         shell: pwsh
         env:
+          KEYSTORE_PATH: ${{ steps.signing.outputs.keystore }}
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
         run: |
-          $keystore = "${{ steps.signing.outputs.keystore }}"
+          Write-Host "Keystore exists: $(Test-Path $env:KEYSTORE_PATH)"
+          Write-Host "Keystore path: $env:KEYSTORE_PATH"
+
+          if (-not (Test-Path $env:KEYSTORE_PATH)) {
+            throw "Keystore file not found"
+          }
 
           keytool -list `
-            -keystore $keystore `
+            -keystore "$env:KEYSTORE_PATH" `
             -storepass "$env:STORE_PASSWORD"
 
           if ($LASTEXITCODE -ne 0) {
             throw "Keystore validation failed"
-          }          
+          }       
 
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
