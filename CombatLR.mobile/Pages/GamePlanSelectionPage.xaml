@@ -36,7 +36,12 @@
                     FontSize="14" Clicked="RefreshButton_Clicked" />
         </VerticalStackLayout>
 
-        <Label Grid.Row="2" Text="CombatLR" TextColor="Gray" FontSize="12"
-               HorizontalTextAlignment="Center" Margin="0,0,0,10" />
+        <HorizontalStackLayout Grid.Row="2" HorizontalOptions="Center"
+                               VerticalOptions="Center" Spacing="16" Margin="0,0,0,10">
+            <Label Text="CombatLR" TextColor="Gray" FontSize="12"
+                   VerticalTextAlignment="Center" />
+            <Button Text="ABOUT" FontSize="12" Padding="12,4"
+                    Clicked="AboutButton_Clicked" />
+        </HorizontalStackLayout>
     </Grid>
 </ContentPage>
