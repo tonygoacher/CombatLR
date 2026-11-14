@@ -1,0 +1,94 @@
+name: GPS Simulator Release
+
+on:
+  push:
+    tags:
+      - "gps-simulator-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish GPS Simulator for Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source and tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Extract and validate version
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^gps-simulator-v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+([.-][0-9A-Za-z.-]+)?$') {
+            throw "Invalid GPS Simulator tag '$tag'. Expected gps-simulator-vX.Y.Z."
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Publish self-contained Windows application
+        shell: pwsh
+        run: |
+          dotnet publish CombatLR_GpsSimulator/CombatLR_GpsSimulator.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            -p:Version=${{ steps.version.outputs.version }} `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            --output publish
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $compiler "/DAppVersion=${{ steps.version.outputs.version }}" "installer/GpsSimulator.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+
+      - name: Generate SHA-256 checksum
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem artifacts -Filter "*.exe" | Select-Object -First 1
+          if (-not $installer) { throw "Installer was not produced." }
+          $hash = Get-FileHash $installer.FullName -Algorithm SHA256
+          "$($hash.Hash.ToLower())  $($installer.Name)" | Set-Content "$($installer.FullName).sha256"
+
+      - name: Find previous GPS Simulator tag
+        id: previous
+        shell: pwsh
+        run: |
+          # No previous tag is expected for the first release.
+          $parent = "${{ github.sha }}^"
+          $previous = git tag --merged $parent --list "gps-simulator-v*" --sort=-version:refname | Select-Object -First 1
+          if ($LASTEXITCODE -ne 0) {
+            throw "Unable to list previous GPS Simulator tags."
+          }
+          "tag=$previous" >> $env:GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = "${{ steps.version.outputs.version }}"
+          $assets = Get-ChildItem artifacts -File | ForEach-Object { $_.FullName }
+          if ("${{ steps.previous.outputs.tag }}") {
+            gh release create $tag $assets --title "CombatLR GPS Simulator v$version" --generate-notes --notes-start-tag "${{ steps.previous.outputs.tag }}"
+          } else {
+            gh release create $tag $assets --title "CombatLR GPS Simulator v$version" --generate-notes
+          }
+          if ($LASTEXITCODE -ne 0) { throw "GitHub release creation failed." }

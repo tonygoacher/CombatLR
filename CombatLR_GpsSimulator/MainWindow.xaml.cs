@@ -43,6 +43,22 @@ public partial class MainWindow : Window
         LoadMap(bmp, json);
     }
 
+    private void About_Click(object sender, RoutedEventArgs e)
+    {
+        var version = System.Reflection.Assembly
+            .GetExecutingAssembly()
+            .GetName()
+            .Version?
+            .ToString(3) ?? "DEV";
+
+        MessageBox.Show(
+            this,
+            $"CombatLR GPS Simulator\nVersion {version}",
+            "About CombatLR GPS Simulator",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
     private void RefreshPorts()
     {
         var selected = PortCombo.SelectedItem?.ToString();
