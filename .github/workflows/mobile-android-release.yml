@@ -25,6 +25,21 @@ jobs:
           ref: ${{ inputs.release_tag || github.ref }}
           fetch-depth: 0
 
+      - name: Validate signing secrets
+        shell: pwsh
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          foreach ($name in @("STORE_PASSWORD", "KEY_PASSWORD")) {
+            $value = [Environment]::GetEnvironmentVariable($name)
+            $ascii = $value.ToCharArray() |
+              Where-Object { [int]$_ -gt 127 }
+      
+            Write-Host "$name length: $($value.Length)"
+            Write-Host "$name contains non-ASCII: $([bool]$ascii)"
+          }
+
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
         with:
