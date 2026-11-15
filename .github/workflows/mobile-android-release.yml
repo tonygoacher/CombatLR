@@ -186,10 +186,20 @@ jobs:
         run: |
           $tag = "${{ github.ref_name }}"
           $version = "${{ steps.version.outputs.version }}"
-          $assets = Get-ChildItem publish/android -File | ForEach-Object { $_.FullName }
+          $apkFiles = @(Get-ChildItem publish/android -Filter "*.apk" -File)
+          $checksumFiles = @(Get-ChildItem publish/android -Filter "*.apk.sha256" -File)
+
+          if ($apkFiles.Count -ne 1) {
+            throw "Expected exactly one APK, found $($apkFiles.Count)."
+          }
+          if ($checksumFiles.Count -ne 1) {
+            throw "Expected exactly one APK checksum, found $($checksumFiles.Count)."
+          }
+
+          $assets = @($apkFiles[0].FullName, $checksumFiles[0].FullName)
           if ("${{ steps.previous.outputs.tag }}") {
-            gh release create $tag $assets --title "CombatLR Mobile v$version" --generate-notes --notes-start-tag "${{ steps.previous.outputs.tag }}"
+            gh release create $tag @assets --title "CombatLR Mobile v$version" --generate-notes --notes-start-tag "${{ steps.previous.outputs.tag }}"
           } else {
-            gh release create $tag $assets --title "CombatLR Mobile v$version" --generate-notes
+            gh release create $tag @assets --title "CombatLR Mobile v$version" --generate-notes
           }
           if ($LASTEXITCODE -ne 0) { throw "GitHub release creation failed." }
