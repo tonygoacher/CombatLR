@@ -51,7 +51,7 @@ The current mobile and firmware source uses:
 
 - **UDP 4210** for device discovery
 - **TCP 4211** for commands
-- **FTP 21** for file transfer
+- **FTP 21** for file transfer. TLS only. TLSF is not currently supported. Note ESP32 wifi + FTP is only active during provisioning stage.
 
 Keep mobile and firmware protocol definitions in sync when changing message fields, commands or identifier limits.
 
