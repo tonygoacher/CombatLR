@@ -14,8 +14,6 @@ This README describes the repository as it currently exists. Refer to the indivi
 | `CombatLR_GpsSimulator/` | Windows/WPF tool for supplying simulated NMEA GPS data during firmware development and testing. |
 | `Electronics/`, `DocsAndIdeas/` | Supporting hardware material, notes and design ideas. |
 
-The obsolete `MapBuilder/` project has been removed. `CombatlrMapBuilder/` is the current map-building application.
-
 ## Firmware
 
 The firmware project is in `Firmware/`. Its PlatformIO configuration is `Firmware/platformio.ini`, with the `esp32s3_n16r8` environment for the ESP32-S3 and LittleFS.
