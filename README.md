@@ -12,7 +12,6 @@ This README describes the repository as it currently exists. Refer to the indivi
 | `CombatLR.mobile/` | .NET MAUI mobile app for site maps, game-plan editing, player/team setup, device discovery and game control. |
 | `CombatlrMapBuilder/` | Windows/WPF tool for calibrating a site map and exporting the runtime map package. |
 | `CombatLR_GpsSimulator/` | Windows/WPF tool for supplying simulated NMEA GPS data during firmware development and testing. |
-| `Resources/` | Example site maps and game-plan resources. |
 | `Electronics/`, `DocsAndIdeas/` | Supporting hardware material, notes and design ideas. |
 
 The obsolete `MapBuilder/` project has been removed. `CombatlrMapBuilder/` is the current map-building application.
