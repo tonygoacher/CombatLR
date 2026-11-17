@@ -41,7 +41,7 @@ dotnet build CombatLR.mobile/CombatLR.mobile.csproj
 
 The current map-building tool is `CombatlrMapBuilder/`. Its calibration uses four image control points, A, B, C and D, each associated with a GPS coordinate. The tool fits an affine transform between source-image pixels and local geographic east/north coordinates.
 
-The selected playfield is exported as a **1280 × 960 RGB565 BMP** together with `map.json`. The JSON contains the source-image crop, playfield geographic coordinates, metres-per-pixel information and the four calibration reference points. Firmware consumes this metadata to relate map pixels to geographic positions. Orientation is derived from the calibration transform; a manually entered rotation angle is not the current calibration workflow.
+The selected playfield is exported as a **1280 × 960 RGB565 BMP** together with `map.json`. The JSON contains the source-image crop, playfield geographic coordinates, metres-per-pixel information and the four calibration reference points. Firmware consumes this metadata to relate map pixels to geographic positions. Orientation is derived from the calibration transform, the source map image should be pre-rotated to fit within a 4:3 image.
 
 See [the CombatlrMapBuilder project guide](CombatlrMapBuilder/README.md) for tool-specific notes.
 
