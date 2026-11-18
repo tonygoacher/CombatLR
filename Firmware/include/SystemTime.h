@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <Arduino.h>
@@ -14,7 +13,7 @@ public:
     bool Reset(const char* startTime) override;
     void Update() override;
 
-    uint32_t GetSeconds() ;
+    uint32_t GetSeconds();
     uint32_t GetMilliseconds() const;
 
 private:
@@ -28,6 +27,7 @@ private:
 
     double _baseGpsTime = 0.0;
     bool _gpsSynchronized = false;
+    bool _gpsTimeAcquired = false;
     double _lastGpsTime = 0.0;
     uint32_t _lastGpsUpdateMillis = 0;
     bool _gpsFeedStale = false;
