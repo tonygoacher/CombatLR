@@ -3,6 +3,11 @@
 #include <ctype.h>
 #include <math.h>
 
+namespace
+{
+    constexpr uint32_t GPS_STALE_TIMEOUT_MS = 5000;
+}
+
 SystemTime::SystemTime(INavigation& navigation)
     : _navigation(navigation)
 {
@@ -108,18 +113,11 @@ void SystemTime::Update()
     const uint32_t nowMillis = millis();
 
     /*
-     * No GPS: leave the base untouched. GetMilliseconds()
-     * continues using millis(), so the clock keeps running.
+     * No usable position: abandon any GPS catch-up wait and continue
+     * from the last locally-held game time.
      */
     if (!_navigation.HasPosition())
     {
-        /*
-         * GPS loss must never stop the local clock. If we were
-         * frozen waiting for GPS to catch up, resume millis-based
-         * progression from the frozen value while GPS is unavailable.
-         * On restoration, the normal discrepancy check can freeze it
-         * again if GPS is still more than one second behind.
-         */
         if (_waitingForGpsCatchup)
         {
             _baseSystemMilliseconds = _frozenSystemMilliseconds;
@@ -127,14 +125,48 @@ void SystemTime::Update()
             _waitingForGpsCatchup = false;
         }
 
-        Serial.println("No position");
+        /*
+         * The absolute start time has not yet been reached by GPS.
+         * Once GPS has been absent for the timeout, use the local
+         * millisecond clock relative to the moment Reset() was called.
+         * This lets dispersal progress even when GPS is unavailable.
+         */
+        if (_waitingForStart &&
+            nowMillis - _lastGpsUpdateMillis >= GPS_STALE_TIMEOUT_MS)
+        {
+            _baseSystemMilliseconds =
+                nowMillis - _baseMillis;
+            _baseMillis = nowMillis;
+            _waitingForStart = false;
+            _gpsSynchronized = false;
+            _gpsFeedStale = true;
+
+            Serial.println(
+                "SystemTime: GPS unavailable; starting millis fallback");
+        }
+
         return;
     }
 
     const double gpsTime = _navigation.GetGpsTime();
 
     if (gpsTime <= 0.0)
+    {
+        if (_waitingForStart &&
+            nowMillis - _lastGpsUpdateMillis >= GPS_STALE_TIMEOUT_MS)
+        {
+            _baseSystemMilliseconds =
+                nowMillis - _baseMillis;
+            _baseMillis = nowMillis;
+            _waitingForStart = false;
+            _gpsSynchronized = false;
+            _gpsFeedStale = true;
+
+            Serial.println(
+                "SystemTime: GPS time unavailable; starting millis fallback");
+        }
         return;
+    }
 
     /*
      * HasPosition() can remain true even when the NMEA feed has stopped.
@@ -153,18 +185,13 @@ void SystemTime::Update()
             _lastGpsUpdateMillis = nowMillis;
             _gpsFeedStale = false;
         }
-        else if (nowMillis - _lastGpsUpdateMillis > 1500)
+        else if (nowMillis - _lastGpsUpdateMillis >= GPS_STALE_TIMEOUT_MS)
         {
             _gpsFeedStale = true;
         }
 
         if (_gpsFeedStale)
         {
-            /*
-             * If the feed stalls while waiting for catch-up, stop waiting
-             * and let millis() carry on. A later advancing GPS fix will be
-             * checked against the now-current local time.
-             */
             if (_waitingForGpsCatchup)
             {
                 _baseSystemMilliseconds = _frozenSystemMilliseconds;
@@ -174,6 +201,16 @@ void SystemTime::Update()
 
             return;
         }
+    }
+    else if (!_gpsFeedStale)
+    {
+        /*
+         * Before first synchronisation, keep the last-observed GPS
+         * activity timestamp fresh whenever a valid position/time is
+         * available. It is used to decide when start-time waiting should
+         * fall back to the local clock.
+         */
+        _lastGpsUpdateMillis = nowMillis;
     }
 
     /*
@@ -193,6 +230,7 @@ void SystemTime::Update()
         _lastGpsUpdateMillis = nowMillis;
         _gpsSynchronized = true;
         _waitingForGpsCatchup = false;
+        _gpsFeedStale = false;
         return;
     }
 
@@ -257,6 +295,7 @@ void SystemTime::Update()
         _baseMillis = nowMillis;
         _baseGpsTime = gpsTime;
         _lastGpsTime = gpsTime;
+        _lastGpsUpdateMillis = nowMillis;
         _gpsSynchronized = true;
         return;
     }
@@ -278,6 +317,7 @@ void SystemTime::Update()
         _lastGpsUpdateMillis = nowMillis;
         _baseMillis = nowMillis;
         _gpsSynchronized = true;
+        _gpsFeedStale = false;
         return;
     }
 
