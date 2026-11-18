@@ -14,6 +14,10 @@ public class GamePlan
     [JsonPropertyName("gameDelayTime")]
     public int GameDelayTime { get; set; } = 0;
 
+    // Maximum distance from the player at which a pickup can be collected.
+    [JsonPropertyName("pickupRadius")]
+    public float PickupRadius { get; set; } = 2.0f;
+
     public List<ZonePickupPercentage> ZonePercentages { get; set; } = new()
     {
         new ZonePickupPercentage { Zone = 0, AllocationPercentage = 40, HealthPercentage = 40, AmmoPercentage = 40, WeaponPercentage = 20 }
