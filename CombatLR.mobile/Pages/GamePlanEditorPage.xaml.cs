@@ -423,53 +423,51 @@ namespace CombatLR.mobile.Pages
         }
 
         private void PositionHomeMarker(
-     double imageX,
-     double imageY)
+            double imageX,
+            double imageY)
+        {
+            PositionMapMarker(HomeMarker, imageX, imageY);
+        }
+
+        // Position every map overlay using the same AspectFit geometry.
+        // Width/Height are preferred once the element has been measured;
+        // WidthRequest/HeightRequest are the fallback before first layout.
+        private void PositionMapMarker(
+            VisualElement marker,
+            double imageX,
+            double imageY)
         {
             if (_mapDefinition is null)
                 return;
 
-            var imageWidth =
-                _mapDefinition.Image.Width;
+            var imageWidth = _mapDefinition.Image.Width;
+            var imageHeight = _mapDefinition.Image.Height;
+            var areaWidth = MapContainer.Width;
+            var areaHeight = MapContainer.Height;
 
-            var imageHeight =
-                _mapDefinition.Image.Height;
-
-            var areaWidth =
-                MapContainer.Width;
-
-            var areaHeight =
-                MapContainer.Height;
-
-            if (areaWidth <= 0 ||
-                areaHeight <= 0)
+            if (areaWidth <= 0 || areaHeight <= 0)
                 return;
 
             var scale = Math.Min(
                 areaWidth / imageWidth,
                 areaHeight / imageHeight);
 
-            var displayedWidth =
-                imageWidth * scale;
+            var displayedWidth = imageWidth * scale;
+            var displayedHeight = imageHeight * scale;
+            var imageLeft = (areaWidth - displayedWidth) / 2.0;
+            var imageTop = (areaHeight - displayedHeight) / 2.0;
 
-            var displayedHeight =
-                imageHeight * scale;
+            var markerWidth = marker.Width > 0
+                ? marker.Width
+                : marker.WidthRequest;
+            var markerHeight = marker.Height > 0
+                ? marker.Height
+                : marker.HeightRequest;
 
-            var imageLeft =
-                (areaWidth - displayedWidth) / 2.0;
-
-            var imageTop =
-                (areaHeight - displayedHeight) / 2.0;
-
-            HomeMarker.TranslationX =
-                imageLeft +
-                imageX * scale -
-                HomeMarker.Width / 2.0;
-
-            HomeMarker.TranslationY =
-                imageTop +
-                imageY * scale -
-                HomeMarker.Height / 2.0;
+            marker.TranslationX =
+                imageLeft + imageX * scale - markerWidth / 2.0;
+            marker.TranslationY =
+                imageTop + imageY * scale - markerHeight / 2.0;
         }
 
         private async void EditObject_Clicked(
@@ -2344,12 +2342,15 @@ namespace CombatLR.mobile.Pages
                 var marker = CreatePickupMarker(
                     pickup,
                     _currentPickupIndex);
+                // Attach the marker before positioning it so MAUI has
+                // a parent and can measure it using the visual layer layout.
+                MapVisualLayer.Children.Add(marker);
+                _pickupMarkers.Add(marker);
+
                 PositionPickupMarker(
                     marker,
                     imagePoint.X,
                     imagePoint.Y);
-                MapVisualLayer.Children.Add(marker);
-                _pickupMarkers.Add(marker);
             }
 
             UpdatePickupSelection();
@@ -2449,58 +2450,11 @@ namespace CombatLR.mobile.Pages
         }
 
         private void PositionPickupMarker(
-    Grid marker,
-    double imageX,
-    double imageY)
+            Grid marker,
+            double imageX,
+            double imageY)
         {
-            if (_mapDefinition is null)
-                return;
-
-            
-            var imageWidth =
-                _mapDefinition.Image.Width;
-
-            var imageHeight =
-                _mapDefinition.Image.Height;
-
-            var areaWidth =
-                MapContainer.Width;
-
-            var areaHeight =
-                MapContainer.Height;
-
-            if (areaWidth <= 0 ||
-                areaHeight <= 0)
-            {
-                return;
-            }
-
-            var scale =
-                Math.Min(
-                    areaWidth / imageWidth,
-                    areaHeight / imageHeight);
-
-            var displayedWidth =
-                imageWidth * scale;
-
-            var displayedHeight =
-                imageHeight * scale;
-
-            var imageLeft =
-                (areaWidth - displayedWidth) / 2.0;
-
-            var imageTop =
-                (areaHeight - displayedHeight) / 2.0;
-
-            marker.TranslationX =
-                imageLeft +
-                imageX * scale -
-                marker.WidthRequest / 2.0;
-
-            marker.TranslationY =
-                imageTop +
-                imageY * scale -
-                marker.HeightRequest / 2.0;
+            PositionMapMarker(marker, imageX, imageY);
         }
 
         private void ClearPickupMarkers()
