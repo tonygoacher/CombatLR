@@ -543,11 +543,17 @@ bool GamePlan::Load(const char* filename)
             document["pickupRadius"].as<double>() > 1000.0)
         {
             _error = "Invalid pickupRadius; expected a number greater than 0 and no greater than 1000 metres";
-            Serial.println("GamePlan: invalid pickupRadius");
-            return false;
+            Serial.println("Defaulting to 2m");
+            _pickupRadius = 2.0f;
         }
-
-        _pickupRadius = document["pickupRadius"].as<float>();
+        else
+        {
+            _pickupRadius = document["pickupRadius"].as<float>();
+        }            
+    }
+    else
+    {
+        _pickupRadius = 2.0f;
     }
 
     std::vector<ZonePickupDistribution> pickupDistributions;
