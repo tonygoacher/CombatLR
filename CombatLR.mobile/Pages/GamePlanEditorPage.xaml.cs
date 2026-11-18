@@ -2437,6 +2437,37 @@ namespace CombatLR.mobile.Pages
             _pickupMarkers.Clear();
         }
 
+        private sealed class PickupClockDrawable : IDrawable
+        {
+            public void Draw(ICanvas canvas, RectF dirtyRect)
+            {
+                // Draw a crisp, high-contrast clock face rather than scaling a
+                // tiny bitmap. The hands point to 12 and 3.
+                const float inset = 1.0f;
+                var centreX = dirtyRect.Width / 2.0f;
+                var centreY = dirtyRect.Height / 2.0f;
+
+                canvas.FillColor = Colors.White;
+                canvas.FillEllipse(
+                    inset,
+                    inset,
+                    dirtyRect.Width - inset * 2,
+                    dirtyRect.Height - inset * 2);
+
+                canvas.StrokeColor = Colors.Black;
+                canvas.StrokeSize = 1.2f;
+                canvas.DrawEllipse(
+                    inset,
+                    inset,
+                    dirtyRect.Width - inset * 2,
+                    dirtyRect.Height - inset * 2);
+
+                canvas.StrokeSize = 1.3f;
+                canvas.DrawLine(centreX, centreY, centreX, 2.2f);
+                canvas.DrawLine(centreX, centreY, dirtyRect.Width - 2.2f, centreY);
+            }
+        }
+
         private Grid CreatePickupMarker(
          GamePickup pickup,
          int pickupIndex)
@@ -2495,12 +2526,11 @@ namespace CombatLR.mobile.Pages
             // game, so show a small clock badge over its base artwork.
             if (pickup.SpawnTimeSeconds > 0)
             {
-                var clockOverlay = new Image
+                var clockOverlay = new GraphicsView
                 {
-                    Source = ImageSource.FromFile("pickup_clock.png"),
+                    Drawable = new PickupClockDrawable(),
                     WidthRequest = 12,
                     HeightRequest = 12,
-                    Aspect = Aspect.AspectFit,
                     HorizontalOptions = LayoutOptions.End,
                     VerticalOptions = LayoutOptions.Start,
                     Margin = new Thickness(2),
