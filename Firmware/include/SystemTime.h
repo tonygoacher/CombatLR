@@ -17,25 +17,27 @@ public:
     uint32_t GetMilliseconds() const;
 
 private:
+    enum class State
+    {
+        AwaitingReset,
+        GPSOK,
+        GPSLost,
+        GPSCatchup
+    };
+
     static bool ParseTime(const char* time, double& seconds);
     static double TimeDifference(double current, double reference);
+    static double WrapGpsTime(double time);
 
     INavigation& _navigation;
+    State _state = State::AwaitingReset;
 
-    uint32_t _baseMillis = 0;
-    uint64_t _baseSystemMilliseconds = 0;
-
-    double _baseGpsTime = 0.0;
-    bool _gpsSynchronized = false;
-    bool _gpsTimeAcquired = false;
-    double _lastGpsTime = 0.0;
-    uint32_t _lastGpsUpdateMillis = 0;
-    bool _gpsFeedStale = false;
-
-    double _gpsCatchupTargetTime = 0.0;
-    uint64_t _frozenSystemMilliseconds = 0;
-    bool _waitingForGpsCatchup = false;
-
+    // The scheduled game start and the most recent usable GPS time.
     double _startGpsTime = 0.0;
-    bool _waitingForStart = false;
+    double _lastGpsTime = -1.0;
+    uint32_t _lastGpsUpdateMillis = 0;
+
+    // GPSCatchup holds the game time reached while GPS was unavailable.
+    double _gpsCatchupTargetTime = 0.0;
+    uint32_t _gpsCatchupMilliseconds = 0;
 };
