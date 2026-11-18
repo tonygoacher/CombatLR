@@ -1491,7 +1491,7 @@ namespace CombatLR.mobile.Pages
                     _currentPickupIndex++;
                 }
 
-                RenderPickups();
+                UpdatePickupSelection();
                 UpdatePickupInfo();
                 UpdateGameObjectControls();
 
@@ -2307,10 +2307,9 @@ namespace CombatLR.mobile.Pages
         private void MovePickupToPosition(
     MapCoordinateService.GeoPoint position)
         {
-            if (_gamePlan.Home is null)
-                return;
-
-            if (_currentZoneIndex < 0 ||
+            if (_gamePlan.Home is null ||
+                _coordinateService is null ||
+                _currentZoneIndex < 0 ||
                 _currentZoneIndex >= _gamePlan.Zones.Count)
             {
                 return;
@@ -2346,7 +2345,7 @@ namespace CombatLR.mobile.Pages
                     _gamePlan.Home,
                     pickup.EastMetres,
                     pickup.NorthMetres);
-                var imagePoint = _coordinateService!.GpsToImage(
+                var imagePoint = _coordinateService.GpsToImage(
                     gps.Latitude,
                     gps.Longitude);
                 PositionPickupMarker(
