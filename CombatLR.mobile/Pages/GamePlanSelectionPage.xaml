@@ -15,6 +15,14 @@
                    HorizontalTextAlignment="Center" />
         </VerticalStackLayout>
 
+        <Button Grid.Row="0"
+                Text="ABOUT"
+                FontSize="12"
+                Padding="12,6"
+                HorizontalOptions="End"
+                VerticalOptions="Start"
+                Clicked="AboutButton_Clicked" />
+
         <VerticalStackLayout Grid.Row="1" Spacing="14"
                              VerticalOptions="Center" HorizontalOptions="Center"
                              WidthRequest="300">
@@ -34,14 +42,6 @@
                     Clicked="RenameProjectButton_Clicked" />
             <Button x:Name="RefreshButton" Text="REFRESH PROJECTS"
                     FontSize="14" Clicked="RefreshButton_Clicked" />
-
-            <HorizontalStackLayout HorizontalOptions="Center"
-                                   VerticalOptions="Center" Spacing="16" Margin="0,8,0,0">
-                <Label Text="CombatLR" TextColor="Gray" FontSize="12"
-                       VerticalTextAlignment="Center" />
-                <Button Text="ABOUT" FontSize="12" Padding="12,4"
-                        Clicked="AboutButton_Clicked" />
-            </HorizontalStackLayout>
         </VerticalStackLayout>
     </Grid>
 </ContentPage>
