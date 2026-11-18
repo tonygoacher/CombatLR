@@ -663,8 +663,38 @@ namespace CombatLR.mobile.Pages
                 _gamePlan.Home is not null)
             {
                 MovePickupToPosition(gps, imageX, imageY);
-            }
 
+                // Show both the tapped image position and the position
+                // reconstructed from the pickup's stored local coordinates.
+                // This distinguishes a coordinate-conversion problem from
+                // a marker-layout/rendering problem.
+                if (_currentPickupIndex >= 0 &&
+                    _currentPickupIndex <
+                        _gamePlan.Zones[_currentZoneIndex].Pickups.Count)
+                {
+                    var pickup =
+                        _gamePlan.Zones[_currentZoneIndex]
+                            .Pickups[_currentPickupIndex];
+
+                    var storedGps =
+                        _gameObjectCoordinateService.LocalToGps(
+                            _gamePlan.Home,
+                            pickup.EastMetres,
+                            pickup.NorthMetres);
+
+                    var storedImage =
+                        _coordinateService.GpsToImage(
+                            storedGps.Latitude,
+                            storedGps.Longitude);
+
+                    MapInfoLabel.Text =
+                        $"TAP MAP: {imageX:0.0}, {imageY:0.0} px\\n" +
+                        $"SAVED E: {pickup.EastMetres:F1} m  N: {pickup.NorthMetres:F1} m\\n" +
+                        $"SAVED MAP: {storedImage.X:0.0}, {storedImage.Y:0.0} px\\n" +
+                        $"GPS: {gps.Latitude:F7}, {gps.Longitude:F7}";
+                    return;
+                }
+            }
 
             MapInfoLabel.Text =
                 $"MAP: {imageX:0.0}, {imageY:0.0}\n" +
