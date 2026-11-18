@@ -2399,13 +2399,26 @@ namespace CombatLR.mobile.Pages
             // introduces a small coordinate round-trip error.
             if (_currentPickupIndex < _pickupMarkers.Count)
             {
+                var marker = _pickupMarkers[_currentPickupIndex];
+
                 PositionPickupMarker(
-                    _pickupMarkers[_currentPickupIndex],
+                    marker,
                     imageX,
                     imageY);
+
+                UpdatePickupInfo();
+
+                MapInfoLabel.Text +=
+                    $"\\nMARKER XY: {marker.TranslationX:F1}, {marker.TranslationY:F1}" +
+                    $"\\nMARKER SIZE: {marker.Width:F1} x {marker.Height:F1}" +
+                    $"\\nLAYER: {MapVisualLayer.Width:F1} x {MapVisualLayer.Height:F1}" +
+                    $"\\nMAP AREA: {MapContainer.Width:F1} x {MapContainer.Height:F1}" +
+                    $"\\nVISIBLE: {marker.IsVisible}";
+                return;
             }
 
             UpdatePickupInfo();
+            MapInfoLabel.Text += "\\nMARKER NOT FOUND IN LIST";
         }
 
         private static ImageSource GetPickupImageSource(
