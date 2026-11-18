@@ -6,7 +6,7 @@
     BackgroundColor="Black"
     NavigationPage.HasNavigationBar="False">
 
-    <Grid Padding="24" RowDefinitions="Auto,*,Auto">
+    <Grid Padding="24" RowDefinitions="Auto,*">
         <VerticalStackLayout Grid.Row="0" Spacing="4"
                              HorizontalOptions="Center" Margin="0,30,0,0">
             <Label Text="CombatLR" TextColor="White" FontSize="36"
@@ -14,6 +14,14 @@
             <Label Text="Select game plan" TextColor="LightGray" FontSize="16"
                    HorizontalTextAlignment="Center" />
         </VerticalStackLayout>
+
+        <Button Grid.Row="0"
+                Text="ABOUT"
+                FontSize="12"
+                Padding="12,6"
+                HorizontalOptions="End"
+                VerticalOptions="Start"
+                Clicked="AboutButton_Clicked" />
 
         <VerticalStackLayout Grid.Row="1" Spacing="14"
                              VerticalOptions="Center" HorizontalOptions="Center"
@@ -35,13 +43,5 @@
             <Button x:Name="RefreshButton" Text="REFRESH PROJECTS"
                     FontSize="14" Clicked="RefreshButton_Clicked" />
         </VerticalStackLayout>
-
-        <HorizontalStackLayout Grid.Row="2" HorizontalOptions="Center"
-                               VerticalOptions="Center" Spacing="16" Margin="0,0,0,10">
-            <Label Text="CombatLR" TextColor="Gray" FontSize="12"
-                   VerticalTextAlignment="Center" />
-            <Button Text="ABOUT" FontSize="12" Padding="12,4"
-                    Clicked="AboutButton_Clicked" />
-        </HorizontalStackLayout>
     </Grid>
 </ContentPage>
