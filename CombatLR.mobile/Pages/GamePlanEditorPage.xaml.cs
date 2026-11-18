@@ -2501,7 +2501,7 @@ namespace CombatLR.mobile.Pages
                     WidthRequest = 12,
                     HeightRequest = 12,
                     Aspect = Aspect.AspectFit,
-                    HorizontalOptions = LayoutOptions.Start,
+                    HorizontalOptions = LayoutOptions.End,
                     VerticalOptions = LayoutOptions.Start,
                     Margin = new Thickness(2),
                     InputTransparent = true
