@@ -688,9 +688,9 @@ namespace CombatLR.mobile.Pages
                             storedGps.Longitude);
 
                     MapInfoLabel.Text =
-                        $"TAP MAP: {imageX:0.0}, {imageY:0.0} px\\n" +
-                        $"SAVED E: {pickup.EastMetres:F1} m  N: {pickup.NorthMetres:F1} m\\n" +
-                        $"SAVED MAP: {storedImage.X:0.0}, {storedImage.Y:0.0} px\\n" +
+                        $"TAP MAP: {imageX:0.0}, {imageY:0.0} px\n" +
+                        $"SAVED E: {pickup.EastMetres:F1} m  N: {pickup.NorthMetres:F1} m\n" +
+                        $"SAVED MAP: {storedImage.X:0.0}, {storedImage.Y:0.0} px\n" +
                         $"GPS: {gps.Latitude:F7}, {gps.Longitude:F7}";
                     return;
                 }
