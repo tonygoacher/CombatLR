@@ -2299,8 +2299,26 @@ namespace CombatLR.mobile.Pages
             _coordinateOperation =
                 CoordinateOperation.None;
 
+            // The existing markers are already in place. Add only the
+            // newly-created pickup rather than rebuilding the whole zone.
+            if (_coordinateService is not null)
+            {
+                var imagePoint = _coordinateService.GpsToImage(
+                    position.Latitude,
+                    position.Longitude);
+                var marker = CreatePickupMarker(
+                    pickup,
+                    _currentPickupIndex);
+                PositionPickupMarker(
+                    marker,
+                    imagePoint.X,
+                    imagePoint.Y);
+                MapVisualLayer.Children.Add(marker);
+                _pickupMarkers.Add(marker);
+            }
+
+            UpdatePickupSelection();
             UpdateGameObjectControls();
-            RenderPickups();
             UpdatePickupInfo();
         }
 
