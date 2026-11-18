@@ -1625,9 +1625,17 @@ namespace CombatLR.mobile.Pages
                     gps.Longitude);
 
                 var marker = CreatePickupMarker(pickup, i);
-                PositionPickupMarker(marker, imagePoint.X, imagePoint.Y);
+
+                // Match the incremental-add path: attach before positioning.
+                // This ensures every marker, including those restored from an
+                // existing game plan, is measured in the visual layer first.
                 MapVisualLayer.Children.Add(marker);
                 _pickupMarkers.Add(marker);
+
+                PositionPickupMarker(
+                    marker,
+                    imagePoint.X,
+                    imagePoint.Y);
             }
 
             UpdatePickupSelection();
