@@ -2491,6 +2491,25 @@ namespace CombatLR.mobile.Pages
                 marker.Children.Add(image);
             }
 
+            // A non-zero spawn time means this pickup appears later in the
+            // game, so show a small clock badge over its base artwork.
+            if (pickup.SpawnTimeSeconds > 0)
+            {
+                var clockOverlay = new Image
+                {
+                    Source = ImageSource.FromFile("pickup_clock.png"),
+                    WidthRequest = 12,
+                    HeightRequest = 12,
+                    Aspect = Aspect.AspectFit,
+                    HorizontalOptions = LayoutOptions.Start,
+                    VerticalOptions = LayoutOptions.Start,
+                    Margin = new Thickness(2),
+                    InputTransparent = true
+                };
+
+                marker.Children.Add(clockOverlay);
+            }
+
             return marker;
         }
 
