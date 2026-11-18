@@ -91,8 +91,11 @@ void PlayerHealthWidget::Render(IDisplayContext& context)
         return;
     }
 
+    float maxHealth = _player.GetMaxHealth();
+    float currentHealth = _player.GetHealth();
+    float healthAsPercentage = currentHealth / maxHealth; 
     const uint16_t barColour =
-        (health <= 20)
+        (healthAsPercentage <= 0.3f)
             ? TFT_RED
             : TFT_GREEN;
 
