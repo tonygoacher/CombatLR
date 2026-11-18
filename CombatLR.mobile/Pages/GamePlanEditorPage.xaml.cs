@@ -662,7 +662,7 @@ namespace CombatLR.mobile.Pages
                 _currentZoneIndex < _gamePlan.Zones.Count &&
                 _gamePlan.Home is not null)
             {
-                MovePickupToPosition(gps);
+                MovePickupToPosition(gps, imageX, imageY);
             }
 
 
@@ -2305,7 +2305,9 @@ namespace CombatLR.mobile.Pages
         }
 
         private void MovePickupToPosition(
-    MapCoordinateService.GeoPoint position)
+            MapCoordinateService.GeoPoint position,
+            double imageX,
+            double imageY)
         {
             if (_gamePlan.Home is null ||
                 _coordinateService is null ||
@@ -2339,19 +2341,15 @@ namespace CombatLR.mobile.Pages
             pickup.NorthMetres =
                 local.NorthMetres;
 
+            // Use the exact image coordinate from the tap for immediate
+            // visual feedback. Re-projecting GPS -> local -> GPS -> image
+            // introduces a small coordinate round-trip error.
             if (_currentPickupIndex < _pickupMarkers.Count)
             {
-                var gps = _gameObjectCoordinateService.LocalToGps(
-                    _gamePlan.Home,
-                    pickup.EastMetres,
-                    pickup.NorthMetres);
-                var imagePoint = _coordinateService.GpsToImage(
-                    gps.Latitude,
-                    gps.Longitude);
                 PositionPickupMarker(
                     _pickupMarkers[_currentPickupIndex],
-                    imagePoint.X,
-                    imagePoint.Y);
+                    imageX,
+                    imageY);
             }
 
             UpdatePickupInfo();
