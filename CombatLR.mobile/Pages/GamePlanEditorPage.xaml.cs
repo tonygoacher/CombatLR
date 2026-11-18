@@ -1440,7 +1440,7 @@ namespace CombatLR.mobile.Pages
                     _currentPickupIndex--;
                 }
 
-                RenderPickups();
+                UpdatePickupSelection();
                 UpdatePickupInfo();
                 UpdateGameObjectControls();
 
@@ -1568,55 +1568,54 @@ namespace CombatLR.mobile.Pages
         {
             ClearPickupMarkers();
 
-            if (_gameObjectMode != GameObjectMode.Pickups)
-                return;
-
-            if (_mapDefinition is null ||
+            if (_gameObjectMode != GameObjectMode.Pickups ||
+                _mapDefinition is null ||
                 _coordinateService is null ||
-                _gamePlan.Home is null)
-            {
-                return;
-            }
-
-            if (_currentZoneIndex < 0 ||
+                _gamePlan.Home is null ||
+                _currentZoneIndex < 0 ||
                 _currentZoneIndex >= _gamePlan.Zones.Count)
             {
                 return;
             }
 
-            var zone =
-                _gamePlan.Zones[_currentZoneIndex];
+            var zone = _gamePlan.Zones[_currentZoneIndex];
 
-            for (var i = 0;
-                 i < zone.Pickups.Count;
-                 i++)
+            for (var i = 0; i < zone.Pickups.Count; i++)
             {
-                var pickup =
-                    zone.Pickups[i];
+                var pickup = zone.Pickups[i];
+                var gps = _gameObjectCoordinateService.LocalToGps(
+                    _gamePlan.Home,
+                    pickup.EastMetres,
+                    pickup.NorthMetres);
+                var imagePoint = _coordinateService.GpsToImage(
+                    gps.Latitude,
+                    gps.Longitude);
 
-                var gps =
-                    _gameObjectCoordinateService.LocalToGps(
-                        _gamePlan.Home,
-                        pickup.EastMetres,
-                        pickup.NorthMetres);
-
-                var imagePoint =
-                    _coordinateService.GpsToImage(
-                        gps.Latitude,
-                        gps.Longitude);
-
-                var marker =
-                    CreatePickupMarker(
-                        pickup,
-                        i);
-
-                PositionPickupMarker(
-                    marker,
-                    imagePoint.X,
-                    imagePoint.Y);
-
+                var marker = CreatePickupMarker(pickup, i);
+                PositionPickupMarker(marker, imagePoint.X, imagePoint.Y);
                 MapVisualLayer.Children.Add(marker);
                 _pickupMarkers.Add(marker);
+            }
+
+            UpdatePickupSelection();
+        }
+
+        // Selection changes only alter the two marker outlines. The marker
+        // controls themselves remain attached to the visual layer.
+        private void UpdatePickupSelection()
+        {
+            for (var i = 0; i < _pickupMarkers.Count; i++)
+            {
+                var highlight = _pickupMarkers[i].Children
+                    .OfType<Border>()
+                    .FirstOrDefault();
+
+                if (highlight is not null)
+                {
+                    highlight.Stroke = i == _currentPickupIndex
+                        ? Colors.Green
+                        : Colors.Transparent;
+                }
             }
         }
 
@@ -2341,7 +2340,21 @@ namespace CombatLR.mobile.Pages
             pickup.NorthMetres =
                 local.NorthMetres;
 
-            RenderPickups();
+            if (_currentPickupIndex < _pickupMarkers.Count)
+            {
+                var gps = _gameObjectCoordinateService.LocalToGps(
+                    _gamePlan.Home,
+                    pickup.EastMetres,
+                    pickup.NorthMetres);
+                var imagePoint = _coordinateService!.GpsToImage(
+                    gps.Latitude,
+                    gps.Longitude);
+                PositionPickupMarker(
+                    _pickupMarkers[_currentPickupIndex],
+                    imagePoint.X,
+                    imagePoint.Y);
+            }
+
             UpdatePickupInfo();
         }
 
@@ -2430,9 +2443,7 @@ namespace CombatLR.mobile.Pages
         private void ClearPickupMarkers()
         {
             foreach (var marker in _pickupMarkers)
-            {
                 MapVisualLayer.Children.Remove(marker);
-            }
 
             _pickupMarkers.Clear();
         }
@@ -2469,58 +2480,45 @@ namespace CombatLR.mobile.Pages
         }
 
         private Grid CreatePickupMarker(
-         GamePickup pickup,
-         int pickupIndex)
+            GamePickup pickup,
+            int pickupIndex)
         {
-            var marker =
-                new Grid
-                {
-                    WidthRequest = 40,
-                    HeightRequest = 40,
-                    HorizontalOptions = LayoutOptions.Start,
-                    VerticalOptions = LayoutOptions.Start,
-                    InputTransparent = true
-                };
-
-            var image =
-                new Image
-                {
-                    Source = GetPickupImageSource(
-                        pickup.Type),
-                    WidthRequest = 32,
-                    HeightRequest = 32,
-                    Aspect = Aspect.AspectFit,
-                    HorizontalOptions = LayoutOptions.Center,
-                    VerticalOptions = LayoutOptions.Center,
-                    InputTransparent = true
-                };
-
-            if (_gameObjectMode == GameObjectMode.Pickups &&
-                pickupIndex == _currentPickupIndex)
+            var marker = new Grid
             {
-                var highlight =
-                    new Border
-                    {
-                        Stroke = Colors.Green,
-                        StrokeThickness = 3,
-                        BackgroundColor = Colors.Transparent,
-                        StrokeShape =
-                            new RoundRectangle
-                            {
-                                CornerRadius = 999
-                            },
-                        Padding = 2,
-                        InputTransparent = true
-                    };
+                WidthRequest = 40,
+                HeightRequest = 40,
+                HorizontalOptions = LayoutOptions.Start,
+                VerticalOptions = LayoutOptions.Start,
+                InputTransparent = true
+            };
 
-                highlight.Content = image;
-
-                marker.Children.Add(highlight);
-            }
-            else
+            // Keep a Border for every marker so changing selection never
+            // requires replacing the marker's visual tree.
+            var image = new Image
             {
-                marker.Children.Add(image);
-            }
+                Source = GetPickupImageSource(pickup.Type),
+                WidthRequest = 32,
+                HeightRequest = 32,
+                Aspect = Aspect.AspectFit,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center,
+                InputTransparent = true
+            };
+
+            var highlight = new Border
+            {
+                Stroke = pickupIndex == _currentPickupIndex
+                    ? Colors.Green
+                    : Colors.Transparent,
+                StrokeThickness = 3,
+                BackgroundColor = Colors.Transparent,
+                StrokeShape = new RoundRectangle { CornerRadius = 999 },
+                Padding = 2,
+                InputTransparent = true,
+                Content = image
+            };
+
+            marker.Children.Add(highlight);
 
             // A non-zero spawn time means this pickup appears later in the
             // game, so show a small clock badge over its base artwork.
@@ -2542,7 +2540,6 @@ namespace CombatLR.mobile.Pages
 
             return marker;
         }
-
 
     }
 
