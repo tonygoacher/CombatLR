@@ -1654,7 +1654,7 @@ namespace CombatLR.mobile.Pages
                 if (highlight is not null)
                 {
                     highlight.Stroke = i == _currentPickupIndex
-                        ? Colors.Green
+                        ? Colors.Lime
                         : Colors.Transparent;
                 }
             }
@@ -1746,7 +1746,7 @@ namespace CombatLR.mobile.Pages
                 {
                     Stroke =
                         zoneIndex == _currentZoneIndex
-                            ? Colors.Green
+                            ? Colors.Lime
                             : Colors.Yellow,
 
                     StrokeThickness =
@@ -2533,7 +2533,7 @@ namespace CombatLR.mobile.Pages
             var highlight = new Border
             {
                 Stroke = pickupIndex == _currentPickupIndex
-                    ? Colors.Green
+                    ? Colors.Lime
                     : Colors.Transparent,
                 StrokeThickness = 3,
                 BackgroundColor = Colors.Transparent,
