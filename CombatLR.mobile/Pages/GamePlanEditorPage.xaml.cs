@@ -964,7 +964,12 @@ namespace CombatLR.mobile.Pages
                 int pointer,
                 double density)
             {
-                if (_page.MapTouchView.Handler?.PlatformView
+                // HandleMapTap and the map transform calculations use
+                // MapContainer-local coordinates. Convert the raw screen
+                // coordinate against that same native view rather than the
+                // transparent touch overlay, whose native bounds can differ
+                // slightly from the MAUI layout bounds on Android.
+                if (_page.MapContainer.Handler?.PlatformView
                     is not Android.Views.View mapView)
                     return 0;
 
@@ -980,7 +985,7 @@ namespace CombatLR.mobile.Pages
                 int pointer,
                 double density)
             {
-                if (_page.MapTouchView.Handler?.PlatformView
+                if (_page.MapContainer.Handler?.PlatformView
                     is not Android.Views.View mapView)
                     return 0;
 
