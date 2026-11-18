@@ -190,6 +190,25 @@
                     PlaceholderColor="LightGray"
                     Margin="0" />
 
+                <Label
+                    Text="Pickup Radius (m)"
+                    TextColor="White"
+                    FontSize="12"
+                    Margin="0,4,0,0" />
+
+                <Entry
+                    x:Name="PickupRadiusEntry"
+                    Text="2"
+                    Keyboard="Numeric"
+                    TextColor="White"
+                    BackgroundColor="#44000000"
+                    FontSize="13"
+                    HeightRequest="34"
+                    HorizontalTextAlignment="Center"
+                    Placeholder="2"
+                    PlaceholderColor="LightGray"
+                    Margin="0" />
+
                 <Button
                     x:Name="PickupAllocationButton"
                     Text="Pickup Allocation"
