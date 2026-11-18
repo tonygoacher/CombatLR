@@ -1125,6 +1125,8 @@ bool  ZoneEngine::GetPickupsWithin(
 {
     results.clear();
 
+    radiusMetres = _gamePlan.GetPickupRadius();
+
     if (radiusMetres < 0.0f)
     {
         return false;

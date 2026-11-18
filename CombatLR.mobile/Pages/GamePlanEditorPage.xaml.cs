@@ -144,7 +144,8 @@ namespace CombatLR.mobile.Pages
             return JsonSerializer.Serialize(new
             {
                 GamePlan = _gamePlan,
-                GameDelayTime = GameDelayTimeEntry.Text
+                GameDelayTime = GameDelayTimeEntry.Text,
+                PickupRadius = PickupRadiusEntry.Text
             });
         }
 
@@ -262,6 +263,7 @@ namespace CombatLR.mobile.Pages
                 SetHomeButton.IsEnabled = true;
                 PickupAllocationButton.IsEnabled = true;
                 GameDelayTimeEntry.Text = _gamePlan.GameDelayTime.ToString();
+                PickupRadiusEntry.Text = _gamePlan.PickupRadius.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
                 MapInfoLabel.Text =
                     $"PROJECT: {_selectedGamePlan.ProjectName}\n" +
@@ -363,7 +365,24 @@ namespace CombatLR.mobile.Pages
                     return;
                 }
 
+                if (!float.TryParse(
+                        PickupRadiusEntry.Text,
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var pickupRadius) ||
+                    !float.IsFinite(pickupRadius) ||
+                    pickupRadius <= 0.0f ||
+                    pickupRadius > 1000.0f)
+                {
+                    await DisplayAlert(
+                        "Save Game Plan",
+                        "Pickup Radius must be a number greater than 0 and no greater than 1000 metres.",
+                        "OK");
+                    return;
+                }
+
                 _gamePlan.GameDelayTime = gameDelayTime;
+                _gamePlan.PickupRadius = pickupRadius;
                 _gamePlan.ProjectName = _selectedGamePlan.ProjectName ?? string.Empty;
 
                 await _selectedGamePlan.SaveGamePlanAsync();

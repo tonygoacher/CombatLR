@@ -412,6 +412,7 @@ bool GamePlan::Load(const char* filename)
     _version = 0;
     _projectName = "Untitled";
     _gameDelayTime = 600;
+    _pickupRadius = 2.0f;
     _homeLatitude = 0.0;
     _homeLongitude = 0.0;
     _valid = false;
@@ -533,6 +534,26 @@ bool GamePlan::Load(const char* filename)
             return false;
         }
         _gameDelayTime = document["gameDelayTime"].as<int>();
+    }
+
+    if (!document["pickupRadius"].isNull())
+    {
+        if (!IsFiniteNumber(document["pickupRadius"]) ||
+            document["pickupRadius"].as<double>() <= 0.0 ||
+            document["pickupRadius"].as<double>() > 1000.0)
+        {
+            _error = "Invalid pickupRadius; expected a number greater than 0 and no greater than 1000 metres";
+            Serial.println("Defaulting to 2m");
+            _pickupRadius = 2.0f;
+        }
+        else
+        {
+            _pickupRadius = document["pickupRadius"].as<float>();
+        }            
+    }
+    else
+    {
+        _pickupRadius = 2.0f;
     }
 
     std::vector<ZonePickupDistribution> pickupDistributions;
@@ -817,4 +838,9 @@ const std::vector<Zone>& GamePlan::GetZones() const
 const int GamePlan::GetGameDelayTime() const
 {
     return _gameDelayTime;
+}
+
+float GamePlan::GetPickupRadius() const
+{
+    return _pickupRadius;
 }
