@@ -51,6 +51,18 @@ public partial class PickupEditPage : ContentPage
             TypePicker.SelectedIndex == (int)PickupType.Auto;
 
         SpawnTimeEntry.IsEnabled = !isAuto;
+        SpawnTimeLabel.TextColor = isAuto ? Colors.Gray : Colors.White;
+        SpawnTimeEntry.TextColor = isAuto ? Colors.Gray : Colors.White;
+        SpawnTimeEntry.BackgroundColor = isAuto
+            ? Color.FromArgb("#333333")
+            : Color.FromArgb("#44000000");
+
+        LifespanEntry.IsEnabled = !isAuto;
+        LifespanLabel.TextColor = isAuto ? Colors.Gray : Colors.White;
+        LifespanEntry.TextColor = isAuto ? Colors.Gray : Colors.White;
+        LifespanEntry.BackgroundColor = isAuto
+            ? Color.FromArgb("#333333")
+            : Color.FromArgb("#44000000");
 
         if (isAuto)
             SpawnTimeEntry.Text = "0";
