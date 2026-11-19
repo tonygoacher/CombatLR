@@ -423,53 +423,51 @@ namespace CombatLR.mobile.Pages
         }
 
         private void PositionHomeMarker(
-     double imageX,
-     double imageY)
+            double imageX,
+            double imageY)
+        {
+            PositionMapMarker(HomeMarker, imageX, imageY);
+        }
+
+        // Position every map overlay using the same AspectFit geometry.
+        // Width/Height are preferred once the element has been measured;
+        // WidthRequest/HeightRequest are the fallback before first layout.
+        private void PositionMapMarker(
+            VisualElement marker,
+            double imageX,
+            double imageY)
         {
             if (_mapDefinition is null)
                 return;
 
-            var imageWidth =
-                _mapDefinition.Image.Width;
+            var imageWidth = _mapDefinition.Image.Width;
+            var imageHeight = _mapDefinition.Image.Height;
+            var areaWidth = MapContainer.Width;
+            var areaHeight = MapContainer.Height;
 
-            var imageHeight =
-                _mapDefinition.Image.Height;
-
-            var areaWidth =
-                MapContainer.Width;
-
-            var areaHeight =
-                MapContainer.Height;
-
-            if (areaWidth <= 0 ||
-                areaHeight <= 0)
+            if (areaWidth <= 0 || areaHeight <= 0)
                 return;
 
             var scale = Math.Min(
                 areaWidth / imageWidth,
                 areaHeight / imageHeight);
 
-            var displayedWidth =
-                imageWidth * scale;
+            var displayedWidth = imageWidth * scale;
+            var displayedHeight = imageHeight * scale;
+            var imageLeft = (areaWidth - displayedWidth) / 2.0;
+            var imageTop = (areaHeight - displayedHeight) / 2.0;
 
-            var displayedHeight =
-                imageHeight * scale;
+            var markerWidth = marker.Width > 0
+                ? marker.Width
+                : marker.WidthRequest;
+            var markerHeight = marker.Height > 0
+                ? marker.Height
+                : marker.HeightRequest;
 
-            var imageLeft =
-                (areaWidth - displayedWidth) / 2.0;
-
-            var imageTop =
-                (areaHeight - displayedHeight) / 2.0;
-
-            HomeMarker.TranslationX =
-                imageLeft +
-                imageX * scale -
-                HomeMarker.Width / 2.0;
-
-            HomeMarker.TranslationY =
-                imageTop +
-                imageY * scale -
-                HomeMarker.Height / 2.0;
+            marker.TranslationX =
+                imageLeft + imageX * scale - markerWidth / 2.0;
+            marker.TranslationY =
+                imageTop + imageY * scale - markerHeight / 2.0;
         }
 
         private async void EditObject_Clicked(
@@ -662,9 +660,39 @@ namespace CombatLR.mobile.Pages
                 _currentZoneIndex < _gamePlan.Zones.Count &&
                 _gamePlan.Home is not null)
             {
-                MovePickupToPosition(gps);
-            }
+                MovePickupToPosition(gps, imageX, imageY);
 
+                // Show both the tapped image position and the position
+                // reconstructed from the pickup's stored local coordinates.
+                // This distinguishes a coordinate-conversion problem from
+                // a marker-layout/rendering problem.
+                if (_currentPickupIndex >= 0 &&
+                    _currentPickupIndex <
+                        _gamePlan.Zones[_currentZoneIndex].Pickups.Count)
+                {
+                    var pickup =
+                        _gamePlan.Zones[_currentZoneIndex]
+                            .Pickups[_currentPickupIndex];
+
+                    var storedGps =
+                        _gameObjectCoordinateService.LocalToGps(
+                            _gamePlan.Home,
+                            pickup.EastMetres,
+                            pickup.NorthMetres);
+
+                    var storedImage =
+                        _coordinateService.GpsToImage(
+                            storedGps.Latitude,
+                            storedGps.Longitude);
+
+                    MapInfoLabel.Text =
+                        $"TAP MAP: {imageX:0.0}, {imageY:0.0} px\n" +
+                        $"SAVED E: {pickup.EastMetres:F1} m  N: {pickup.NorthMetres:F1} m\n" +
+                        $"SAVED MAP: {storedImage.X:0.0}, {storedImage.Y:0.0} px\n" +
+                        $"GPS: {gps.Latitude:F7}, {gps.Longitude:F7}";
+                    return;
+                }
+            }
 
             MapInfoLabel.Text =
                 $"MAP: {imageX:0.0}, {imageY:0.0}\n" +
@@ -964,7 +992,12 @@ namespace CombatLR.mobile.Pages
                 int pointer,
                 double density)
             {
-                if (_page.MapTouchView.Handler?.PlatformView
+                // HandleMapTap and the map transform calculations use
+                // MapContainer-local coordinates. Convert the raw screen
+                // coordinate against that same native view rather than the
+                // transparent touch overlay, whose native bounds can differ
+                // slightly from the MAUI layout bounds on Android.
+                if (_page.MapContainer.Handler?.PlatformView
                     is not Android.Views.View mapView)
                     return 0;
 
@@ -980,7 +1013,7 @@ namespace CombatLR.mobile.Pages
                 int pointer,
                 double density)
             {
-                if (_page.MapTouchView.Handler?.PlatformView
+                if (_page.MapContainer.Handler?.PlatformView
                     is not Android.Views.View mapView)
                     return 0;
 
@@ -1440,7 +1473,7 @@ namespace CombatLR.mobile.Pages
                     _currentPickupIndex--;
                 }
 
-                RenderPickups();
+                UpdatePickupSelection();
                 UpdatePickupInfo();
                 UpdateGameObjectControls();
 
@@ -1491,7 +1524,7 @@ namespace CombatLR.mobile.Pages
                     _currentPickupIndex++;
                 }
 
-                RenderPickups();
+                UpdatePickupSelection();
                 UpdatePickupInfo();
                 UpdateGameObjectControls();
 
@@ -1568,55 +1601,62 @@ namespace CombatLR.mobile.Pages
         {
             ClearPickupMarkers();
 
-            if (_gameObjectMode != GameObjectMode.Pickups)
-                return;
-
-            if (_mapDefinition is null ||
+            if (_gameObjectMode != GameObjectMode.Pickups ||
+                _mapDefinition is null ||
                 _coordinateService is null ||
-                _gamePlan.Home is null)
-            {
-                return;
-            }
-
-            if (_currentZoneIndex < 0 ||
+                _gamePlan.Home is null ||
+                _currentZoneIndex < 0 ||
                 _currentZoneIndex >= _gamePlan.Zones.Count)
             {
                 return;
             }
 
-            var zone =
-                _gamePlan.Zones[_currentZoneIndex];
+            var zone = _gamePlan.Zones[_currentZoneIndex];
 
-            for (var i = 0;
-                 i < zone.Pickups.Count;
-                 i++)
+            for (var i = 0; i < zone.Pickups.Count; i++)
             {
-                var pickup =
-                    zone.Pickups[i];
+                var pickup = zone.Pickups[i];
+                var gps = _gameObjectCoordinateService.LocalToGps(
+                    _gamePlan.Home,
+                    pickup.EastMetres,
+                    pickup.NorthMetres);
+                var imagePoint = _coordinateService.GpsToImage(
+                    gps.Latitude,
+                    gps.Longitude);
 
-                var gps =
-                    _gameObjectCoordinateService.LocalToGps(
-                        _gamePlan.Home,
-                        pickup.EastMetres,
-                        pickup.NorthMetres);
+                var marker = CreatePickupMarker(pickup, i);
 
-                var imagePoint =
-                    _coordinateService.GpsToImage(
-                        gps.Latitude,
-                        gps.Longitude);
-
-                var marker =
-                    CreatePickupMarker(
-                        pickup,
-                        i);
+                // Match the incremental-add path: attach before positioning.
+                // This ensures every marker, including those restored from an
+                // existing game plan, is measured in the visual layer first.
+                MapVisualLayer.Children.Add(marker);
+                _pickupMarkers.Add(marker);
 
                 PositionPickupMarker(
                     marker,
                     imagePoint.X,
                     imagePoint.Y);
+            }
 
-                MapVisualLayer.Children.Add(marker);
-                _pickupMarkers.Add(marker);
+            UpdatePickupSelection();
+        }
+
+        // Selection changes only alter the two marker outlines. The marker
+        // controls themselves remain attached to the visual layer.
+        private void UpdatePickupSelection()
+        {
+            for (var i = 0; i < _pickupMarkers.Count; i++)
+            {
+                var highlight = _pickupMarkers[i].Children
+                    .OfType<Border>()
+                    .FirstOrDefault();
+
+                if (highlight is not null)
+                {
+                    highlight.Stroke = i == _currentPickupIndex
+                        ? Colors.Lime
+                        : Colors.Transparent;
+                }
             }
         }
 
@@ -1706,7 +1746,7 @@ namespace CombatLR.mobile.Pages
                 {
                     Stroke =
                         zoneIndex == _currentZoneIndex
-                            ? Colors.Green
+                            ? Colors.Lime
                             : Colors.Yellow,
 
                     StrokeThickness =
@@ -2300,18 +2340,40 @@ namespace CombatLR.mobile.Pages
             _coordinateOperation =
                 CoordinateOperation.None;
 
+            // The existing markers are already in place. Add only the
+            // newly-created pickup rather than rebuilding the whole zone.
+            if (_coordinateService is not null)
+            {
+                var imagePoint = _coordinateService.GpsToImage(
+                    position.Latitude,
+                    position.Longitude);
+                var marker = CreatePickupMarker(
+                    pickup,
+                    _currentPickupIndex);
+                // Attach the marker before positioning it so MAUI has
+                // a parent and can measure it using the visual layer layout.
+                MapVisualLayer.Children.Add(marker);
+                _pickupMarkers.Add(marker);
+
+                PositionPickupMarker(
+                    marker,
+                    imagePoint.X,
+                    imagePoint.Y);
+            }
+
+            UpdatePickupSelection();
             UpdateGameObjectControls();
-            RenderPickups();
             UpdatePickupInfo();
         }
 
         private void MovePickupToPosition(
-    MapCoordinateService.GeoPoint position)
+            MapCoordinateService.GeoPoint position,
+            double imageX,
+            double imageY)
         {
-            if (_gamePlan.Home is null)
-                return;
-
-            if (_currentZoneIndex < 0 ||
+            if (_gamePlan.Home is null ||
+                _coordinateService is null ||
+                _currentZoneIndex < 0 ||
                 _currentZoneIndex >= _gamePlan.Zones.Count)
             {
                 return;
@@ -2341,8 +2403,31 @@ namespace CombatLR.mobile.Pages
             pickup.NorthMetres =
                 local.NorthMetres;
 
-            RenderPickups();
+            // Use the exact image coordinate from the tap for immediate
+            // visual feedback. Re-projecting GPS -> local -> GPS -> image
+            // introduces a small coordinate round-trip error.
+            if (_currentPickupIndex < _pickupMarkers.Count)
+            {
+                var marker = _pickupMarkers[_currentPickupIndex];
+
+                PositionPickupMarker(
+                    marker,
+                    imageX,
+                    imageY);
+
+                UpdatePickupInfo();
+
+                MapInfoLabel.Text +=
+                    $"\\nMARKER XY: {marker.TranslationX:F1}, {marker.TranslationY:F1}" +
+                    $"\\nMARKER SIZE: {marker.Width:F1} x {marker.Height:F1}" +
+                    $"\\nLAYER: {MapVisualLayer.Width:F1} x {MapVisualLayer.Height:F1}" +
+                    $"\\nMAP AREA: {MapContainer.Width:F1} x {MapContainer.Height:F1}" +
+                    $"\\nVISIBLE: {marker.IsVisible}";
+                return;
+            }
+
             UpdatePickupInfo();
+            MapInfoLabel.Text += "\\nMARKER NOT FOUND IN LIST";
         }
 
         private static ImageSource GetPickupImageSource(
@@ -2373,66 +2458,17 @@ namespace CombatLR.mobile.Pages
         }
 
         private void PositionPickupMarker(
-    Grid marker,
-    double imageX,
-    double imageY)
+            Grid marker,
+            double imageX,
+            double imageY)
         {
-            if (_mapDefinition is null)
-                return;
-
-            
-            var imageWidth =
-                _mapDefinition.Image.Width;
-
-            var imageHeight =
-                _mapDefinition.Image.Height;
-
-            var areaWidth =
-                MapContainer.Width;
-
-            var areaHeight =
-                MapContainer.Height;
-
-            if (areaWidth <= 0 ||
-                areaHeight <= 0)
-            {
-                return;
-            }
-
-            var scale =
-                Math.Min(
-                    areaWidth / imageWidth,
-                    areaHeight / imageHeight);
-
-            var displayedWidth =
-                imageWidth * scale;
-
-            var displayedHeight =
-                imageHeight * scale;
-
-            var imageLeft =
-                (areaWidth - displayedWidth) / 2.0;
-
-            var imageTop =
-                (areaHeight - displayedHeight) / 2.0;
-
-            marker.TranslationX =
-                imageLeft +
-                imageX * scale -
-                marker.WidthRequest / 2.0;
-
-            marker.TranslationY =
-                imageTop +
-                imageY * scale -
-                marker.HeightRequest / 2.0;
+            PositionMapMarker(marker, imageX, imageY);
         }
 
         private void ClearPickupMarkers()
         {
             foreach (var marker in _pickupMarkers)
-            {
                 MapVisualLayer.Children.Remove(marker);
-            }
 
             _pickupMarkers.Clear();
         }
@@ -2469,58 +2505,45 @@ namespace CombatLR.mobile.Pages
         }
 
         private Grid CreatePickupMarker(
-         GamePickup pickup,
-         int pickupIndex)
+            GamePickup pickup,
+            int pickupIndex)
         {
-            var marker =
-                new Grid
-                {
-                    WidthRequest = 40,
-                    HeightRequest = 40,
-                    HorizontalOptions = LayoutOptions.Start,
-                    VerticalOptions = LayoutOptions.Start,
-                    InputTransparent = true
-                };
-
-            var image =
-                new Image
-                {
-                    Source = GetPickupImageSource(
-                        pickup.Type),
-                    WidthRequest = 32,
-                    HeightRequest = 32,
-                    Aspect = Aspect.AspectFit,
-                    HorizontalOptions = LayoutOptions.Center,
-                    VerticalOptions = LayoutOptions.Center,
-                    InputTransparent = true
-                };
-
-            if (_gameObjectMode == GameObjectMode.Pickups &&
-                pickupIndex == _currentPickupIndex)
+            var marker = new Grid
             {
-                var highlight =
-                    new Border
-                    {
-                        Stroke = Colors.Green,
-                        StrokeThickness = 3,
-                        BackgroundColor = Colors.Transparent,
-                        StrokeShape =
-                            new RoundRectangle
-                            {
-                                CornerRadius = 999
-                            },
-                        Padding = 2,
-                        InputTransparent = true
-                    };
+                WidthRequest = 40,
+                HeightRequest = 40,
+                HorizontalOptions = LayoutOptions.Start,
+                VerticalOptions = LayoutOptions.Start,
+                InputTransparent = true
+            };
 
-                highlight.Content = image;
-
-                marker.Children.Add(highlight);
-            }
-            else
+            // Keep a Border for every marker so changing selection never
+            // requires replacing the marker's visual tree.
+            var image = new Image
             {
-                marker.Children.Add(image);
-            }
+                Source = GetPickupImageSource(pickup.Type),
+                WidthRequest = 32,
+                HeightRequest = 32,
+                Aspect = Aspect.AspectFit,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center,
+                InputTransparent = true
+            };
+
+            var highlight = new Border
+            {
+                Stroke = pickupIndex == _currentPickupIndex
+                    ? Colors.Lime
+                    : Colors.Transparent,
+                StrokeThickness = 3,
+                BackgroundColor = Colors.Transparent,
+                StrokeShape = new RoundRectangle { CornerRadius = 999 },
+                Padding = 2,
+                InputTransparent = true,
+                Content = image
+            };
+
+            marker.Children.Add(highlight);
 
             // A non-zero spawn time means this pickup appears later in the
             // game, so show a small clock badge over its base artwork.
@@ -2542,7 +2565,6 @@ namespace CombatLR.mobile.Pages
 
             return marker;
         }
-
 
     }
 
