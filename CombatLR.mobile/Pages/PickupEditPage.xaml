@@ -44,6 +44,7 @@
             </Picker>
 
             <Label
+                x:Name="SpawnTimeLabel"
                 Grid.Row="1"
                 Grid.Column="0"
                 Text="Spawn time (seconds)"
@@ -57,10 +58,12 @@
                 HeightRequest="40"
                 Keyboard="Numeric"
                 TextColor="White"
+                BackgroundColor="#44000000"
                 PlaceholderColor="Gray"
                 HorizontalOptions="Fill" />
 
             <Label
+                x:Name="LifespanLabel"
                 Grid.Row="2"
                 Grid.Column="0"
                 Text="Lifespan (seconds)"
