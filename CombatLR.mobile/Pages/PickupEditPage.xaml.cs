@@ -31,6 +31,44 @@ public partial class PickupEditPage : ContentPage
 
         LifespanEntry.Text =
             _pickup.LifespanSeconds.ToString();
+
+        TypePicker.SelectedIndexChanged +=
+            TypePicker_SelectedIndexChanged;
+
+        UpdateSpawnTimeEditor();
+    }
+
+    private void TypePicker_SelectedIndexChanged(
+        object? sender,
+        EventArgs e)
+    {
+        UpdateSpawnTimeEditor();
+    }
+
+    private void UpdateSpawnTimeEditor()
+    {
+        var isAuto =
+            TypePicker.SelectedIndex == (int)PickupType.Auto;
+
+        SpawnTimeEntry.IsEnabled = !isAuto;
+        SpawnTimeLabel.TextColor = isAuto ? Colors.Gray : Colors.White;
+        SpawnTimeEntry.TextColor = isAuto ? Colors.Gray : Colors.White;
+        SpawnTimeEntry.BackgroundColor = isAuto
+            ? Color.FromArgb("#333333")
+            : Color.FromArgb("#44000000");
+
+        LifespanEntry.IsEnabled = !isAuto;
+        LifespanLabel.TextColor = isAuto ? Colors.Gray : Colors.White;
+        LifespanEntry.TextColor = isAuto ? Colors.Gray : Colors.White;
+        LifespanEntry.BackgroundColor = isAuto
+            ? Color.FromArgb("#333333")
+            : Color.FromArgb("#44000000");
+
+        if (isAuto)
+        {
+            SpawnTimeEntry.Text = "0";
+            LifespanEntry.Text = "0";
+        }
     }
 
     private static bool TryParseSeconds(
@@ -64,9 +102,15 @@ public partial class PickupEditPage : ContentPage
             return;
         }
 
-        if (!TryParseSeconds(
+        var pickupType =
+            (PickupType)TypePicker.SelectedIndex;
+
+        var spawnTime = 0;
+
+        if (pickupType != PickupType.Auto &&
+            !TryParseSeconds(
                 SpawnTimeEntry.Text,
-                out var spawnTime))
+                out spawnTime))
         {
             await DisplayAlert(
                 "Invalid Spawn Time",
@@ -76,9 +120,12 @@ public partial class PickupEditPage : ContentPage
             return;
         }
 
-        if (!TryParseSeconds(
+        var lifespan = 0;
+
+        if (pickupType != PickupType.Auto &&
+            !TryParseSeconds(
                 LifespanEntry.Text,
-                out var lifespan))
+                out lifespan))
         {
             await DisplayAlert(
                 "Invalid Lifespan",
@@ -89,15 +136,16 @@ public partial class PickupEditPage : ContentPage
         }
 
         _pickup.Type =
-            (PickupType)TypePicker.SelectedIndex;
+            pickupType;
 
+        // Auto pickups are allocated by the game engine and have
+        // neither an individual spawn time nor a lifespan.
         _pickup.SpawnTimeSeconds =
-            spawnTime;
+            pickupType == PickupType.Auto ? 0 : spawnTime;
 
         _pickup.LifespanSeconds =
-            lifespan;
+            pickupType == PickupType.Auto ? 0 : lifespan;
 
-       
         _completion.TrySetResult(true);
         await Navigation.PopModalAsync();
     }
@@ -106,10 +154,7 @@ public partial class PickupEditPage : ContentPage
         object? sender,
         EventArgs e)
     {
-   
         _completion.TrySetResult(false);
         await Navigation.PopModalAsync();
     }
-
-
 }
