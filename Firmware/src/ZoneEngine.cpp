@@ -434,11 +434,7 @@ void ZoneEngine::UpdatePickups(
                 continue;
             }
 
-            if (pickup.id == 0)
-            {
-                continue;
-            }
-
+ 
             if (FindActiveObject(
                     pickup.id) == nullptr)
             {
