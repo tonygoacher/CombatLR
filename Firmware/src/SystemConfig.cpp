@@ -56,6 +56,10 @@ bool SystemConfig::Begin()
         _gpsBaudRate = 9600;
         _gpsType = 0;
 
+        // A device may have NVS credentials even if its filesystem config
+        // file has been removed or freshly recreated.
+        LoadCredentialsFromNvs();
+
         if (!Save())
         {
             Serial.println("SystemConfig: failed to create default configuration");
