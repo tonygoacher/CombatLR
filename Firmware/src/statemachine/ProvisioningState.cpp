@@ -19,17 +19,13 @@
 #include "widgets/TextWidget.h"
 
 
-namespace
-{
-    constexpr const char* ApPassword = "combatlr";
-}
-
 ProvisioningState::ProvisioningState(CombatLRServices& services)
     : AwaitingStartState(services),
       _webServer(nullptr),
       _webServerStarted(false),
       _saveRequested(false),
-      _apIP(192, 168, 4, 1)
+      _apIP(192, 168, 4, 1),
+      _apPassword()
 {
 }
 
@@ -54,7 +50,14 @@ void ProvisioningState::Entry()
     _services.displayManager.Send(
             std::unique_ptr<IDisplayCommand>(
                 new AddWidgetCommand(
-                    textWidget)));        
+                    textWidget)));
+
+    WidgetPosition keyTextPos={TextX,TextY+22};
+    TextWidget* keyWidget = new TextWidget(
+        UIWidgetIds::SSIDString,"",keyTextPos,TextFont,MC_DATUM,
+        TFT_WHITE,TFT_BLACK,1);
+    _services.displayManager.Send(
+        std::unique_ptr<IDisplayCommand>(new AddWidgetCommand(keyWidget)));
 
     _saveRequested = false;
     _webServerStarted = false;
@@ -75,8 +78,10 @@ void ProvisioningState::Exit()
 
     _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));    
     removeIcon = new RemoveWidgetCommand(UIWidgetIds::IPAdrString);
+    _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));
 
-    _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));        
+    removeIcon = new RemoveWidgetCommand(UIWidgetIds::SSIDString);
+    _services.displayManager.Send(std::unique_ptr<IDisplayCommand>(removeIcon));
 }
 
 uint16_t ProvisioningState::Run()
@@ -94,13 +99,19 @@ void ProvisioningState::StartAccessPoint()
 {
     WiFi.mode(WIFI_AP);
 
-    String apName = "CombatLR";
+    const uint32_t chipId = static_cast<uint32_t>(ESP.getEfuseMac());
+    char suffix[5];
+    char password[9];
+    snprintf(suffix, sizeof(suffix), "%04X", static_cast<unsigned>(chipId & 0xFFFF));
+    snprintf(password, sizeof(password), "%08X", static_cast<unsigned>(chipId));
+    _apPassword = password;
 
+    String apName = String("CombatLR-") + suffix;
 
     if (!WiFi.softAPConfig(_apIP, _apIP, IPAddress(255, 255, 255, 0)))
         Serial.println("Provisioning: failed to configure AP IP");
 
-    if (!WiFi.softAP(apName.c_str(), ApPassword))
+    if (!WiFi.softAP(apName.c_str(), _apPassword.c_str()))
     {
         Serial.println("Provisioning: failed to start AP");
         return;
@@ -112,7 +123,11 @@ void ProvisioningState::StartAccessPoint()
     Serial.println(WiFi.softAPIP());
 
     _services.displayManager.Send(
-    std::make_unique<SetTextCommand>(UIWidgetIds::IPAdrString, WiFi.softAPIP().toString().c_str()));
+        std::make_unique<SetTextCommand>(UIWidgetIds::IPAdrString, WiFi.softAPIP().toString().c_str()));
+
+    String keyText = String("Setup key: ") + _apPassword;
+    _services.displayManager.Send(
+        std::make_unique<SetTextCommand>(UIWidgetIds::SSIDString, keyText.c_str()));
 }
 
 void ProvisioningState::StartWebServer()
