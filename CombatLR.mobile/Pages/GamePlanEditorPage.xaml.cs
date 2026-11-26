@@ -17,6 +17,11 @@ namespace CombatLR.mobile.Pages
         private MapCoordinateService? _coordinateService;
         private readonly LocationService _locationService;
 
+        private int _pagePositionEventCount;
+        private int _markerUpdateCount;
+        private DateTime? _lastPagePositionEventAt;
+        private Location? _lastGpsLocation;
+
         private enum CoordinateOperation
         {
             None,
@@ -233,27 +238,35 @@ namespace CombatLR.mobile.Pages
             _locationService.TrackingFailed -= LocationService_TrackingFailed;
             _locationService.TrackingFailed += LocationService_TrackingFailed;
 
-            if (!await _locationService.StartListeningAsync())
-            {
+            var started = await _locationService.StartListeningAsync();
+
+            if (!started)
                 CurrentLocationMarker.IsVisible = false;
-                MapInfoLabel.Text = "GPS unavailable";
-            }
+
+            RefreshGpsDiagnostics();
         }
 
         private void LocationService_TrackingFailed(string message)
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                MapInfoLabel.Text = $"GPS ERROR\\n{message}";
+                RefreshGpsDiagnostics(message);
             });
         }
 
         private void LocationService_PositionChanged(Location location)
         {
+            _pagePositionEventCount++;
+            _lastPagePositionEventAt = DateTime.Now;
+            _lastGpsLocation = location;
+
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 if (_coordinateService is null)
+                {
+                    RefreshGpsDiagnostics("Coordinate service is not ready.");
                     return;
+                }
 
                 try
                 {
@@ -263,17 +276,48 @@ namespace CombatLR.mobile.Pages
                     _currentLocationImageX = imagePoint.X;
                     _currentLocationImageY = imagePoint.Y;
                     UpdateCurrentLocationMarker();
+                    _markerUpdateCount++;
 
-                    MapInfoLabel.Text =
-                        $"GPS POSITION  ±{location.Accuracy:0} m\n" +
-                        $"{location.Latitude:F7}, {location.Longitude:F7}";
+                    RefreshGpsDiagnostics();
                 }
-                catch
+                catch (Exception ex)
                 {
                     // A valid fix may be outside the calibrated map.
                     CurrentLocationMarker.IsVisible = false;
+                    RefreshGpsDiagnostics($"Map conversion failed: {ex.Message}");
                 }
             });
+        }
+
+        private void RefreshGpsDiagnostics(string? status = null)
+        {
+            var lastServiceEvent = _locationService.LastLocationEventAt.HasValue
+                ? _locationService.LastLocationEventAt.Value.ToString("HH:mm:ss")
+                : "never";
+
+            var lastPageEvent = _lastPagePositionEventAt.HasValue
+                ? _lastPagePositionEventAt.Value.ToString("HH:mm:ss")
+                : "never";
+
+            var text =
+                $"GPS LISTENER: {(_locationService.IsListening ? "ACTIVE" : "INACTIVE")}\n" +
+                $"SERVICE EVENTS: {_locationService.LocationEventCount}\n" +
+                $"PAGE EVENTS: {_pagePositionEventCount}\n" +
+                $"MARKER UPDATES: {_markerUpdateCount}\n" +
+                $"LAST SERVICE: {lastServiceEvent}  PAGE: {lastPageEvent}";
+
+            if (_lastGpsLocation is not null)
+            {
+                text +=
+                    $"\nGPS: {_lastGpsLocation.Latitude:F7}, {_lastGpsLocation.Longitude:F7}" +
+                    $"  ±{_lastGpsLocation.Accuracy:0} m";
+            }
+
+            var failure = status ?? _locationService.LastFailure;
+            if (!string.IsNullOrWhiteSpace(failure))
+                text += $"\nGPS STATUS: {failure}";
+
+            MapInfoLabel.Text = text;
         }
 
         private void UpdateCurrentLocationMarker()
