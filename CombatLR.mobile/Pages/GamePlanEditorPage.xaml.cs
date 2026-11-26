@@ -49,6 +49,8 @@ namespace CombatLR.mobile.Pages
 
         private double? _homeImageX;
         private double? _homeImageY;
+        private double? _currentLocationImageX;
+        private double? _currentLocationImageY;
 
         private int _currentZoneIndex = -1;
 
@@ -181,6 +183,7 @@ namespace CombatLR.mobile.Pages
                 return;
 
             UpdateHomeMarker();
+            UpdateCurrentLocationMarker();
             RenderGameObjects();
         }
 
@@ -221,10 +224,78 @@ namespace CombatLR.mobile.Pages
         {
             base.OnAppearing();
 
-            if (_hasLoadedSelectedProject)
-                return;
+            if (!_hasLoadedSelectedProject)
+                await LoadSelectedProjectAsync();
 
-            await LoadSelectedProjectAsync();
+            if (_hasLoadedSelectedProject)
+                await StartGpsTrackingAsync();
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            _ = _locationService.StopListeningAsync();
+        }
+
+        private async Task StartGpsTrackingAsync()
+        {
+            _locationService.PositionChanged -= LocationService_PositionChanged;
+            _locationService.PositionChanged += LocationService_PositionChanged;
+
+            if (!await _locationService.StartListeningAsync())
+            {
+                CurrentLocationMarker.IsVisible = false;
+                MapInfoLabel.Text = "GPS unavailable";
+            }
+        }
+
+        private void LocationService_PositionChanged(Location location)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (_coordinateService is null)
+                    return;
+
+                try
+                {
+                    var imagePoint = _coordinateService.GpsToImage(
+                        location.Latitude, location.Longitude);
+
+                    _currentLocationImageX = imagePoint.X;
+                    _currentLocationImageY = imagePoint.Y;
+                    UpdateCurrentLocationMarker();
+
+                    MapInfoLabel.Text =
+                        $"GPS POSITION  ±{location.Accuracy:0} m\n" +
+                        $"{location.Latitude:F7}, {location.Longitude:F7}";
+                }
+                catch
+                {
+                    // A valid fix may be outside the calibrated map.
+                    CurrentLocationMarker.IsVisible = false;
+                }
+            });
+        }
+
+        private void UpdateCurrentLocationMarker()
+        {
+            if (!_currentLocationImageX.HasValue ||
+                !_currentLocationImageY.HasValue ||
+                _mapDefinition is null)
+            {
+                CurrentLocationMarker.IsVisible = false;
+                return;
+            }
+
+            var x = _currentLocationImageX.Value;
+            var y = _currentLocationImageY.Value;
+            CurrentLocationMarker.IsVisible =
+                x >= 0 && y >= 0 &&
+                x <= _mapDefinition.Image.Width &&
+                y <= _mapDefinition.Image.Height;
+
+            if (CurrentLocationMarker.IsVisible)
+                PositionMapMarker(CurrentLocationMarker, x, y);
         }
 
         private async Task LoadSelectedProjectAsync()
@@ -278,6 +349,7 @@ namespace CombatLR.mobile.Pages
                     $"PLAN VERSION: {_gamePlan.Version}";
 
                 UpdateHomeMarker();
+                UpdateCurrentLocationMarker();
                 _currentZoneIndex = _gamePlan.Zones.Count > 0 ? 0 : -1;
                 _currentPickupIndex = -1;
                 UpdateGameObjectControls();
@@ -1307,57 +1379,6 @@ namespace CombatLR.mobile.Pages
                 CoordinateOperation.None;
 
             UpdateCoordinateInputUi();
-        }
-
-        private async void CoordinateMode_Clicked(
-    object? sender,
-    EventArgs e)
-        {
-            if (_coordinateInputMode ==
-                CoordinateInputMode.Tap)
-            {
-                MapInfoLabel.Text =
-                     $"Finding GPS Lock\n";
-
-                SetPlacementControlsEnabled(false);
-                var result =
-                    await _locationService
-                        .GetCurrentPositionAsync();
-                SetPlacementControlsEnabled(true);
-                if (result.Status !=
-                    LocationService.LocationStatus.Available)
-                {
-                    SetGpsUnavailable(
-                        "GPS unavailable — TAP mode");
-
-                    return;
-                }
-
-                MapInfoLabel.Text =
-                    $"Got GPS Lock\n";
-                SetCoordinateInputMode(
-                    CoordinateInputMode.Gps);
-            }
-            else
-            {
-                SetCoordinateInputMode(
-                    CoordinateInputMode.Tap);
-            }
-        }
-
-        private void SetGpsUnavailable(
-            string message)
-        {
-            _coordinateInputMode =
-                CoordinateInputMode.Tap;
-
-            _coordinateOperation =
-                CoordinateOperation.None;
-
-            UpdateCoordinateInputUi();
-
-            MapInfoLabel.Text =
-                message;
         }
 
         private void UpdateGameObjectControls()
