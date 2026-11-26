@@ -7,6 +7,7 @@ public sealed class LocationService
     private bool _isListening;
 
     public bool IsListening => _isListening;
+
     public async Task<bool> StartListeningAsync()
     {
         if (_isListening)
@@ -37,7 +38,7 @@ public sealed class LocationService
 
             return started;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             Geolocation.Default.LocationChanged -= OnLocationChanged;
             Geolocation.Default.ListeningFailed -= OnListeningFailed;
