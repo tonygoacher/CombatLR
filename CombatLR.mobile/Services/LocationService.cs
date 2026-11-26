@@ -3,12 +3,15 @@ namespace CombatLR.mobile.Services;
 public sealed class LocationService
 {
     public event Action<Location>? PositionChanged;
+    public event Action<string>? TrackingFailed;
 
-    private CancellationTokenSource? _trackingCancellation;
-    private Task? _trackingTask;
+    private bool _isListening;
 
     public async Task<bool> StartListeningAsync()
     {
+        if (_isListening)
+            return true;
+
         try
         {
             var permission = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
@@ -16,91 +19,67 @@ public sealed class LocationService
                 permission = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
 
             if (permission != PermissionStatus.Granted)
+            {
+                TrackingFailed?.Invoke("Location permission was not granted.");
                 return false;
+            }
 
-            if (_trackingCancellation is not null)
-                return true;
+            Geolocation.Default.LocationChanged += OnLocationChanged;
+            Geolocation.Default.ListeningFailed += OnListeningFailed;
 
-            _trackingCancellation = new CancellationTokenSource();
-            _trackingTask = TrackLocationAsync(_trackingCancellation.Token);
+            var request = new GeolocationListeningRequest(GeolocationAccuracy.High);
+            var started = await Geolocation.Default.StartListeningForegroundAsync(request);
 
-            return true;
+            _isListening = started;
+
+            if (!started)
+            {
+                Geolocation.Default.LocationChanged -= OnLocationChanged;
+                Geolocation.Default.ListeningFailed -= OnListeningFailed;
+                TrackingFailed?.Invoke("Android could not start GPS location updates.");
+            }
+
+            return started;
         }
-        catch
+        catch (Exception ex)
         {
-            _trackingCancellation?.Cancel();
-            _trackingCancellation?.Dispose();
-            _trackingCancellation = null;
-            _trackingTask = null;
+            Geolocation.Default.LocationChanged -= OnLocationChanged;
+            Geolocation.Default.ListeningFailed -= OnListeningFailed;
+            _isListening = false;
+            TrackingFailed?.Invoke($"Unable to start GPS tracking: {ex.Message}");
             return false;
         }
     }
 
-    public async Task StopListeningAsync()
+    public Task StopListeningAsync()
     {
-        var cancellation = _trackingCancellation;
-        var trackingTask = _trackingTask;
-
-        _trackingCancellation = null;
-        _trackingTask = null;
-
-        if (cancellation is null)
-            return;
-
-        cancellation.Cancel();
+        Geolocation.Default.LocationChanged -= OnLocationChanged;
+        Geolocation.Default.ListeningFailed -= OnListeningFailed;
 
         try
         {
-            if (trackingTask is not null)
-                await trackingTask;
+            Geolocation.Default.StopListeningForeground();
         }
-        catch (OperationCanceledException)
+        catch (Exception ex)
         {
-            // Expected when the editor closes.
+            TrackingFailed?.Invoke($"Unable to stop GPS tracking: {ex.Message}");
         }
         finally
         {
-            cancellation.Dispose();
+            _isListening = false;
         }
+
+        return Task.CompletedTask;
     }
 
-    private async Task TrackLocationAsync(CancellationToken cancellationToken)
+    private void OnLocationChanged(object? sender, GeolocationLocationChangedEventArgs e)
     {
-        // Request a fresh high-accuracy fix every few seconds while the editor
-        // is visible. This avoids relying solely on Android's foreground
-        // LocationChanged event, which can stop delivering updates silently.
-        var request = new GeolocationRequest(
-            GeolocationAccuracy.High,
-            TimeSpan.FromSeconds(5));
+        PositionChanged?.Invoke(e.Location);
+    }
 
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                var location = await Geolocation.Default.GetLocationAsync(
-                    request,
-                    cancellationToken);
-
-                if (location is not null)
-                    PositionChanged?.Invoke(location);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-            catch
-            {
-                // A temporary GPS failure should not stop subsequent polls.
-            }
-
-            try
-            {
-                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-        }
+    private void OnListeningFailed(object? sender, GeolocationListeningFailedEventArgs e)
+    {
+        _isListening = false;
+        TrackingFailed?.Invoke($"GPS updates stopped: {e.Error}");
     }
 }
