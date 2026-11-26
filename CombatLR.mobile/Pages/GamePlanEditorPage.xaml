@@ -36,6 +36,7 @@
                     x:Name="CurrentLocationMarker"
                     WidthRequest="22"
                     HeightRequest="22"
+                    ZIndex="100"
                     HorizontalOptions="Start"
                     VerticalOptions="Start"
                     IsVisible="False"
@@ -107,11 +108,6 @@
         Text="Starting..."
         TextColor="White"
         FontSize="13">
-
-                <Label.GestureRecognizers>
-                    <TapGestureRecognizer
-                Tapped="MapInfoLabel_Tapped" />
-                </Label.GestureRecognizers>
 
             </Label>
 
