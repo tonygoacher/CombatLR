@@ -4,7 +4,8 @@ public sealed class LocationService
 {
     public event Action<Location>? PositionChanged;
 
-    private bool _isListening;
+    private CancellationTokenSource? _trackingCancellation;
+    private Task? _trackingTask;
 
     public async Task<bool> StartListeningAsync()
     {
@@ -17,52 +18,89 @@ public sealed class LocationService
             if (permission != PermissionStatus.Granted)
                 return false;
 
-            if (_isListening)
+            if (_trackingCancellation is not null)
                 return true;
 
-            Geolocation.Default.LocationChanged += OnLocationChanged;
+            _trackingCancellation = new CancellationTokenSource();
+            _trackingTask = TrackLocationAsync(_trackingCancellation.Token);
 
-            var request = new GeolocationListeningRequest(GeolocationAccuracy.High);
-            var started = await Geolocation.Default.StartListeningForegroundAsync(request);
-
-            _isListening = started;
-            if (!started)
-                Geolocation.Default.LocationChanged -= OnLocationChanged;
-
-            return started;
+            return true;
         }
         catch
         {
-            Geolocation.Default.LocationChanged -= OnLocationChanged;
-            _isListening = false;
+            _trackingCancellation?.Cancel();
+            _trackingCancellation?.Dispose();
+            _trackingCancellation = null;
+            _trackingTask = null;
             return false;
         }
     }
 
-    public Task StopListeningAsync()
+    public async Task StopListeningAsync()
     {
-        if (!_isListening)
-            return Task.CompletedTask;
+        var cancellation = _trackingCancellation;
+        var trackingTask = _trackingTask;
+
+        _trackingCancellation = null;
+        _trackingTask = null;
+
+        if (cancellation is null)
+            return;
+
+        cancellation.Cancel();
 
         try
         {
-            Geolocation.Default.LocationChanged -= OnLocationChanged;
-            Geolocation.Default.StopListeningForeground();
+            if (trackingTask is not null)
+                await trackingTask;
         }
-        catch
+        catch (OperationCanceledException)
         {
-            // Best-effort shutdown during page navigation.
+            // Expected when the editor closes.
         }
         finally
         {
-            _isListening = false;
+            cancellation.Dispose();
         }
-
-        return Task.CompletedTask;
     }
 
-    private void OnLocationChanged(object? sender, GeolocationLocationChangedEventArgs e)
+    private async Task TrackLocationAsync(CancellationToken cancellationToken)
     {
-        PositionChanged?.Invoke(e.Location);
+        // Request a fresh high-accuracy fix every few seconds while the editor
+        // is visible. This avoids relying solely on Android's foreground
+        // LocationChanged event, which can stop delivering updates silently.
+        var request = new GeolocationRequest(
+            GeolocationAccuracy.High,
+            TimeSpan.FromSeconds(5));
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                var location = await Geolocation.Default.GetLocationAsync(
+                    request,
+                    cancellationToken);
+
+                if (location is not null)
+                    PositionChanged?.Invoke(location);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch
+            {
+                // A temporary GPS failure should not stop subsequent polls.
+            }
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+        }
     }
 }
