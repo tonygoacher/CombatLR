@@ -28,7 +28,7 @@ public sealed class LocationService
             if (permission != PermissionStatus.Granted)
             {
                 LastFailure = "Location permission was not granted.";
-                TrackingFailed?.Invoke(LastFailure);
+                TrackingFailed?.Invoke(LastFailure!);
                 return false;
             }
 
@@ -45,7 +45,7 @@ public sealed class LocationService
                 Geolocation.Default.LocationChanged -= OnLocationChanged;
                 Geolocation.Default.ListeningFailed -= OnListeningFailed;
                 LastFailure = "Android could not start GPS location updates.";
-                TrackingFailed?.Invoke(LastFailure);
+                TrackingFailed?.Invoke(LastFailure!);
             }
 
             return started;
@@ -56,7 +56,7 @@ public sealed class LocationService
             Geolocation.Default.ListeningFailed -= OnListeningFailed;
             _isListening = false;
             LastFailure = $"Unable to start GPS tracking: {ex.Message}";
-            TrackingFailed?.Invoke(LastFailure);
+            TrackingFailed?.Invoke(LastFailure!);
             return false;
         }
     }
@@ -72,7 +72,8 @@ public sealed class LocationService
         }
         catch (Exception ex)
         {
-            TrackingFailed?.Invoke($"Unable to stop GPS tracking: {ex.Message}");
+            LastFailure = $"Unable to stop GPS tracking: {ex.Message}";
+            TrackingFailed?.Invoke(LastFailure);
         }
         finally
         {
@@ -93,6 +94,6 @@ public sealed class LocationService
     {
         _isListening = false;
         LastFailure = $"GPS updates stopped: {e.Error}";
-        TrackingFailed?.Invoke(LastFailure);
+        TrackingFailed?.Invoke(LastFailure!);
     }
 }
