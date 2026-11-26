@@ -21,9 +21,9 @@ public sealed class LocationService
                 return true;
 
             Geolocation.Default.LocationChanged += OnLocationChanged;
-            var started = await Geolocation.Default.StartListeningForegroundAsync(
-                GeolocationAccuracy.High,
-                TimeSpan.FromSeconds(2));
+
+            var request = new GeolocationListeningRequest(GeolocationAccuracy.High);
+            var started = await Geolocation.Default.StartListeningForegroundAsync(request);
 
             _isListening = started;
             if (!started)
@@ -39,14 +39,15 @@ public sealed class LocationService
         }
     }
 
-    public async Task StopListeningAsync()
+    public Task StopListeningAsync()
     {
         if (!_isListening)
-            return;
+            return Task.CompletedTask;
 
         try
         {
-            await Geolocation.Default.StopListeningForegroundAsync();
+            Geolocation.Default.LocationChanged -= OnLocationChanged;
+            Geolocation.Default.StopListeningForeground();
         }
         catch
         {
@@ -54,9 +55,10 @@ public sealed class LocationService
         }
         finally
         {
-            Geolocation.Default.LocationChanged -= OnLocationChanged;
             _isListening = false;
         }
+
+        return Task.CompletedTask;
     }
 
     private void OnLocationChanged(object? sender, GeolocationLocationChangedEventArgs e)
