@@ -1,66 +1,66 @@
-﻿namespace CombatLR.mobile.Services;
+namespace CombatLR.mobile.Services;
 
 public sealed class LocationService
 {
-    public enum LocationStatus
-    {
-        Available,
-        PermissionDenied,
-        Unavailable,
-        Error
-    }
+    public event Action<Location>? PositionChanged;
 
-    public readonly record struct LocationResult(
-        LocationStatus Status,
-        MapCoordinateService.GeoPoint? Position);
+    private bool _isListening;
 
-    public async Task<LocationResult>
-        GetCurrentPositionAsync()
+    public async Task<bool> StartListeningAsync()
     {
         try
         {
-            var permission =
-                await Permissions.CheckStatusAsync<
-                    Permissions.LocationWhenInUse>();
+            var permission = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+            if (permission != PermissionStatus.Granted)
+                permission = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
 
             if (permission != PermissionStatus.Granted)
-            {
-                permission =
-                    await Permissions.RequestAsync<
-                        Permissions.LocationWhenInUse>();
-            }
+                return false;
 
-            if (permission != PermissionStatus.Granted)
-            {
-                return new LocationResult(
-                    LocationStatus.PermissionDenied,
-                    null);
-            }
+            if (_isListening)
+                return true;
 
-            var location =
-                await Geolocation.Default.GetLocationAsync(
-                    new GeolocationRequest(
-                        GeolocationAccuracy.High,
-                        TimeSpan.FromSeconds(5)));
+            Geolocation.Default.LocationChanged += OnLocationChanged;
+            var started = await Geolocation.Default.StartListeningForegroundAsync(
+                GeolocationAccuracy.High,
+                TimeSpan.FromSeconds(2));
 
-            if (location is null)
-            {
-                return new LocationResult(
-                    LocationStatus.Unavailable,
-                    null);
-            }
+            _isListening = started;
+            if (!started)
+                Geolocation.Default.LocationChanged -= OnLocationChanged;
 
-            return new LocationResult(
-                LocationStatus.Available,
-                new MapCoordinateService.GeoPoint(
-                    location.Latitude,
-                    location.Longitude));
+            return started;
         }
-        catch (Exception e)
+        catch
         {
-            return new LocationResult(
-                LocationStatus.Error,
-                null);
+            Geolocation.Default.LocationChanged -= OnLocationChanged;
+            _isListening = false;
+            return false;
         }
+    }
+
+    public async Task StopListeningAsync()
+    {
+        if (!_isListening)
+            return;
+
+        try
+        {
+            await Geolocation.Default.StopListeningForegroundAsync();
+        }
+        catch
+        {
+            // Best-effort shutdown during page navigation.
+        }
+        finally
+        {
+            Geolocation.Default.LocationChanged -= OnLocationChanged;
+            _isListening = false;
+        }
+    }
+
+    private void OnLocationChanged(object? sender, GeolocationLocationChangedEventArgs e)
+    {
+        PositionChanged?.Invoke(e.Location);
     }
 }
