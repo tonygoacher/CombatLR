@@ -1,66 +1,76 @@
-﻿namespace CombatLR.mobile.Services;
+namespace CombatLR.mobile.Services;
 
 public sealed class LocationService
 {
-    public enum LocationStatus
-    {
-        Available,
-        PermissionDenied,
-        Unavailable,
-        Error
-    }
+    public event Action<Location>? PositionChanged;
 
-    public readonly record struct LocationResult(
-        LocationStatus Status,
-        MapCoordinateService.GeoPoint? Position);
+    private bool _isListening;
 
-    public async Task<LocationResult>
-        GetCurrentPositionAsync()
+    public bool IsListening => _isListening;
+
+    public async Task<bool> StartListeningAsync()
     {
+        if (_isListening)
+            return true;
+
         try
         {
-            var permission =
-                await Permissions.CheckStatusAsync<
-                    Permissions.LocationWhenInUse>();
+            var permission = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+            if (permission != PermissionStatus.Granted)
+                permission = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
 
             if (permission != PermissionStatus.Granted)
+                return false;
+
+            Geolocation.Default.LocationChanged += OnLocationChanged;
+            Geolocation.Default.ListeningFailed += OnListeningFailed;
+
+            var request = new GeolocationListeningRequest(GeolocationAccuracy.High);
+            var started = await Geolocation.Default.StartListeningForegroundAsync(request);
+
+            _isListening = started;
+
+            if (!started)
             {
-                permission =
-                    await Permissions.RequestAsync<
-                        Permissions.LocationWhenInUse>();
+                Geolocation.Default.LocationChanged -= OnLocationChanged;
+                Geolocation.Default.ListeningFailed -= OnListeningFailed;
             }
 
-            if (permission != PermissionStatus.Granted)
-            {
-                return new LocationResult(
-                    LocationStatus.PermissionDenied,
-                    null);
-            }
-
-            var location =
-                await Geolocation.Default.GetLocationAsync(
-                    new GeolocationRequest(
-                        GeolocationAccuracy.High,
-                        TimeSpan.FromSeconds(5)));
-
-            if (location is null)
-            {
-                return new LocationResult(
-                    LocationStatus.Unavailable,
-                    null);
-            }
-
-            return new LocationResult(
-                LocationStatus.Available,
-                new MapCoordinateService.GeoPoint(
-                    location.Latitude,
-                    location.Longitude));
+            return started;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            return new LocationResult(
-                LocationStatus.Error,
-                null);
+            Geolocation.Default.LocationChanged -= OnLocationChanged;
+            Geolocation.Default.ListeningFailed -= OnListeningFailed;
+            _isListening = false;
+            return false;
         }
+    }
+
+    public Task StopListeningAsync()
+    {
+        Geolocation.Default.LocationChanged -= OnLocationChanged;
+        Geolocation.Default.ListeningFailed -= OnListeningFailed;
+
+        try
+        {
+            Geolocation.Default.StopListeningForeground();
+        }
+        finally
+        {
+            _isListening = false;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void OnLocationChanged(object? sender, GeolocationLocationChangedEventArgs e)
+    {
+        PositionChanged?.Invoke(e.Location);
+    }
+
+    private void OnListeningFailed(object? sender, GeolocationListeningFailedEventArgs e)
+    {
+        _isListening = false;
     }
 }
