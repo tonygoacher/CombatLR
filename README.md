@@ -25,6 +25,16 @@ cd Firmware
 pio run
 ```
 
+### Device configuration and credentials
+
+The firmware configuration file is `Firmware/data/system.json`. It contains non-secret device settings such as team/player IDs, friendly-fire behaviour and GPS settings. Wi-Fi network credentials and FTP login details are stored separately in ESP32 NVS and are not written to `system.json`.
+
+On upgrade, firmware imports credentials from the legacy `system.json` into NVS before removing the credential fields from the file. If the NVS write fails, the legacy configuration is retained so the credentials are not lost. Keep the device powered while this first-boot migration runs.
+
+A device with no Wi-Fi credentials enters network provisioning mode automatically. Provisioning can also be selected using the existing trigger/right-switch startup combination. The device creates a temporary `CombatLR` access point; connect to it and open `http://192.168.4.1` to configure up to eight Wi-Fi networks and the FTP login. Existing passwords are not sent back to the browser; leave a password field blank to retain the existing password for that network/account.
+
+NVS separates secrets from the FTP-accessible LittleFS filesystem, but **NVS is not encrypted by this change**. Someone with physical access and suitable flash-reading equipment may still be able to recover stored credentials. ESP32 flash encryption and Secure Boot are separate hardening options, not enabled by this change. FTP itself should only be used on trusted networks.
+
 This documents the configured build entry point; it does not imply that a build or hardware test was run as part of this README update.
 
 ## Mobile application
