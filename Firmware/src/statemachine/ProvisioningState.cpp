@@ -53,10 +53,10 @@ void ProvisioningState::Entry()
                 new AddWidgetCommand(
                     textWidget)));
 
-    WidgetPosition keyTextPos={TextX,TextY+22};
+    WidgetPosition keyTextPos={TextX,TextY+44};
     TextWidget* keyWidget = new TextWidget(
         UIWidgetIds::SSIDString,"",keyTextPos,TextFont,MC_DATUM,
-        TFT_WHITE,TFT_BLACK,1);
+        TFT_WHITE,TFT_BLACK,TextZoom);
     _services.displayManager.Send(
         std::unique_ptr<IDisplayCommand>(new AddWidgetCommand(keyWidget)));
 

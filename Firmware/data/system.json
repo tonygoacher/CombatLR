@@ -1,8 +1,1 @@
-{
-    "mostRecent": 0,
-    "teamId": 0,
-    "playerId": 1,
-    "friendlyFire": true,
-    "gpsBaudrate": 38400,
-    "gpsType": 0
-}
+{"teamId":0,"playerId":1,"friendlyFire":false,"mostRecent":2,"gpsBaudrate":38400,"gpsType":0}
