@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
+#include <Preferences.h>
 #include "TeamIDs.h"
 
 class SystemConfig
@@ -10,12 +12,10 @@ public:
 
     uint8_t GetTeamId() const;
     bool SetTeamId(uint8_t teamId);
-
     uint8_t GetPlayerId() const;
     bool SetPlayerId(uint8_t playerId);
-    
-    bool  GetFriendlyFire() const;
-    bool  SetFriendlyFire(bool enabled);
+    bool GetFriendlyFire() const;
+    bool SetFriendlyFire(bool enabled);
 
     uint32_t GetGpsBaudRate() const { return _gpsBaudRate; }
     int GetGpsType() const { return _gpsType; }
@@ -27,22 +27,20 @@ public:
     bool SetWifiMostRecent(uint8_t index);
     bool SetProvisioningConfig(const String* ssids, const String* passwords, uint8_t count,
                                const String& ftpUser, const String& ftpPass);
-    const String& GetFtpUser() { return _ftpUser;}
-    const String& GetFtpPass() { return _ftpPass;}
+    const String& GetFtpUser() { return _ftpUser; }
+    const String& GetFtpPass() { return _ftpPass; }
     const char * const GetTeamFile(TeamIds teamId);
 
 private:
     static constexpr const char* ConfigFile = "/system.json";
+    static constexpr const char* CredentialsNamespace = "credentials";
+    static constexpr const char* CredentialsKey = "secrets";
 
     uint8_t _teamId = 0;
     uint8_t _playerId = 0;
-    bool    _friendlyFire;
-    struct WifiNetwork
-    {
-        String ssid;
-        String password;
-    };
+    bool _friendlyFire = false;
 
+    struct WifiNetwork { String ssid; String password; };
     static constexpr uint8_t MaxWifiNetworks = 8;
     WifiNetwork _wifiNetworks[MaxWifiNetworks];
     uint8_t _wifiCount = 0;
@@ -52,6 +50,12 @@ private:
     uint32_t _gpsBaudRate = 9600;
     int _gpsType = 0;
 
+    Preferences _preferences;
+    bool _preferencesReady = false;
+
     bool Load();
     bool Save() const;
+    bool LoadCredentialsFromNvs();
+    bool MigrateCredentialsFromJson(JsonDocument& document);
+    bool SaveCredentialsToNvs();
 };
