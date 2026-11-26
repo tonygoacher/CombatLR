@@ -222,6 +222,14 @@ void ProvisioningState::HandleSave()
     if (ftpPass.length() == 0)
         ftpPass = _services.systemConfig.GetFtpPass();
 
+    if (ftpUser.length() == 0 || ftpPass.length() == 0)
+    {
+        _webServer->send(400, "text/html; charset=utf-8",
+            "<html><body><h2>Error</h2><p>FTP username and password are required.</p>"
+            "<p><a href='/'>Back</a></p></body></html>");
+        return;
+    }
+
     if (!_services.systemConfig.SetProvisioningConfig(
             ssids, passwords, count, ftpUser, ftpPass))
     {
@@ -319,8 +327,6 @@ button{width:100%;padding:13px;margin-top:22px;border:0;border-radius:5px;font-s
     {
         const bool existing = i < count;
         const String ssid = existing ? _services.systemConfig.GetWifiSSID(i) : String();
-        const String password = existing ? _services.systemConfig.GetWifiPass(i) : String();
-
         page += "<div class='network'><b>Network ";
         page += String(i + 1);
         page += "</b>";
