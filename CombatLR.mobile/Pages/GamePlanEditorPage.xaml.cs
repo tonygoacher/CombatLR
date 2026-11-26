@@ -17,9 +17,6 @@ namespace CombatLR.mobile.Pages
         private MapCoordinateService? _coordinateService;
         private readonly LocationService _locationService;
 
-        private CoordinateInputMode _coordinateInputMode =
-        CoordinateInputMode.Tap;
-
         private enum CoordinateOperation
         {
             None,
@@ -31,14 +28,6 @@ namespace CombatLR.mobile.Pages
 
         private CoordinateOperation _coordinateOperation =
                     CoordinateOperation.None;
-
-        private enum CoordinateInputMode
-        {
-            Tap,
-            Gps
-        }
-
-        private bool _acquiringCoordinate = false;
 
         private double _mapZoom = 1.0;
         private double _mapPanX = 0.0;
@@ -1264,121 +1253,24 @@ namespace CombatLR.mobile.Pages
                 _homeImageY.Value);
         }
 
-        private void UpdateCoordinateInputUi()
+        private Task<MapCoordinateService.GeoPoint?> AcquireCoordinateAsync(
+            CoordinateOperation operation)
         {
-            CoordinateModeButton.Text =
-                _coordinateInputMode == CoordinateInputMode.Gps
-                    ? "Position: GPS"
-                    : "Position: TAP";
-        }
-
-        private void SetPlacementControlsEnabled(
-            bool enabled)
-        {
-            CoordinateModeButton.IsEnabled = enabled;
-
-            if (enabled)
-            {
-                UpdateGameObjectControls();
-            }
-            else
-            {
-                AddObjectButton.IsEnabled = false;
-                DeleteObjectButton.IsEnabled = false;
-                EditObjectButton.IsEnabled = false;
-                PreviousZoneButton.IsEnabled = false;
-                NextZoneButton.IsEnabled = false;
-                ShowAllObjectsButton.IsEnabled = false;
-            }
-        }
-
-        private async Task<MapCoordinateService.GeoPoint?>
-     AcquireCoordinateAsync(
-         CoordinateOperation operation)
-        {
-            if (_acquiringCoordinate)
-                return null;
-
             _coordinateOperation = operation;
 
-            // TAP mode.
-            if (_coordinateInputMode ==
-                CoordinateInputMode.Tap)
-            {
-                MapInfoLabel.Text =
-                    operation switch
-                    {
-                        CoordinateOperation.SetHome =>
-                            "SET HOME\nTap the map",
-
-                        CoordinateOperation.AddZone =>
-                            "ADD ZONE\nTap the map",
-
-                        CoordinateOperation.MoveZone =>
-                            "MOVE ZONE\nTap the map",
-
-                        CoordinateOperation.AddPickup =>
-                            "ADD PICKUP\nTap the map",
-
-                        _ =>
-                            "Tap the map"
-                    };
-
-                return null;
-            }
-
-            // GPS mode.
-            _acquiringCoordinate = true;
-
-            try
-            {
-                MapInfoLabel.Text =
-                    "GPS MODE\nGetting GPS position...";
-
-                SetPlacementControlsEnabled(false);
-
-                var result =
-                    await _locationService
-                        .GetCurrentPositionAsync();
-
-                if (result.Status !=
-                    LocationService.LocationStatus.Available)
+            MapInfoLabel.Text =
+                operation switch
                 {
-                    SetGpsUnavailable(
-                        "GPS unavailable — TAP mode");
+                    CoordinateOperation.SetHome => "SET HOME\nTap the map",
+                    CoordinateOperation.AddZone => "ADD ZONE\nTap the map",
+                    CoordinateOperation.MoveZone => "MOVE ZONE\nTap the map",
+                    CoordinateOperation.AddPickup => "ADD PICKUP\nTap the map",
+                    _ => "Tap the map"
+                };
 
-                    return null;
-                }
-
-                _coordinateOperation =
-                    CoordinateOperation.None;
-
-                MapInfoLabel.Text =
-                    $"GPS POSITION\n" +
-                    $"{result.Position!.Value.Latitude:F7}\n" +
-                    $"{result.Position!.Value.Longitude:F7}";
-
-                return result.Position;
-            }
-            finally
-            {
-                _acquiringCoordinate = false;
-
-                SetPlacementControlsEnabled(true);
-            }
-        }
-
-
-
-        private void SetCoordinateInputMode(
-            CoordinateInputMode mode)
-        {
-            _coordinateInputMode = mode;
-
-            _coordinateOperation =
-                CoordinateOperation.None;
-
-            UpdateCoordinateInputUi();
+            // Placement is deliberately tap-only. GPS is a separate,
+            // read-only overlay and is never used to position game objects.
+            return Task.FromResult<MapCoordinateService.GeoPoint?>(null);
         }
 
         private void UpdateGameObjectControls()
