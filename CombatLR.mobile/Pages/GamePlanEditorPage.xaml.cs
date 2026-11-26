@@ -230,12 +230,22 @@ namespace CombatLR.mobile.Pages
         {
             _locationService.PositionChanged -= LocationService_PositionChanged;
             _locationService.PositionChanged += LocationService_PositionChanged;
+            _locationService.TrackingFailed -= LocationService_TrackingFailed;
+            _locationService.TrackingFailed += LocationService_TrackingFailed;
 
             if (!await _locationService.StartListeningAsync())
             {
                 CurrentLocationMarker.IsVisible = false;
                 MapInfoLabel.Text = "GPS unavailable";
             }
+        }
+
+        private void LocationService_TrackingFailed(string message)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                MapInfoLabel.Text = $"GPS ERROR\\n{message}";
+            });
         }
 
         private void LocationService_PositionChanged(Location location)
