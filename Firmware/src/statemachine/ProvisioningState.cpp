@@ -1,6 +1,7 @@
 #include "statemachine/ProvisioningState.h"
 
 #include "WiFi.h"
+#include <esp_system.h>
 #include "statemachine/SystemStates.h"
 #include "statemachine/Services.h"
 #include "SystemConfig.h"
@@ -100,10 +101,11 @@ void ProvisioningState::StartAccessPoint()
     WiFi.mode(WIFI_AP);
 
     const uint32_t chipId = static_cast<uint32_t>(ESP.getEfuseMac());
+    const uint32_t setupKey = esp_random();
     char suffix[5];
     char password[9];
     snprintf(suffix, sizeof(suffix), "%04X", static_cast<unsigned>(chipId & 0xFFFF));
-    snprintf(password, sizeof(password), "%08X", static_cast<unsigned>(chipId));
+    snprintf(password, sizeof(password), "%08X", static_cast<unsigned>(setupKey));
     _apPassword = password;
 
     String apName = String("CombatLR-") + suffix;
