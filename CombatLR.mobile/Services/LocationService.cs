@@ -7,10 +7,17 @@ public sealed class LocationService
 
     private bool _isListening;
 
+    public bool IsListening => _isListening;
+    public int LocationEventCount { get; private set; }
+    public DateTime? LastLocationEventAt { get; private set; }
+    public string? LastFailure { get; private set; }
+
     public async Task<bool> StartListeningAsync()
     {
         if (_isListening)
             return true;
+
+        LastFailure = null;
 
         try
         {
@@ -20,7 +27,8 @@ public sealed class LocationService
 
             if (permission != PermissionStatus.Granted)
             {
-                TrackingFailed?.Invoke("Location permission was not granted.");
+                LastFailure = "Location permission was not granted.";
+                TrackingFailed?.Invoke(LastFailure);
                 return false;
             }
 
@@ -36,7 +44,8 @@ public sealed class LocationService
             {
                 Geolocation.Default.LocationChanged -= OnLocationChanged;
                 Geolocation.Default.ListeningFailed -= OnListeningFailed;
-                TrackingFailed?.Invoke("Android could not start GPS location updates.");
+                LastFailure = "Android could not start GPS location updates.";
+                TrackingFailed?.Invoke(LastFailure);
             }
 
             return started;
@@ -46,7 +55,8 @@ public sealed class LocationService
             Geolocation.Default.LocationChanged -= OnLocationChanged;
             Geolocation.Default.ListeningFailed -= OnListeningFailed;
             _isListening = false;
-            TrackingFailed?.Invoke($"Unable to start GPS tracking: {ex.Message}");
+            LastFailure = $"Unable to start GPS tracking: {ex.Message}";
+            TrackingFailed?.Invoke(LastFailure);
             return false;
         }
     }
@@ -74,12 +84,15 @@ public sealed class LocationService
 
     private void OnLocationChanged(object? sender, GeolocationLocationChangedEventArgs e)
     {
+        LocationEventCount++;
+        LastLocationEventAt = DateTime.Now;
         PositionChanged?.Invoke(e.Location);
     }
 
     private void OnListeningFailed(object? sender, GeolocationListeningFailedEventArgs e)
     {
         _isListening = false;
-        TrackingFailed?.Invoke($"GPS updates stopped: {e.Error}");
+        LastFailure = $"GPS updates stopped: {e.Error}";
+        TrackingFailed?.Invoke(LastFailure);
     }
 }
