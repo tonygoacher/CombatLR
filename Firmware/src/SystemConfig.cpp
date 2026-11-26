@@ -43,6 +43,11 @@ bool SystemConfig::Begin()
 
     if (!Load())
     {
+        // Never replace an existing configuration when loading or credential
+        // migration fails: it may still contain the only recoverable secrets.
+        if (LittleFS.exists(ConfigFile))
+            return false;
+
         _teamId = 0;
         _playerId = 0;
         _friendlyFire = false;
@@ -225,10 +230,7 @@ bool SystemConfig::Load()
         document.containsKey(SystemConsts::FTPPass))
     {
         if (!Save())
-        {
-            Serial.println("SystemConfig: failed to remove legacy credentials from system.json");
-            return false;
-        }
+            Serial.println("SystemConfig: could not sanitise system.json; credentials are safely stored in NVS and sanitisation will be retried next boot");
     }
 
     Serial.printf("SystemConfig: Team ID = %u\n", _teamId);
@@ -307,8 +309,11 @@ bool SystemConfig::SetProvisioningConfig(
     _ftpUser = ftpUser;
     _ftpPass = ftpPass;
 
-    if (SaveCredentialsToNvs() && Save())
-        return true;
+    if (SaveCredentialsToNvs())
+    {
+        if (Save())
+            return true;
+    }
 
     _wifiCount = oldCount;
     for (uint8_t i = 0; i < MaxWifiNetworks; ++i)
@@ -316,6 +321,8 @@ bool SystemConfig::SetProvisioningConfig(
     _wifiMostRecent = oldMostRecent;
     _ftpUser = oldFtpUser;
     _ftpPass = oldFtpPass;
+    // Restore the previous NVS credentials if the filesystem save failed.
+    SaveCredentialsToNvs();
     return false;
 }
 
