@@ -108,8 +108,6 @@ void ProvisioningState::StartAccessPoint()
 
     Serial.print("Provisioning AP: ");
     Serial.println(apName);
-    Serial.print("AP password: ");
-    Serial.println(ApPassword);
     Serial.print("Open: http://");
     Serial.println(WiFi.softAPIP());
 
@@ -190,6 +188,22 @@ void ProvisioningState::HandleSave()
         if (ssid.length() == 0)
             continue;
 
+        // Blank password retains the existing password for the same SSID.
+        if (password.length() == 0 &&
+            i < _services.systemConfig.GetWifiCount() &&
+            ssid == _services.systemConfig.GetWifiSSID(i))
+        {
+            password = _services.systemConfig.GetWifiPass(i);
+        }
+
+        if (password.length() == 0)
+        {
+            _webServer->send(400, "text/html; charset=utf-8",
+                "<html><body><h2>Error</h2><p>Enter a password for each new Wi-Fi network.</p>"
+                "<p><a href='/'>Back</a></p></body></html>");
+            return;
+        }
+
         ssids[count] = ssid;
         passwords[count] = password;
         ++count;
@@ -205,13 +219,15 @@ void ProvisioningState::HandleSave()
 
     String ftpUser = GetArg("ftpUser");
     String ftpPass = GetArg("ftpPass");
+    if (ftpPass.length() == 0)
+        ftpPass = _services.systemConfig.GetFtpPass();
 
     if (!_services.systemConfig.SetProvisioningConfig(
             ssids, passwords, count, ftpUser, ftpPass))
     {
         _webServer->send(500, "text/html; charset=utf-8",
             "<html><body><h2>Save failed</h2>"
-            "<p>Could not save system.json.</p>"
+            "<p>Could not save credentials to NVS.</p>"
             "<p><a href='/'>Back</a></p></body></html>");
         return;
     }
@@ -292,7 +308,7 @@ button{width:100%;padding:13px;margin-top:22px;border:0;border-radius:5px;font-s
 <div class="container">
 <h1>CombatLR Network Setup</h1>
 <div class="card">
-<p class="small">Configure the Wi-Fi networks and FTP credentials stored in system.json.</p>
+<p class="small">Configure Wi-Fi networks and FTP credentials. Secrets are stored separately in device NVS.</p>
 <form method="POST" action="/save">
 <h2>Wi-Fi Networks</h2>
 )HTML");
@@ -318,8 +334,8 @@ button{width:100%;padding:13px;margin-top:22px;border:0;border-radius:5px;font-s
         page += "<label>Password</label><input type='password' name='pass";
         page += String(i);
         page += "' value='";
-        page += HtmlEscape(password);
-        page += "' maxlength='63'>";
+        // Never send stored passwords back to the browser.
+        page += "' placeholder='Leave blank to keep existing password' maxlength='63'>";
         page += "</div>";
     }
 
@@ -331,8 +347,7 @@ button{width:100%;padding:13px;margin-top:22px;border:0;border-radius:5px;font-s
     page += F(R"HTML(" maxlength="32">
 <label>Password</label>
 <input type="password" name="ftpPass" value=")HTML");
-    page += HtmlEscape(_services.systemConfig.GetFtpPass());
-    page += F(R"HTML(" maxlength="64">
+    page += F(R"HTML(" placeholder="Leave blank to keep existing password" maxlength="64">
 <button class="save" type="submit">Save Configuration</button>
 </form>
 </div>
