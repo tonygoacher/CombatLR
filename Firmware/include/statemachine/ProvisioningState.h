@@ -30,4 +30,5 @@ private:
     bool _saveRequested;
 
     IPAddress _apIP;
+    String _apPassword;
 };
