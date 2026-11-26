@@ -191,7 +191,13 @@ void SystemBegin()
 
     hitLED.Fire(3000);
 
-    systemConfig.Begin();
+    if (!systemConfig.Begin())
+    {
+        Serial.println("FATAL: system configuration could not be loaded or migrated.");
+        Serial.println("Check NVS and system.json before continuing.");
+        while (true)
+            delay(1000);
+    }
 
     // If a different type of navigation class is created, this line may need changing
     navigation.Setup(Ports::GPS_RX,Ports::GPS_TX,systemConfig.GetGpsBaudRate());
