@@ -4,21 +4,5 @@
     "playerId": 1,
     "friendlyFire": true,
     "gpsBaudrate": 38400,
-    "gpsType": 0,
-    "wifi": [
-        {
-            "ssid": "<SSID>",
-            "password": "<PASSWORD>"
-        },
-                { 
-            "ssid": "<SSID>",
-            "password": "<PASWORD>"
-        },
-        {
-            "ssid": "<SSID>",
-            "password": "<PASSWORD>"
-        }
-    ],
-    "ftpUser": "combatlr",
-    "ftpPass": "password"
+    "gpsType": 0
 }
