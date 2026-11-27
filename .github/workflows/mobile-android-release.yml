@@ -242,7 +242,7 @@ jobs:
             $aabChecksumFiles[0].FullName
           )
 
-          if (" ${{ steps.previous.outputs.tag }}".Trim()) {
+          if ("${{ steps.previous.outputs.tag }}") {
             gh release create $tag @assets --title "CombatLR Mobile v$version" --generate-notes --notes-start-tag "${{ steps.previous.outputs.tag }}"
           } else {
             gh release create $tag @assets --title "CombatLR Mobile v$version" --generate-notes
