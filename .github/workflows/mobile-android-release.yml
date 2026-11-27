@@ -187,10 +187,12 @@ jobs:
         if: github.event_name == 'push'
         shell: pwsh
         run: |
-          $apk = Get-ChildItem publish/android -Filter "*.apk" -File | Select-Object -First 1
-          $aab = Get-ChildItem publish/android-aab -Filter "*.aab" -File | Select-Object -First 1
-          if (-not $apk) { throw "Signed APK was not produced." }
-          if (-not $aab) { throw "Signed Android App Bundle was not produced." }
+          $apkFiles = @(Get-ChildItem publish/android -Filter "*-Signed.apk" -File)
+          $aabFiles = @(Get-ChildItem publish/android-aab -Filter "*-Signed.aab" -File)
+          if ($apkFiles.Count -ne 1) { throw "Expected exactly one signed APK, found $($apkFiles.Count)." }
+          if ($aabFiles.Count -ne 1) { throw "Expected exactly one signed Android App Bundle, found $($aabFiles.Count)." }
+          $apk = $apkFiles[0]
+          $aab = $aabFiles[0]
 
           $apkHash = Get-FileHash $apk.FullName -Algorithm SHA256
           "$($apkHash.Hash.ToLower())  $($apk.Name)" | Set-Content "$($apk.FullName).sha256"
@@ -225,10 +227,10 @@ jobs:
         run: |
           $tag = "${{ github.ref_name }}"
           $version = "${{ steps.version.outputs.version }}"
-          $apkFiles = @(Get-ChildItem publish/android -Filter "*.apk" -File)
-          $apkChecksumFiles = @(Get-ChildItem publish/android -Filter "*.apk.sha256" -File)
-          $aabFiles = @(Get-ChildItem publish/android-aab -Filter "*.aab" -File)
-          $aabChecksumFiles = @(Get-ChildItem publish/android-aab -Filter "*.aab.sha256" -File)
+          $apkFiles = @(Get-ChildItem publish/android -Filter "*-Signed.apk" -File)
+          $apkChecksumFiles = @(Get-ChildItem publish/android -Filter "*-Signed.apk.sha256" -File)
+          $aabFiles = @(Get-ChildItem publish/android-aab -Filter "*-Signed.aab" -File)
+          $aabChecksumFiles = @(Get-ChildItem publish/android-aab -Filter "*-Signed.aab.sha256" -File)
 
           if ($apkFiles.Count -ne 1) { throw "Expected exactly one APK, found $($apkFiles.Count)." }
           if ($apkChecksumFiles.Count -ne 1) { throw "Expected exactly one APK checksum, found $($apkChecksumFiles.Count)." }
