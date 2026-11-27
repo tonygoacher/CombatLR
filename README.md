@@ -1,5 +1,7 @@
 # CombatLR
 
+Releases page: https://github.com/tonygoacher/CombatLR/releases
+
 CombatLR is a GPS-based combat royale / laser-tag system built around ESP32 game units and a companion .NET MAUI mobile application. The game units handle player GPS positioning within current safe zone, weapon/health/bonus pickups, infrared firing and hit detection, audio, game state and display output. The mobile app is used to prepare game plans, work with site maps, discover and configure units, and control games.
 
 This README describes the repository as it currently exists. Refer to the individual project files for implementation and build details.
