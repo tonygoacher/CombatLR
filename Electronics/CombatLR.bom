@@ -1,18 +1,19 @@
 C1, C2, C3, C4, C6     , 5 off  , 0.1uF , 0805
-C7                     , 1 off  , 100uF , CAP_865230357007
-J1                     , 1 off  ,       , CONN_SIL7
-J2                     , 1 off  ,       , CONN_SIL_2
-J3, J7                 , 2 off  ,       , CONN_SIL5
-J4, J5                 , 2 off  ,       , CONN_SIL3
-J6                     , 1 off  ,       , CONN_SIL4
-J8                     , 1 off  ,       , R-78E
-J9                     , 1 off  ,       , CONN_sil8
-Q1, Q2, Q3, Q4, Q5, Q6 , 6 off  ,       , IRLM0040TRPBF_TOP
-R1                     , 1 off  , 3R3   , R1206_TOP
-R2                     , 1 off  , 4R7   , R1206_TOP
-R3                     , 1 off  , 33R   , R1206_TOP
-R5                     , 1 off  , 51R   , R1206_TOP
+C7                     , 1 off  , 100uF , 16V, 8mm diameter. 3.8mm pin spacing.
+J1                     , 1 off  ,       ,  MOLEX 22-27-2071
+J2                     , 1 off  ,       ,  MOLEX 22-27-2021
+J3, J7                 , 2 off  ,       ,  MOLEX 22-27-2051
+J4, J5                 , 2 off  ,       ,  MOLEX 22-27-2031
+J6                     , 1 off  ,       ,  MOLEX 22-27-2041
+J8                     , 1 off  ,       , R-78E 5V Switching Regulator. Use instead of U4 if required.
+J9                     , 1 off  ,       , MOLEX 22-27-2081
+Q1, Q2, Q3, Q4, Q5, Q6 , 6 off  ,       , IRLM0040TRPBF
+R1                     , 1 off  , 3R3   , R1206,  	R1, R2 and R3 are current limiting for IR LED. TSAL6100 recommended
+							You may need to choose your own values for these.
+R2                     , 1 off  , 4R7   , R1206, 
+R3                     , 1 off  , 33R   , R1206, 
+R5                     , 1 off  , 51R   , R1206,	Current limit for muzzle flash. TSAL5800. 
 R6, R7, R8             , 3 off  , 47k   , 0805
-U1                     , 1 off  ,       , ESP32-S3 WROOM
+U1                     , 1 off  ,       , ESP32-S3 DEVKITC N16R8
 U2                     , 1 off  ,       , MAX98357A_I2S_MODULE
-U4                     , 1 off  ,       , LD1117
+U4                     , 1 off  ,       , LD1117V33
