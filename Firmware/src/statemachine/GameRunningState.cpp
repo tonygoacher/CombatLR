@@ -164,8 +164,6 @@ void GameRunningState::Entry()
     _stateData.zoneEngine.AddPickupEventListener(this);
 
 
-    _weaponManager.AddWeapon(7);
-
     uint32_t elapsedTime = _stateData.systemTime.GetSeconds() - _stateData.gamePlan.GetGameDelayTime();
     Serial.printf("Seconds:%d Delay time: %d StartTime:%d\n",  _stateData.systemTime.GetSeconds(), _stateData.gamePlan.GetGameDelayTime(), _startTime);
 

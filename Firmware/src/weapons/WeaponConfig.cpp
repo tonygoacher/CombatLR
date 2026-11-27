@@ -89,7 +89,7 @@ bool WeaponConfig::Load()
         return false;
     }
 
-
+    int numWeaponsAdded = 0;
 
     for (JsonObject weaponJson : weapons)
     {
@@ -188,6 +188,11 @@ bool WeaponConfig::Load()
         PrintDef(definition);
         _weapons.push_back(
             std::move(definition));
+
+            
+        numWeaponsAdded++;
+        if(numWeaponsAdded == MaxWeapons)
+            break;
     }
 
     Serial.printf(

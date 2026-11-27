@@ -77,6 +77,8 @@ private:
     const WeaponDefinition* Find(WeaponType type) const;
 
     IRPowerLevel ConvertToPowerLevel(int powerLevel) const;
+
+    static const int MaxWeapons = 16;
 };
 
 
