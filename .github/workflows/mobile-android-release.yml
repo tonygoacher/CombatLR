@@ -171,12 +171,20 @@ jobs:
         id: previous
         shell: pwsh
         run: |
-          $parent = "${{ github.sha }}^"
-          $previous = git tag --merged $parent --list "mobile-v*" --sort=-version:refname | Select-Object -First 1
-          if ($LASTEXITCODE -ne 0) {
-            throw "Unable to list previous mobile release tags."
-          }
-          "tag=$previous" >> $env:GITHUB_OUTPUT
+            $currentTag = "${{ github.ref_name }}"
+            $tags = @(git tag --list "mobile-v*" --sort=-version:refname)
+  
+            if ($LASTEXITCODE -ne 0) {
+              throw "Unable to list mobile release tags."
+            }
+  
+            $previous = $tags |
+              Where-Object { $_ -ne $currentTag } |
+              Select-Object -First 1
+  
+            Write-Host "Current tag: $currentTag"
+            Write-Host "Previous tag: $previous"
+            "tag=$previous" >> $env:GITHUB_OUTPUT
 
       - name: Publish GitHub Release
         if: github.event_name == 'push'
