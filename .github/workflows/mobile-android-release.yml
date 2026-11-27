@@ -71,7 +71,6 @@ jobs:
         env:
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
         run: |
-
           Write-Host "Keystore path: $env:ANDROID_KEYSTORE_PATH"
           if (-not (Test-Path $env:ANDROID_KEYSTORE_PATH)) {
             throw "Keystore file not found"
@@ -81,7 +80,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "Keystore validation failed"
           }
-
 
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
@@ -145,46 +143,79 @@ jobs:
             --output publish/android
 
           if ($LASTEXITCODE -ne 0) {
-            throw "Android publish failed with exit code $LASTEXITCODE"
+            throw "Android APK publish failed with exit code $LASTEXITCODE"
           }
 
-      - name: Upload diagnostic APK
+      - name: Publish signed Android App Bundle
+        shell: pwsh
+        env:
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          dotnet publish CombatLR.mobile/CombatLR.mobile.csproj `
+            --configuration Release `
+            --framework net10.0-android `
+            -p:AndroidPackageFormat=aab `
+            -p:AndroidKeyStore=true `
+            -p:AndroidSigningKeyStore="$env:ANDROID_KEYSTORE_PATH" `
+            -p:AndroidSigningKeyAlias="$env:ANDROID_KEY_ALIAS" `
+            -p:AndroidSigningKeyPass="$env:ANDROID_KEY_PASSWORD" `
+            -p:AndroidSigningStorePass="$env:ANDROID_STORE_PASSWORD" `
+            -p:ApplicationDisplayVersion=${{ steps.version.outputs.version }} `
+            -p:ApplicationVersion=${{ steps.version.outputs.version_code }} `
+            -p:Version=${{ steps.version.outputs.version }} `
+            --verbosity minimal `
+            --output publish/android-aab
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Android App Bundle publish failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Upload diagnostic Android packages
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: CombatLR-Mobile-${{ steps.version.outputs.version }}-diagnostic
-          path: publish/android/*.apk
+          path: |
+            publish/android/*.apk
+            publish/android-aab/*.aab
           if-no-files-found: error
           retention-days: 7
 
-      - name: Generate SHA-256 checksum
+      - name: Generate SHA-256 checksums
         if: github.event_name == 'push'
         shell: pwsh
         run: |
-          $apk = Get-ChildItem publish/android -Filter "*.apk" | Select-Object -First 1
+          $apk = Get-ChildItem publish/android -Filter "*.apk" -File | Select-Object -First 1
+          $aab = Get-ChildItem publish/android-aab -Filter "*.aab" -File | Select-Object -First 1
           if (-not $apk) { throw "Signed APK was not produced." }
-          $hash = Get-FileHash $apk.FullName -Algorithm SHA256
-          "$($hash.Hash.ToLower())  $($apk.Name)" | Set-Content "$($apk.FullName).sha256"
+          if (-not $aab) { throw "Signed Android App Bundle was not produced." }
+
+          $apkHash = Get-FileHash $apk.FullName -Algorithm SHA256
+          "$($apkHash.Hash.ToLower())  $($apk.Name)" | Set-Content "$($apk.FullName).sha256"
+          $aabHash = Get-FileHash $aab.FullName -Algorithm SHA256
+          "$($aabHash.Hash.ToLower())  $($aab.Name)" | Set-Content "$($aab.FullName).sha256"
 
       - name: Find previous mobile release tag
         if: github.event_name == 'push'
         id: previous
         shell: pwsh
         run: |
-            $currentTag = "${{ github.ref_name }}"
-            $tags = @(git tag --list "mobile-v*" --sort=-version:refname)
-  
-            if ($LASTEXITCODE -ne 0) {
-              throw "Unable to list mobile release tags."
-            }
-  
-            $previous = $tags |
-              Where-Object { $_ -ne $currentTag } |
-              Select-Object -First 1
-  
-            Write-Host "Current tag: $currentTag"
-            Write-Host "Previous tag: $previous"
-            "tag=$previous" >> $env:GITHUB_OUTPUT
+          $currentTag = "${{ github.ref_name }}"
+          $tags = @(git tag --list "mobile-v*" --sort=-version:refname)
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Unable to list mobile release tags."
+          }
+
+          $previous = $tags |
+            Where-Object { $_ -ne $currentTag } |
+            Select-Object -First 1
+
+          Write-Host "Current tag: $currentTag"
+          Write-Host "Previous tag: $previous"
+          "tag=$previous" >> $env:GITHUB_OUTPUT
 
       - name: Publish GitHub Release
         if: github.event_name == 'push'
@@ -195,16 +226,22 @@ jobs:
           $tag = "${{ github.ref_name }}"
           $version = "${{ steps.version.outputs.version }}"
           $apkFiles = @(Get-ChildItem publish/android -Filter "*.apk" -File)
-          $checksumFiles = @(Get-ChildItem publish/android -Filter "*.apk.sha256" -File)
+          $apkChecksumFiles = @(Get-ChildItem publish/android -Filter "*.apk.sha256" -File)
+          $aabFiles = @(Get-ChildItem publish/android-aab -Filter "*.aab" -File)
+          $aabChecksumFiles = @(Get-ChildItem publish/android-aab -Filter "*.aab.sha256" -File)
 
-          if ($apkFiles.Count -ne 1) {
-            throw "Expected exactly one APK, found $($apkFiles.Count)."
-          }
-          if ($checksumFiles.Count -ne 1) {
-            throw "Expected exactly one APK checksum, found $($checksumFiles.Count)."
-          }
+          if ($apkFiles.Count -ne 1) { throw "Expected exactly one APK, found $($apkFiles.Count)." }
+          if ($apkChecksumFiles.Count -ne 1) { throw "Expected exactly one APK checksum, found $($apkChecksumFiles.Count)." }
+          if ($aabFiles.Count -ne 1) { throw "Expected exactly one AAB, found $($aabFiles.Count)." }
+          if ($aabChecksumFiles.Count -ne 1) { throw "Expected exactly one AAB checksum, found $($aabChecksumFiles.Count)." }
 
-          $assets = @($apkFiles[0].FullName, $checksumFiles[0].FullName)
+          $assets = @(
+            $apkFiles[0].FullName,
+            $apkChecksumFiles[0].FullName,
+            $aabFiles[0].FullName,
+            $aabChecksumFiles[0].FullName
+          )
+
           if ("${{ steps.previous.outputs.tag }}") {
             gh release create $tag @assets --title "CombatLR Mobile v$version" --generate-notes --notes-start-tag "${{ steps.previous.outputs.tag }}"
           } else {
